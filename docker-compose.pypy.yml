@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  paradigm-pypy:
+    build:
+      context: .
+      args:
+      - PYTHON_IMAGE=${PYPY_IMAGE_NAME}
+      - PYTHON_IMAGE_VERSION=${PYPY_IMAGE_VERSION}
+    image: lycantropos/paradigm-pypy:0.0.0
+    volumes:
+      - ./paradigm/:/opt/paradigm/paradigm/
+      - ./tests/:/opt/paradigm/tests/
+      - ./README.md:/opt/paradigm/README.md
+      - ./setup.py:/opt/paradigm/setup.py
+      - ./setup.cfg:/opt/paradigm/setup.cfg
+    entrypoint: pypy3
+    command: setup.py test
