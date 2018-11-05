@@ -222,29 +222,6 @@ def from_callable(object_: Callable[..., Any]) -> Base:
     return Plain(*parameters)
 
 
-def flatten_signatures(signatures: Iterable[Base]) -> Base:
-    signatures = list(signatures)
-    try:
-        signature, = signatures
-    except ValueError:
-        return Overloaded(*signatures)
-    else:
-        return signature
-
-
-@singledispatch
-def slice_parameters(signature: Base,
-                     slice_: slice) -> Base:
-    raise TypeError('Unsupported signature type: {type}.'
-                    .format(type=type(signature)))
-
-
-@slice_parameters.register(Plain)
-def slice_plain_parameters(signature: Plain,
-                           slice_: slice) -> Base:
-    return Plain(*signature.parameters[slice_])
-
-
 if platform.python_implementation() == 'PyPy':
     def from_class(object_: type) -> Base:
         try:
@@ -329,14 +306,6 @@ else:
                 return flatten_signatures(map(from_ast, signatures_ast))
 
 
-    @slice_parameters.register(Overloaded)
-    def slice_overloaded_parameters(signature: Overloaded,
-                                    slice_: slice) -> Base:
-        return Overloaded(*map(partial(slice_parameters,
-                                       slice_=slice_),
-                               signature.signatures))
-
-
     def from_ast(signature_ast: ast3.arguments) -> Base:
         parameters = filter(
                 None,
@@ -414,3 +383,34 @@ from_class_cache = {
 }
 from_class = factory.register(type)(
         cached_map(from_class_cache)(from_class))
+
+
+def flatten_signatures(signatures: Iterable[Base]) -> Base:
+    signatures = list(signatures)
+    try:
+        signature, = signatures
+    except ValueError:
+        return Overloaded(*signatures)
+    else:
+        return signature
+
+
+@singledispatch
+def slice_parameters(signature: Base,
+                     slice_: slice) -> Base:
+    raise TypeError('Unsupported signature type: {type}.'
+                    .format(type=type(signature)))
+
+
+@slice_parameters.register(Plain)
+def slice_plain_parameters(signature: Plain,
+                           slice_: slice) -> Base:
+    return Plain(*signature.parameters[slice_])
+
+
+@slice_parameters.register(Overloaded)
+def slice_overloaded_parameters(signature: Overloaded,
+                                slice_: slice) -> Base:
+    return Overloaded(*map(partial(slice_parameters,
+                                   slice_=slice_),
+                           signature.signatures))
