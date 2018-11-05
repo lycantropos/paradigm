@@ -123,7 +123,7 @@ def from_relative_file_path(path: pathlib.Path) -> Path:
 
     module_name = to_module_name(module_file_name)
     if module_name is not None:
-        parts = chain((module_name,), parts)
+        parts = chain(parts, (module_name,))
     return Path(*parts)
 
 
