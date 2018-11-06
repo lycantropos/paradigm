@@ -63,7 +63,7 @@ def is_module_supported(object_: ModuleType) -> bool:
 def is_source_path_supported(source_path: Path) -> bool:
     try:
         source = source_path.read_text()
-    except FileNotFoundError:
+    except (FileNotFoundError, UnicodeDecodeError):
         return False
     try:
         ast.parse(source,
