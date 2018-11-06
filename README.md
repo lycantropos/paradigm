@@ -114,6 +114,15 @@ Plain(Parameter(name='self', kind=Parameter.Kind.POSITIONAL_ONLY, has_default=Fa
 Plain(Parameter(name='self', kind=Parameter.Kind.POSITIONAL_OR_KEYWORD, has_default=False))
 ```
 
+Checking if object is supported by `paradigm` can be done with
+```python
+>>> from paradigm import definitions
+>>> definitions.is_supported(int.bit_length)
+True
+>>> definitions.is_supported(int.conjugate)
+False
+```
+
 Development
 -----------
 
