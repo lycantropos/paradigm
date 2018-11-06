@@ -82,6 +82,8 @@ def is_module_path_supported(module_path: catalog.Path) -> bool:
         module = importlib.import_module(module_name)
         return is_supported(module)
     spec = importlib.util.find_spec(module_name)
+    if spec is None:
+        return False
     source_path_string = spec.origin
     if source_path_string is None:
         return False
