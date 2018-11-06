@@ -1,17 +1,16 @@
-import platform
 from pathlib import Path
 
-import paradigm
 from setuptools import (find_packages,
                         setup)
+
+import paradigm
 
 project_base_url = 'https://github.com/lycantropos/paradigm/'
 
 install_requires = [
     'typing_extensions>=3.6.5',
+    'mypy>=0.630; platform_python_implementation != "PyPy"'
 ]
-if platform.python_implementation() != 'PyPy':
-    install_requires.append('mypy>=0.630')
 setup_requires = [
     'pytest-runner>=4.2',
 ]
