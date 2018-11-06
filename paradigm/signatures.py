@@ -299,11 +299,10 @@ else:
             return None
         else:
             try:
-                signatures_ast = list(map(attrgetter('args'), object_nodes))
+                return flatten_signatures(map(from_ast, map(attrgetter('args'),
+                                                            object_nodes)))
             except AttributeError:
                 return None
-            else:
-                return flatten_signatures(map(from_ast, signatures_ast))
 
 
     def from_ast(signature_ast: ast3.arguments) -> Base:
