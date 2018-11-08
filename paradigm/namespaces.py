@@ -4,12 +4,12 @@ import sys
 import types
 from functools import singledispatch
 from itertools import chain
+from operator import methodcaller
 from types import ModuleType
 from typing import (Any,
                     Iterable)
 
-from . import (catalog,
-               dictionaries)
+from . import catalog
 from .hints import Namespace
 
 
@@ -38,7 +38,7 @@ def from_module_path(object_: catalog.Path) -> Namespace:
     modules_names = list(to_replacing_modules_names(object_.parts))
 
     if modules_names:
-        return dictionaries.merge(map(from_module_name, modules_names))
+        return merge(map(from_module_name, modules_names))
     return from_module_name(str(object_))
 
 
@@ -50,3 +50,7 @@ def from_module(object_: ModuleType) -> Namespace:
 @factory.register(str)
 def from_module_name(object_: str) -> Namespace:
     return factory(importlib.import_module(object_))
+
+
+def merge(namespaces: Iterable[Namespace]) -> Namespace:
+    return dict(chain.from_iterable(map(methodcaller('items'), namespaces)))
