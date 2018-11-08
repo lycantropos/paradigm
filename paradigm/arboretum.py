@@ -1,5 +1,6 @@
 import builtins
 import importlib
+import typing
 from contextlib import suppress
 from functools import (reduce,
                        singledispatch)
@@ -21,9 +22,10 @@ from .hints import Namespace
 
 Nodes = Dict[catalog.Path, ast3.AST]
 
-TYPING_MODULE_PATH = catalog.factory('typing')
-OVERLOAD_DECORATORS_PATHS = {catalog.factory('typing.overload'),
-                             catalog.factory('overload')}
+TYPING_MODULE_PATH = catalog.factory(typing)
+OVERLOAD_DECORATORS_PATHS = frozenset(next(
+        (TYPING_MODULE_PATH.join(path), path)
+        for path in catalog.paths_factory(typing.overload)))
 
 
 def to_nodes(object_path: catalog.Path,
