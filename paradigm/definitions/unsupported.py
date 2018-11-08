@@ -172,6 +172,7 @@ if platform.python_implementation() != 'PyPy':
     import socket
     import tarfile
     import tkinter
+    import unittest
     import warnings
 
     # not supported by ``typeshed`` package
@@ -206,6 +207,7 @@ if platform.python_implementation() != 'PyPy':
                     tarfile.TruncatedHeaderError,
                     tarfile.SubsequentHeaderError,
                     tkinter.TclError,
+                    unittest.case.SkipTest,
                     warnings._OptionError})
 
     if sys.version_info >= (3, 6):
