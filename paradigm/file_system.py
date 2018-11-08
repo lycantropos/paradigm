@@ -1,6 +1,7 @@
 import os
-from itertools import (repeat,
-                       starmap, chain)
+from itertools import (chain,
+                       repeat,
+                       starmap)
 from operator import (itemgetter,
                       truediv)
 from pathlib import Path
