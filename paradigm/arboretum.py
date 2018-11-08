@@ -230,7 +230,10 @@ class Registry(Base):
     def visit_FunctionDef(self, node: ast3.FunctionDef) -> ast3.FunctionDef:
         path = self.resolve_path(catalog.factory(node.name))
         if self.is_overloaded(node):
-            self.nodes.setdefault(path, []).append(node)
+            try:
+                self.nodes.setdefault(path, []).append(node)
+            except AttributeError:
+                self.nodes[path] = [node]
         else:
             self.nodes[path] = node
         return node
