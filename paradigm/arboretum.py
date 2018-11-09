@@ -1,5 +1,6 @@
 import builtins
 import importlib
+import typing
 from contextlib import suppress
 from functools import (reduce,
                        singledispatch)
@@ -21,9 +22,10 @@ from .hints import Namespace
 
 Nodes = Dict[catalog.Path, ast3.AST]
 
-TYPING_MODULE_PATH = catalog.factory('typing')
-OVERLOAD_DECORATORS_PATHS = {catalog.factory('typing.overload'),
-                             catalog.factory('overload')}
+TYPING_MODULE_PATH = catalog.factory(typing)
+OVERLOAD_DECORATORS_PATHS = frozenset(next(
+        (TYPING_MODULE_PATH.join(path), path)
+        for path in catalog.paths_factory(typing.overload)))
 
 
 def to_nodes(object_path: catalog.Path,
@@ -55,6 +57,7 @@ def module_path_to_nodes(module_path: catalog.Path,
               parent_path=catalog.Path()).visit(module_root)
     result = dict(base)
     Registry(nodes=result,
+             module_path=module_path,
              parent_path=catalog.Path()).visit(module_root)
     return result
 
@@ -188,11 +191,13 @@ class Registry(Base):
     def __init__(self,
                  *,
                  nodes: Nodes,
+                 module_path: catalog.Path,
                  parent_path: catalog.Path,
                  is_nested: bool = False) -> None:
         super().__init__(parent_path=parent_path,
                          is_nested=is_nested)
         self.nodes = nodes
+        self.module_path = module_path
 
     def visit_Module(self, node: ast3.Module) -> ast3.Module:
         self.nodes[catalog.Path()] = node
@@ -217,6 +222,7 @@ class Registry(Base):
                 self.nodes.update(nodes)
         self.nodes[path] = node
         transformer = type(self)(nodes=self.nodes,
+                                 module_path=self.module_path,
                                  parent_path=path,
                                  is_nested=True)
         for child in node.body:
@@ -226,7 +232,10 @@ class Registry(Base):
     def visit_FunctionDef(self, node: ast3.FunctionDef) -> ast3.FunctionDef:
         path = self.resolve_path(catalog.factory(node.name))
         if self.is_overloaded(node):
-            self.nodes.setdefault(path, []).append(node)
+            try:
+                self.nodes.setdefault(path, []).append(node)
+            except AttributeError:
+                self.nodes[path] = [node]
         else:
             self.nodes[path] = node
         return node
@@ -240,6 +249,8 @@ class Registry(Base):
         except ValueError:
             pass
         else:
+            if self.module_path == TYPING_MODULE_PATH:
+                return True
             root_path = catalog.factory(overload_decorator_path.parts[0])
             root_node = self.nodes[root_path]
             if isinstance(root_node, ast3.Import):
