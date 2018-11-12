@@ -136,8 +136,10 @@ def has_python_source_file(module: ModuleType) -> bool:
 
 
 def is_stdlib_object(object_: Any) -> bool:
-    return (has_module(object_)
-            and object_.__module__ in stdlib_modules_names)
+    if not has_module(object_):
+        return False
+    top_module_name = catalog.factory(object_.__module__).parts[0]
+    return top_module_name in stdlib_modules_names
 
 
 def is_stdlib_callable_supported(callable_: Callable[..., Any]) -> bool:
