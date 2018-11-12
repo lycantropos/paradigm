@@ -379,6 +379,9 @@ from_class_cache = {
                    Parameter(name='repeat',
                              kind=Parameter.Kind.KEYWORD_ONLY,
                              has_default=True)),
+    zip: Plain(Parameter(name='iterables',
+                         kind=Parameter.Kind.VARIADIC_POSITIONAL,
+                         has_default=False)),
 }
 from_class = factory.register(type)(
         cached_map(from_class_cache)(from_class))
