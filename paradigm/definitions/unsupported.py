@@ -269,6 +269,7 @@ if platform.python_implementation() != 'PyPy':
 
     # not supported by ``typeshed`` package
     methods_descriptors.update({_collections_abc.dict_items.isdisjoint,
+                                _collections_abc.dict_keys.isdisjoint,
                                 _collections_abc.generator.close,
                                 _collections_abc.generator.send,
                                 _collections_abc.generator.throw,
