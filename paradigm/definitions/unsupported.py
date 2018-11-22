@@ -36,6 +36,7 @@ if platform.python_implementation() != 'PyPy':
     import _codecs_tw
     import _lsprof
     import _multibytecodec
+    import _multiprocessing
     import _string
     import aifc
     import audioop
@@ -58,6 +59,7 @@ if platform.python_implementation() != 'PyPy':
                            _codecs_tw,
                            _lsprof,
                            _multibytecodec,
+                           _multiprocessing,
                            _string,
                            aifc,
                            audioop,
