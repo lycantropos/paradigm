@@ -19,19 +19,15 @@ def test_factory(built_in_function: BuiltinFunctionType,
                  method: MethodType,
                  method_descriptor: MethodDescriptorType,
                  wrapper_descriptor: WrapperDescriptorType) -> None:
-    built_in_function_result = signatures.factory(built_in_function)
-    class_result = signatures.factory(class_)
-    function_result = signatures.factory(function)
-    method_result = signatures.factory(method)
-    method_descriptor_result = signatures.factory(method_descriptor)
-    wrapper_descriptor_result = signatures.factory(wrapper_descriptor)
+    for callable_ in (built_in_function,
+                      class_,
+                      function,
+                      method,
+                      method_descriptor,
+                      wrapper_descriptor):
+        result = signatures.factory(callable_)
 
-    assert isinstance(class_result, signatures.Base)
-    assert isinstance(built_in_function_result, signatures.Base)
-    assert isinstance(function_result, signatures.Base)
-    assert isinstance(method_result, signatures.Base)
-    assert isinstance(method_descriptor_result, signatures.Base)
-    assert isinstance(wrapper_descriptor_result, signatures.Base)
+        assert isinstance(result, signatures.Base)
 
 
 @pytest.mark.skipif(platform.python_implementation() == 'PyPy',
