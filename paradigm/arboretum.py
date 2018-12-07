@@ -92,7 +92,7 @@ class Base(ast3.NodeTransformer):
     def __init__(self,
                  *,
                  parent_path: catalog.Path,
-                 is_nested: bool = False) -> None:
+                 is_nested: bool) -> None:
         self.parent_path = parent_path
         self.is_nested = is_nested
 
