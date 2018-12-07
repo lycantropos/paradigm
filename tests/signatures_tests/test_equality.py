@@ -12,7 +12,7 @@ def test_reflexivity(callable_: Callable[..., Any]) -> None:
 
 
 def test_symmetry(callable_: Callable[..., Any],
-                  second_callable) -> None:
+                  second_callable: Callable[..., Any]) -> None:
     signature = signatures.factory(callable_)
     second_signature = signatures.factory(second_callable)
 
@@ -21,8 +21,8 @@ def test_symmetry(callable_: Callable[..., Any],
 
 
 def test_transitivity(callable_: Callable[..., Any],
-                      second_callable,
-                      third_callable) -> None:
+                      second_callable: Callable[..., Any],
+                      third_callable: Callable[..., Any]) -> None:
     signature = signatures.factory(callable_)
     second_signature = signatures.factory(second_callable)
     third_signature = signatures.factory(third_callable)
