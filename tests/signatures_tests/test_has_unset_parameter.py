@@ -14,7 +14,7 @@ def test_has_unset_parameters(callable_: Callable[..., Any]) -> None:
     else:
         assert isinstance(result, signatures.Overloaded)
         assert (result.has_unset_parameters()
-                or all(map(is_plain_signature_all_set, result.signatures)))
+                or any(map(is_plain_signature_all_set, result.signatures)))
 
 
 def is_plain_signature_all_set(signature: signatures.Plain) -> bool:
