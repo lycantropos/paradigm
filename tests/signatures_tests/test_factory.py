@@ -31,6 +31,14 @@ def test_basic(built_in_function: BuiltinFunctionType,
 
 @pytest.mark.skipif(platform.python_implementation() == 'PyPy',
                     reason='requires CPython')
+def test_overloaded(overloaded_callable: Callable[..., Any]) -> None:
+    result = signatures.factory(overloaded_callable)
+
+    assert isinstance(result, signatures.Overloaded)
+
+
+@pytest.mark.skipif(platform.python_implementation() == 'PyPy',
+                    reason='requires CPython')
 def test_fail(unsupported_callable: Callable[..., Any]) -> None:
     with pytest.raises(ValueError):
         signatures.factory(unsupported_callable)
