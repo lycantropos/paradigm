@@ -53,6 +53,11 @@ def method_descriptor() -> MethodDescriptorType:
 
 
 @pytest.fixture(scope='function')
+def overloaded_callable() -> Callable[..., Any]:
+    return find(strategies.overloaded_callables)
+
+
+@pytest.fixture(scope='function')
 def unsupported_callable() -> Callable[..., Any]:
     return find(strategies.unsupported_callables)
 

@@ -1,5 +1,7 @@
 import importlib
 import inspect
+import platform
+from functools import reduce
 from types import ModuleType
 from typing import (Any,
                     Union)
@@ -63,3 +65,8 @@ callables = (built_in_functions
              | methods
              | methods_descriptors
              | wrappers_descriptors)
+if platform.python_implementation() == 'PyPy':
+    overloaded_callables = strategies.nothing()
+else:
+    overloaded_callables = strategies.sampled_from([int, reduce, str,
+                                                    super, type])
