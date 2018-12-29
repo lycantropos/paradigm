@@ -21,7 +21,7 @@ tests_require = [
 ]
 
 setup(name='paradigm',
-      packages=find_packages(exclude=('tests',)),
+      packages=find_packages(exclude=('tests', 'tests.*',)),
       version=paradigm.__version__,
       description=paradigm.__doc__,
       long_description=Path('README.md').read_text(encoding='utf-8'),
