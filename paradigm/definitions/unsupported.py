@@ -251,13 +251,9 @@ if platform.python_implementation() != 'PyPy':
 
             classes.add(os.statvfs_result)
     else:
-        import os
-        import pwd
         import termios
 
-        classes.update({os.waitid_result,
-                        pwd.struct_passwd,
-                        termios.error})
+        classes.update({termios.error})
 
 methods_descriptors = set()
 
@@ -266,7 +262,6 @@ if platform.python_implementation() != 'PyPy':
     import _io
     import _thread
     import collections
-    import sqlite3
     import types
 
     # not supported by ``typeshed`` package
@@ -279,18 +274,13 @@ if platform.python_implementation() != 'PyPy':
                                 _collections_abc.coroutine.send,
                                 _collections_abc.coroutine.throw,
                                 _io.BufferedRWPair.peek,
-                                _thread.LockType.acquire,
                                 _thread.LockType.acquire_lock,
                                 _thread.LockType.locked,
                                 _thread.LockType.locked_lock,
-                                _thread.LockType.release,
                                 _thread.LockType.release_lock,
                                 collections.OrderedDict.clear,
                                 collections.OrderedDict.pop,
                                 collections.OrderedDict.update,
-                                int.conjugate,
-                                sqlite3.Connection.enable_load_extension,
-                                sqlite3.Connection.load_extension,
                                 types.FrameType.clear})
 
     if sys.version_info >= (3, 6):
@@ -313,7 +303,6 @@ if platform.python_implementation() != 'PyPy':
 
         methods_descriptors.update({collections.OrderedDict.setdefault,
                                     dict.get,
-                                    float.conjugate,
                                     zipimport.zipimporter.find_loader})
 
     if sys.platform == 'win32':
