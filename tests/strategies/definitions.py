@@ -68,5 +68,4 @@ callables = (built_in_functions
 if platform.python_implementation() == 'PyPy':
     overloaded_callables = strategies.nothing()
 else:
-    overloaded_callables = strategies.sampled_from([int, reduce, str,
-                                                    super, type])
+    overloaded_callables = strategies.sampled_from([int, reduce, super, type])
