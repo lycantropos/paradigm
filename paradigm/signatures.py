@@ -278,8 +278,7 @@ else:
             return from_callable(object_)
         except ValueError as error:
             method_paths = map(to_method_path, catalog.paths_factory(object_))
-            module_path = catalog.factory(catalog
-                                          .module_name_factory(object_))
+            module_path = catalog.factory(catalog.module_name_factory(object_))
             signature_factory = partial(to_signature,
                                         module_path=module_path)
             try:
