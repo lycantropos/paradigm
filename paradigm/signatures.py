@@ -293,8 +293,7 @@ else:
     def to_signature(object_path: catalog.Path,
                      module_path: catalog.Path) -> Optional[Base]:
         try:
-            object_nodes = arboretum.to_nodes(object_path,
-                                              module_path)
+            object_nodes = arboretum.to_nodes(object_path, module_path)
         except KeyError:
             return None
         else:
