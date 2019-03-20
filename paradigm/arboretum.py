@@ -5,13 +5,15 @@ import typing
 from contextlib import suppress
 from functools import (reduce,
                        singledispatch)
-from itertools import chain
+from itertools import (chain,
+                       starmap,
+                       zip_longest)
 from pathlib import Path
 from typing import (Any,
-                    Dict,
                     FrozenSet,
                     Iterable,
                     List,
+                    MutableMapping,
                     Union)
 
 from typed_ast import ast3
@@ -22,7 +24,8 @@ from . import (catalog,
 from .conversion import TypedToPlain
 from .hints import Namespace
 
-Nodes = Dict[catalog.Path, Union[ast3.AST, catalog.Path, List[ast3.AST]]]
+Node = Union[ast3.AST, catalog.Path, List[ast3.AST]]
+Nodes = MutableMapping[catalog.Path, Node]
 
 TYPING_MODULE_PATH = catalog.factory(typing)
 OVERLOAD_DECORATORS_PATHS = frozenset(next(
@@ -33,32 +36,75 @@ NAMED_TUPLE_CLASSES_PATHS = frozenset(next(
         for path in catalog.paths_factory(typing.NamedTuple)))
 
 
+@singledispatch
+def are_similar(left_object: Any, right_object: Any) -> bool:
+    return left_object == right_object
+
+
+@are_similar.register(ast3.AST)
+def are_nodes_similar(left_object: ast3.AST, right_object: Node) -> bool:
+    if type(left_object) is not type(right_object):
+        return False
+    for property_name in chain(left_object._attributes, left_object._fields):
+        try:
+            left_property = getattr(left_object, property_name)
+        except AttributeError:
+            continue
+        try:
+            right_property = getattr(right_object, property_name)
+        except AttributeError:
+            return False
+        if not are_similar(left_property, right_property):
+            return False
+    return True
+
+
 def to_nodes(object_path: catalog.Path,
              module_path: catalog.Path) -> List[ast3.AST]:
     nodes = module_path_to_nodes(module_path,
                                  base=built_ins_nodes)
     reduce_node = Reducer(nodes=nodes,
                           parent_path=catalog.Path()).visit
-    reduce_node(nodes[catalog.Path()])
+    root = nodes[catalog.Path()]
+    reduce_node(root)
     while True:
         try:
-            candidate = nodes[object_path]
+            result = search_node(object_path,
+                                 nodes=nodes)
         except KeyError:
             parent_path = object_path.parent
+            parent_node = search_node(parent_path,
+                                      nodes=nodes)
             while True:
-                parent_node = nodes[parent_path]
-                if is_link(parent_node):
-                    parent_path = parent_node
+                children = list(root.body)
+                reduce_node(parent_node)
+                children_remained_intact = all(starmap(are_similar,
+                                                       zip_longest(children,
+                                                                   root.body)))
+                if children_remained_intact:
+                    raise
+                try:
+                    result = search_node(object_path,
+                                         nodes=nodes)
+                except KeyError:
                     continue
-                break
-            reduce_node(parent_node)
+                else:
+                    break
+        if not isinstance(result, list):
+            result = [result]
+        return result
+
+
+def search_node(path: catalog.Path,
+                *,
+                nodes: Nodes) -> ast3.AST:
+    while True:
+        result = nodes[path]
+        if is_link(result):
+            path = result
             continue
-        if is_link(candidate):
-            object_path = candidate
-            continue
-        if not isinstance(candidate, list):
-            candidate = [candidate]
-        return candidate
+        break
+    return result
 
 
 is_link = catalog.Path.__instancecheck__
@@ -67,17 +113,17 @@ is_link = catalog.Path.__instancecheck__
 def module_path_to_nodes(module_path: catalog.Path,
                          *,
                          base: Nodes = None) -> Nodes:
-    module_node = to_flat_module_node(module_path)
+    root = to_flat_root(module_path)
     if base is None:
         base = {}
     result = copy.copy(base)
     Registry(nodes=result,
              module_path=module_path,
-             parent_path=catalog.Path()).visit(module_node)
+             parent_path=catalog.Path()).visit(root)
     return result
 
 
-def to_flat_module_node(module_path: catalog.Path) -> ast3.Module:
+def to_flat_root(module_path: catalog.Path) -> ast3.Module:
     source_path = sources.factory(module_path)
     result = factory(source_path)
     namespace = namespaces.factory(module_path)
@@ -95,23 +141,23 @@ def factory(object_: Any) -> ast3.Module:
 
 
 @factory.register(Path)
-def from_source_path(path: Path) -> ast3.Module:
-    return ast3.parse(path.read_text())
+def from_source_path(object_: Path) -> ast3.Module:
+    return ast3.parse(object_.read_text())
 
 
 @factory.register(catalog.Path)
-def from_module_path(path: catalog.Path) -> ast3.Module:
-    return factory(sources.factory(path))
+def from_module_path(object_: catalog.Path) -> ast3.Module:
+    return factory(sources.factory(object_))
 
 
 @factory.register(ast3.Module)
-def from_root_node(node: ast3.Module) -> ast3.Module:
-    return node
+def from_root(object_: ast3.Module) -> ast3.Module:
+    return object_
 
 
 @factory.register(ast3.AST)
-def from_node(node: ast3.AST) -> ast3.Module:
-    return ast3.Module([node], [])
+def from_node(object_: ast3.AST) -> ast3.Module:
+    return ast3.Module([object_], [])
 
 
 class Base(ast3.NodeTransformer):
@@ -160,7 +206,7 @@ class Flattener(Base):
             actual_path = to_actual_path(name_alias)
             if actual_path == catalog.WILDCARD_IMPORT:
                 self.namespace.update(namespaces.factory(parent_module_path))
-                yield from to_flat_module_node(parent_module_path).body
+                yield from to_flat_root(parent_module_path).body
                 continue
             elif not namespace_contains(self.namespace, alias_path):
                 namespace = namespaces.factory(parent_module_path)
