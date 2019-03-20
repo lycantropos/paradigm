@@ -22,7 +22,7 @@ from . import (catalog,
 from .conversion import TypedToPlain
 from .hints import Namespace
 
-Nodes = Dict[catalog.Path, Union[ast3.AST, catalog.Path]]
+Nodes = Dict[catalog.Path, Union[ast3.AST, catalog.Path, List[ast3.AST]]]
 
 TYPING_MODULE_PATH = catalog.factory(typing)
 OVERLOAD_DECORATORS_PATHS = frozenset(next(
