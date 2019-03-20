@@ -223,9 +223,6 @@ if platform.python_implementation() != 'PyPy':
         import plistlib
 
         classes.update({_collections_abc.range_iterator,
-                        os.terminal_size,
-                        os.times_result,
-                        os.uname_result,
                         plistlib._InternalDict})
     else:
         import dataclasses
@@ -253,7 +250,7 @@ if platform.python_implementation() != 'PyPy':
     else:
         import termios
 
-        classes.update({termios.error})
+        classes.add(termios.error)
 
 methods_descriptors = set()
 
@@ -262,7 +259,6 @@ if platform.python_implementation() != 'PyPy':
     import _io
     import _thread
     import collections
-    import types
 
     # not supported by ``typeshed`` package
     methods_descriptors.update({_collections_abc.dict_items.isdisjoint,
@@ -280,8 +276,7 @@ if platform.python_implementation() != 'PyPy':
                                 _thread.LockType.release_lock,
                                 collections.OrderedDict.clear,
                                 collections.OrderedDict.pop,
-                                collections.OrderedDict.update,
-                                types.FrameType.clear})
+                                collections.OrderedDict.update})
 
     if sys.version_info >= (3, 6):
         methods_descriptors.update({_collections_abc.async_generator.aclose,
@@ -323,4 +318,5 @@ if platform.python_implementation() != 'PyPy':
     if sys.version_info >= (3, 6):
         import _socket
 
-        wrappers_descriptors.add(_socket.socket.__del__)
+        wrappers_descriptors.update({_collections_abc.async_generator.__del__,
+                                     _socket.socket.__del__})
