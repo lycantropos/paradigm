@@ -61,12 +61,6 @@ WILDCARD_IMPORT = Path('*')
 
 
 @singledispatch
-def factory(object_: Any) -> Path:
-    raise TypeError('Unsupported object type: {type}.'
-                    .format(type=type(object_)))
-
-
-@singledispatch
 def paths_factory(object_: Any) -> Iterable[Path]:
     yield factory(object_)
 
@@ -100,6 +94,12 @@ def paths_from_class_or_function(object_: Union[BuiltinMethodType,
                                 for name, content in namespace.items()
                                 if inspect.isclass(content)))
     yield from paths_factory(object_.__qualname__)
+
+
+@singledispatch
+def factory(object_: Any) -> Path:
+    raise TypeError('Unsupported object type: {type}.'
+                    .format(type=type(object_)))
 
 
 @factory.register(ModuleType)

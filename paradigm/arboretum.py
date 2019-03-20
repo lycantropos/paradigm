@@ -1,4 +1,5 @@
 import builtins
+import copy
 import importlib
 import typing
 from contextlib import suppress
@@ -6,11 +7,13 @@ from functools import (reduce,
                        singledispatch)
 from itertools import chain
 from pathlib import Path
-from types import MappingProxyType
 from typing import (Any,
                     Dict,
+                    FrozenSet,
                     Iterable,
-                    List)
+                    List,
+                    Tuple,
+                    Union)
 
 from typed_ast import ast3
 
@@ -20,12 +23,15 @@ from . import (catalog,
 from .conversion import TypedToPlain
 from .hints import Namespace
 
-Nodes = Dict[catalog.Path, ast3.AST]
+Nodes = Dict[catalog.Path, Union[ast3.AST, catalog.Path]]
 
 TYPING_MODULE_PATH = catalog.factory(typing)
 OVERLOAD_DECORATORS_PATHS = frozenset(next(
         (TYPING_MODULE_PATH.join(path), path)
         for path in catalog.paths_factory(typing.overload)))
+NAMED_TUPLE_CLASSES_PATHS = frozenset(next(
+        (TYPING_MODULE_PATH.join(path), path)
+        for path in catalog.paths_factory(typing.NamedTuple)))
 
 
 def to_nodes(object_path: catalog.Path,
@@ -35,30 +41,51 @@ def to_nodes(object_path: catalog.Path,
     reduce_node = Reducer(nodes=nodes,
                           parent_path=catalog.Path()).visit
     reduce_node(nodes[catalog.Path()])
-    try:
-        result = nodes[object_path]
-    except KeyError:
-        reduce_node(nodes[object_path.parent])
-        result = nodes[object_path]
-    if not isinstance(result, list):
-        result = [result]
-    return result
+    while True:
+        try:
+            candidate = nodes.pop(object_path)
+        except KeyError:
+            parent_path = object_path.parent
+            while True:
+                parent_node = nodes[parent_path]
+                if is_link(parent_node):
+                    parent_path = parent_node
+                    continue
+                break
+            reduce_node(parent_node)
+            candidate = nodes.pop(object_path)
+        if is_link(candidate):
+            object_path = candidate
+            continue
+        if not isinstance(candidate, list):
+            candidate = [candidate]
+        return candidate
+
+
+is_link = catalog.Path.__instancecheck__
 
 
 def module_path_to_nodes(module_path: catalog.Path,
                          *,
-                         base: Nodes = MappingProxyType({})) -> Nodes:
+                         base: Nodes = None) -> Nodes:
+    module_node = to_flat_module_node(module_path)
+    if base is None:
+        base = {}
+    result = copy.copy(base)
+    Registry(nodes=result,
+             module_path=module_path,
+             parent_path=catalog.Path()).visit(module_node)
+    return result
+
+
+def to_flat_module_node(module_path: catalog.Path) -> ast3.Module:
     source_path = sources.factory(module_path)
-    module_root = factory(source_path)
+    result = factory(source_path)
     namespace = namespaces.factory(module_path)
     namespace = namespaces.merge([built_ins_namespace, namespace])
     Flattener(namespace=namespace,
               module_path=module_path,
-              parent_path=catalog.Path()).visit(module_root)
-    result = dict(base)
-    Registry(nodes=result,
-             module_path=module_path,
-             parent_path=catalog.Path()).visit(module_root)
+              parent_path=catalog.Path()).visit(result)
     return result
 
 
@@ -134,7 +161,7 @@ class Flattener(Base):
             actual_path = to_actual_path(name_alias)
             if actual_path == catalog.WILDCARD_IMPORT:
                 self.namespace.update(namespaces.factory(parent_module_path))
-                yield from module_path_to_nodes(parent_module_path).values()
+                yield from to_flat_module_node(parent_module_path).body
                 continue
             elif not namespace_contains(self.namespace, alias_path):
                 namespace = namespaces.factory(parent_module_path)
@@ -240,30 +267,6 @@ class Registry(Base):
             self.nodes[path] = node
         return node
 
-    def is_overloaded(self, node: ast3.FunctionDef) -> bool:
-        decorators_paths = map(self.visit, node.decorator_list)
-        overload_decorators_paths = (OVERLOAD_DECORATORS_PATHS
-                                     & set(decorators_paths))
-        try:
-            overload_decorator_path, = overload_decorators_paths
-        except ValueError:
-            pass
-        else:
-            if self.module_path == TYPING_MODULE_PATH:
-                return True
-            root_path = catalog.factory(overload_decorator_path.parts[0])
-            root_node = self.nodes[root_path]
-            if isinstance(root_node, ast3.Import):
-                imported_modules_paths = map(to_actual_path, root_node.names)
-                if any(module_path == TYPING_MODULE_PATH
-                       for module_path in imported_modules_paths):
-                    return True
-            elif isinstance(root_node, ast3.ImportFrom):
-                imported_from_module_path = catalog.factory(root_node.module)
-                if imported_from_module_path == TYPING_MODULE_PATH:
-                    return True
-        return False
-
     def visit_Import(self, node: ast3.Import) -> ast3.Import:
         for child in node.names:
             alias_path = self.resolve_path(to_alias_path(child))
@@ -276,29 +279,55 @@ class Registry(Base):
             self.nodes[alias_path] = node
         return node
 
+    def visit_AnnAssign(self, node: ast3.AnnAssign) -> ast3.AnnAssign:
+        path = self.visit(node.target)
+        value_node = self.visit(node.value or node.annotation)
+        self.nodes[path] = value_node
+        return node
+
     def visit_Assign(self, node: ast3.Assign) -> ast3.Assign:
         paths = map(self.visit, node.targets)
-        value_node = node.value
+        value_node = self.visit(node.value)
         for path in paths:
             self.nodes[path] = value_node
         return node
-
-    def visit_AnnAssign(self, node: ast3.AnnAssign) -> ast3.AnnAssign:
-        path = self.visit(node.target)
-        self.nodes[path] = node
-        return node
-
-    def visit_Name(self, node: ast3.Name) -> catalog.Path:
-        name_path = catalog.factory(node.id)
-        if isinstance(node.ctx, ast3.Load):
-            return name_path
-        elif isinstance(node.ctx, ast3.Store):
-            return self.resolve_path(name_path)
 
     def visit_Attribute(self, node: ast3.Attribute) -> catalog.Path:
         parent_path = self.visit(node.value)
         attribute_path = catalog.factory(node.attr)
         return parent_path.join(attribute_path)
+
+    def visit_Call(self, node: ast3.Call) -> ast3.AST:
+        if not self.is_named_tuple_definition(node):
+            return node
+        class_name_node, fields_node = node.args
+
+        def field_to_parameter(field_node: ast3.expr) -> ast3.arg:
+            name_node, annotation_node = field_node.elts
+            return ast3.arg(ast3.literal_eval(name_node), annotation_node)
+
+        initializer_node = ast3.FunctionDef(
+                '__init__',
+                ast3.arguments([ast3.arg('self', None)]
+                               + list(map(field_to_parameter,
+                                          fields_node.elts)),
+                               None, [], [], None, []),
+                [ast3.Pass()], [], None)
+        return self.visit(ast3.ClassDef(ast3.literal_eval(class_name_node),
+                                        [ast3.Name(tuple.__name__,
+                                                   ast3.Load())],
+                                        [], [initializer_node], []))
+
+    def visit_Name(self, node: ast3.Name) -> catalog.Path:
+        name_path = catalog.factory(node.id)
+        context = node.ctx
+        if isinstance(context, ast3.Load):
+            return name_path
+        elif isinstance(context, ast3.Store):
+            return self.resolve_path(name_path)
+        else:
+            raise TypeError('Unsupported context type: {type}.'
+                            .format(type=type(context)))
 
     def visit_Subscript(self, node: ast3.Subscript) -> catalog.Path:
         context = node.ctx
@@ -306,6 +335,46 @@ class Registry(Base):
             raise TypeError('Unsupported context type: {type}.'
                             .format(type=type(context)))
         return self.visit(node.value)
+
+    def is_named_tuple_definition(self, node: ast3.Call) -> bool:
+        function_path = self.visit(node.func)
+        return self.intersect_with_target_paths(
+                function_path,
+                target_module_path=TYPING_MODULE_PATH,
+                target_paths=NAMED_TUPLE_CLASSES_PATHS)
+
+    def is_overloaded(self, node: ast3.FunctionDef) -> bool:
+        decorators_paths = map(self.visit, node.decorator_list)
+        return self.intersect_with_target_paths(
+                *decorators_paths,
+                target_module_path=TYPING_MODULE_PATH,
+                target_paths=OVERLOAD_DECORATORS_PATHS)
+
+    def intersect_with_target_paths(self,
+                                    *paths: catalog.Path,
+                                    target_module_path: catalog.Path,
+                                    target_paths: FrozenSet[catalog.Path]
+                                    ) -> bool:
+        candidate_paths = target_paths & set(paths)
+        try:
+            candidate_path, = candidate_paths
+        except ValueError:
+            pass
+        else:
+            if self.module_path == target_module_path:
+                return True
+            root_path = catalog.factory(candidate_path.parts[0])
+            root_node = self.nodes[root_path]
+            if isinstance(root_node, ast3.Import):
+                imported_modules_paths = map(to_actual_path, root_node.names)
+                if any(module_path == target_module_path
+                       for module_path in imported_modules_paths):
+                    return True
+            elif isinstance(root_node, ast3.ImportFrom):
+                imported_from_module_path = catalog.factory(root_node.module)
+                if imported_from_module_path == target_module_path:
+                    return True
+        return False
 
 
 def complete_new_style_class_bases(bases: List[ast3.expr]) -> List[ast3.Expr]:
