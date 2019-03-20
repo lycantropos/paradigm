@@ -42,7 +42,7 @@ def to_nodes(object_path: catalog.Path,
     reduce_node(nodes[catalog.Path()])
     while True:
         try:
-            candidate = nodes.pop(object_path)
+            candidate = nodes[object_path]
         except KeyError:
             parent_path = object_path.parent
             while True:
@@ -52,7 +52,7 @@ def to_nodes(object_path: catalog.Path,
                     continue
                 break
             reduce_node(parent_node)
-            candidate = nodes.pop(object_path)
+            continue
         if is_link(candidate):
             object_path = candidate
             continue
