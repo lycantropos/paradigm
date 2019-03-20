@@ -90,9 +90,9 @@ def paths_from_class_or_function(object_: Union[BuiltinMethodType,
                     for name, content in namespace.items()
                     if content is object_)
         propertyspaces = chain(propertyspaces,
-                               ((to_path(name), content)
+                               [(to_path(name), content)
                                 for name, content in namespace.items()
-                                if inspect.isclass(content)))
+                                if inspect.isclass(content)])
     yield from paths_factory(object_.__qualname__)
 
 
