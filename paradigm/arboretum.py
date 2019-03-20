@@ -12,7 +12,6 @@ from typing import (Any,
                     FrozenSet,
                     Iterable,
                     List,
-                    Tuple,
                     Union)
 
 from typed_ast import ast3
