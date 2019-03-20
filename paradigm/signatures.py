@@ -19,6 +19,7 @@ from signal import default_int_handler
 from types import (BuiltinFunctionType,
                    BuiltinMethodType,
                    FunctionType,
+                   MappingProxyType,
                    MethodType)
 from typing import (Any,
                     Callable,
@@ -371,7 +372,8 @@ from_callable_cache = {
                                Parameter(name='frame',
                                          kind=Parameter.Kind.POSITIONAL_ONLY,
                                          has_default=True))}
-from_callable = cached_map(from_callable_cache)(from_callable)
+from_callable = (cached_map(MappingProxyType(from_callable_cache))
+                 (from_callable))
 from_callable = [factory.register(cls, from_callable)
                  for cls in (BuiltinFunctionType,
                              BuiltinMethodType,
