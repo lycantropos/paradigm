@@ -172,7 +172,7 @@ if sys.version_info >= (3, 7):
 @module_name_factory.register(BuiltinMethodType)
 @module_name_factory.register(FunctionType)
 @module_name_factory.register(type)
-@cached_map(module_name_from_class_or_function_cache)
+@cached_map(types.MappingProxyType(module_name_from_class_or_function_cache))
 def module_name_from_class_or_function(object_: Union[BuiltinMethodType,
                                                       FunctionType, type]
                                        ) -> str:
