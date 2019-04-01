@@ -12,12 +12,10 @@ def test_basic(callable_: Callable[..., Any]) -> None:
     result = signatures.factory(callable_)
 
     if isinstance(result, signatures.Plain):
-        assert (result.has_unset_parameters()
-                or is_plain_signature_all_set(result))
+        assert result.all_set() or is_plain_signature_unset(result)
     else:
         assert isinstance(result, signatures.Overloaded)
-        assert (result.has_unset_parameters()
-                or is_overloaded_signature_all_set(result))
+        assert result.all_set() or is_overloaded_signature_unset(result)
 
 
 @pytest.mark.skipif(platform.python_implementation() == 'PyPy',
@@ -26,11 +24,10 @@ def test_overloaded(overloaded_callable: Callable[..., Any]) -> None:
     result = signatures.factory(overloaded_callable)
 
     assert isinstance(result, signatures.Overloaded)
-    assert (result.has_unset_parameters()
-            or is_overloaded_signature_all_set(result))
+    assert result.all_set() or is_overloaded_signature_unset(result)
 
 
-def is_plain_signature_all_set(signature: signatures.Plain) -> bool:
+def is_plain_signature_unset(signature: signatures.Plain) -> bool:
     variadic_parameters_kinds = {signatures.Parameter.Kind.VARIADIC_POSITIONAL,
                                  signatures.Parameter.Kind.VARIADIC_KEYWORD}
     non_variadic_parameters_kinds = (set(signatures.Parameter.Kind)
@@ -38,11 +35,10 @@ def is_plain_signature_all_set(signature: signatures.Plain) -> bool:
     non_variadic_parameters = chain.from_iterable(
             signature.parameters_by_kind[kind]
             for kind in non_variadic_parameters_kinds)
-    return (all(parameter.has_default
-                for parameter in non_variadic_parameters)
-            or all(parameter.kind in variadic_parameters_kinds
-                   for parameter in signature.parameters))
+    return not (signatures.all_parameters_has_defaults(non_variadic_parameters)
+                or all(parameter.kind in variadic_parameters_kinds
+                       for parameter in signature.parameters))
 
 
-def is_overloaded_signature_all_set(signature: signatures.Overloaded) -> bool:
-    return any(map(is_plain_signature_all_set, signature.signatures))
+def is_overloaded_signature_unset(signature: signatures.Overloaded) -> bool:
+    return all(map(is_plain_signature_unset, signature.signatures))
