@@ -179,7 +179,13 @@ class Plain(Base):
 
 class Overloaded(Base):
     def __init__(self, *signatures: Base) -> None:
-        self.signatures = signatures
+        def flatten(signature: Base) -> Iterable[Base]:
+            if isinstance(signature, type(self)):
+                yield from signature.signatures
+            else:
+                yield signature
+
+        self.signatures = tuple(chain.from_iterable(map(flatten, signatures)))
 
     def __eq__(self, other: Base) -> bool:
         if not isinstance(other, Base):
