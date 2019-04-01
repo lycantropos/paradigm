@@ -204,7 +204,7 @@ class Overloaded(Base):
         return ' or '.join(map(str, self.signatures))
 
     def all_set(self, *args: Domain, **kwargs: Domain) -> bool:
-        return all(map(methodcaller(Base.all_set.__name__, *args, **kwargs),
+        return any(map(methodcaller(Base.all_set.__name__, *args, **kwargs),
                        self.signatures))
 
 
