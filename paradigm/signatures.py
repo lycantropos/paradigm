@@ -196,7 +196,7 @@ class Overloaded(Base):
                 + '(' + ', '.join(map(repr, self.signatures)) + ')')
 
     def __str__(self) -> str:
-        return '\nor\n'.join(map(str, self.signatures))
+        return ' or '.join(map(str, self.signatures))
 
     def has_unset_parameters(self, *args: Domain, **kwargs: Domain
                              ) -> bool:
