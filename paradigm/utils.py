@@ -3,6 +3,7 @@ from functools import (singledispatch,
                        wraps)
 from typing import (Mapping,
                     MutableMapping)
+from weakref import WeakKeyDictionary
 
 from paradigm.hints import (Domain,
                             Map,
@@ -41,3 +42,24 @@ def updatable_cached_map(cache: MutableMapping[Domain, Range]
         return wrapped
 
     return wrapper
+
+
+def memoized_property(getter: Map[Domain, Range]) -> property:
+    """
+    Returns property that calls given getter on the first access
+    and reuses result afterwards.
+
+    Class instances should be hashable and weak referenceable.
+    """
+    memo = WeakKeyDictionary()
+
+    @wraps(getter)
+    def memoized(self: Domain) -> Range:
+        try:
+            result = memo[self]
+        except KeyError:
+            result = getter(self)
+            memo[self] = result
+        return result
+
+    return property(memoized)

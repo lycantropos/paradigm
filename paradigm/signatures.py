@@ -4,8 +4,7 @@ import platform
 from abc import (ABC,
                  abstractmethod)
 from collections import defaultdict
-from functools import (lru_cache,
-                       partial,
+from functools import (partial,
                        singledispatch,
                        wraps)
 from itertools import (chain,
@@ -32,7 +31,8 @@ from .hints import (Domain,
                     Map,
                     MethodDescriptorType,
                     WrapperDescriptorType)
-from .utils import cached_map
+from .utils import (cached_map,
+                    memoized_property)
 
 
 class Parameter:
@@ -144,8 +144,7 @@ class Plain(Base):
     def __str__(self) -> str:
         return '(' + ', '.join(map(str, self._parameters)) + ')'
 
-    @property
-    @lru_cache(None)
+    @memoized_property
     def parameters_by_kind(self) -> Dict[Parameter.Kind, List[Parameter]]:
         return to_parameters_by_kind(self._parameters)
 
