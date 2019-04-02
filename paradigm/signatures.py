@@ -13,11 +13,9 @@ from itertools import (chain,
                        zip_longest)
 from operator import (attrgetter,
                       methodcaller)
-from signal import default_int_handler
 from types import (BuiltinFunctionType,
                    BuiltinMethodType,
                    FunctionType,
-                   MappingProxyType,
                    MethodType)
 from typing import (Any,
                     Callable,
@@ -372,15 +370,6 @@ else:
                          kind=kind,
                          has_default=default_ast is not None)
 
-from_callable_cache = {
-    default_int_handler: Plain(Parameter(name='signum',
-                                         kind=Parameter.Kind.POSITIONAL_ONLY,
-                                         has_default=True),
-                               Parameter(name='frame',
-                                         kind=Parameter.Kind.POSITIONAL_ONLY,
-                                         has_default=True))}
-from_callable = (cached_map(MappingProxyType(from_callable_cache))
-                 (from_callable))
 from_callable = [factory.register(cls, from_callable)
                  for cls in (BuiltinFunctionType,
                              BuiltinMethodType,
