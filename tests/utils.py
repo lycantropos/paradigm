@@ -50,7 +50,7 @@ def implication(antecedent: bool, consequent: bool) -> bool:
 
 
 def negate(predicate: Predicate) -> Predicate:
-    def negated(*args: Domain, **kwargs: Domain) -> bool:
+    def negated(*args, **kwargs) -> bool:
         return not predicate(*args, **kwargs)
 
     return negated
