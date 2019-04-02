@@ -146,10 +146,9 @@ class Plain(Base):
         return to_parameters_by_kind(self._parameters)
 
     def all_set(self, *args: Domain, **kwargs: Domain) -> bool:
-        positionals = (
-                self.parameters_by_kind[Parameter.Kind.POSITIONAL_ONLY]
-                + self.parameters_by_kind[
-                    Parameter.Kind.POSITIONAL_OR_KEYWORD])
+        positionals = (self.parameters_by_kind[Parameter.Kind.POSITIONAL_ONLY]
+                       + self.parameters_by_kind[
+                           Parameter.Kind.POSITIONAL_OR_KEYWORD])
         invalid_positional_arguments_found = (
                 not self.parameters_by_kind[Parameter.Kind.VARIADIC_POSITIONAL]
                 and len(args) > len(positionals))
