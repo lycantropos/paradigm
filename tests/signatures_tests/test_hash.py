@@ -7,5 +7,6 @@ def test_relation_with_equality(signature: signatures.Base,
     signature_hash = hash(signature)
     other_signature_hash = hash(other_signature)
 
-    assert equivalence(signature_hash == other_signature_hash,
+    assert equivalence(type(signature) is type(other_signature)
+                       and signature_hash == other_signature_hash,
                        signature == other_signature)
