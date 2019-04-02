@@ -14,10 +14,10 @@ from typing import (Any,
                     Optional,
                     Union)
 
+from . import cached
 from .file_system import INIT_MODULE_NAME
 from .hints import (MethodDescriptorType,
                     WrapperDescriptorType)
-from .utils import cached_map
 
 
 class Path:
@@ -172,7 +172,7 @@ if sys.version_info >= (3, 7):
 @module_name_factory.register(BuiltinMethodType)
 @module_name_factory.register(FunctionType)
 @module_name_factory.register(type)
-@cached_map(types.MappingProxyType(module_name_from_class_or_function_cache))
+@cached.map_(types.MappingProxyType(module_name_from_class_or_function_cache))
 def module_name_from_class_or_function(object_: Union[BuiltinMethodType,
                                                       FunctionType, type]
                                        ) -> str:

@@ -25,12 +25,11 @@ from typing import (Any,
                     Optional,
                     Tuple)
 
+from . import cached
 from .hints import (Domain,
                     Map,
                     MethodDescriptorType,
                     WrapperDescriptorType)
-from .utils import (cached_map,
-                    memoized_property)
 
 
 class Parameter:
@@ -142,7 +141,7 @@ class Plain(Base):
     def __str__(self) -> str:
         return '(' + ', '.join(map(str, self._parameters)) + ')'
 
-    @memoized_property
+    @cached.property_
     def parameters_by_kind(self) -> Dict[Parameter.Kind, List[Parameter]]:
         return to_parameters_by_kind(self._parameters)
 
@@ -388,8 +387,7 @@ from_class_cache = {
                          kind=Parameter.Kind.VARIADIC_POSITIONAL,
                          has_default=False)),
 }
-from_class = factory.register(type)(
-        cached_map(from_class_cache)(from_class))
+from_class = factory.register(type)(cached.map_(from_class_cache)(from_class))
 
 
 def flatten_signatures(signatures: Iterable[Base]) -> Base:
