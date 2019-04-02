@@ -1,32 +1,20 @@
-from typing import (Any,
-                    Callable)
-
 from paradigm import signatures
 from tests.utils import implication
 
 
-def test_reflexivity(callable_: Callable[..., Any]) -> None:
-    signature = signatures.factory(callable_)
-
+def test_reflexivity(signature: signatures.Base) -> None:
     assert signature == signature
 
 
-def test_symmetry(callable_: Callable[..., Any],
-                  second_callable: Callable[..., Any]) -> None:
-    signature = signatures.factory(callable_)
-    second_signature = signatures.factory(second_callable)
-
+def test_symmetry(signature: signatures.Base,
+                  second_signature: signatures.Base) -> None:
     assert implication(signature == second_signature,
                        second_signature == signature)
 
 
-def test_transitivity(callable_: Callable[..., Any],
-                      second_callable: Callable[..., Any],
-                      third_callable: Callable[..., Any]) -> None:
-    signature = signatures.factory(callable_)
-    second_signature = signatures.factory(second_callable)
-    third_signature = signatures.factory(third_callable)
-
+def test_transitivity(signature: signatures.Base,
+                      second_signature: signatures.Base,
+                      third_signature: signatures.Base) -> None:
     assert implication(signature == second_signature
                        and second_signature == third_signature,
                        signature == third_signature)

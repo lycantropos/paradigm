@@ -1,4 +1,6 @@
-from typing import Any
+from typing import (Any,
+                    Callable,
+                    Tuple)
 
 from hypothesis import (Phase,
                         core,
@@ -7,7 +9,11 @@ from hypothesis.errors import (NoSuchExample,
                                Unsatisfiable)
 from hypothesis.searchstrategy import SearchStrategy
 
-from paradigm.hints import Domain
+from paradigm.hints import (Domain,
+                            Map,
+                            Range)
+
+Predicate = Callable[..., bool]
 
 
 def find(strategy: SearchStrategy[Domain]) -> Domain:
@@ -37,3 +43,17 @@ def find(strategy: SearchStrategy[Domain]) -> Domain:
 
 def implication(antecedent: bool, consequent: bool) -> bool:
     return not antecedent or consequent
+
+
+def negate(predicate: Predicate) -> Predicate:
+    def negated(*args: Domain, **kwargs: Domain) -> bool:
+        return not predicate(*args, **kwargs)
+
+    return negated
+
+
+def pack(function: Callable[..., Range]) -> Map[Tuple[Domain, ...], Range]:
+    def packed(args: Tuple[Domain, ...]) -> Range:
+        return function(*args)
+
+    return packed

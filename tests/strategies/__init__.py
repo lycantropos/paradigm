@@ -7,3 +7,4 @@ from .definitions import (built_in_functions,
                           overloaded_callables,
                           unsupported_callables,
                           wrappers_descriptors)
+from .singatures import signatures
