@@ -13,6 +13,13 @@ from paradigm.hints import (Domain,
 
 @singledispatch
 def map_(cache: Mapping[Domain, Range]) -> Operator[Map[Domain, Range]]:
+    """
+    Returns decorator that calls wrapped function
+    if nothing was found in cache for its argument.
+
+    Wrapped function arguments should be hashable.
+    """
+
     def wrapper(function: Map[Domain, Range]) -> Map[Domain, Range]:
         @wraps(function)
         def wrapped(argument: Domain) -> Range:
@@ -28,6 +35,14 @@ def map_(cache: Mapping[Domain, Range]) -> Operator[Map[Domain, Range]]:
 
 @map_.register(abc.MutableMapping)
 def updatable_map(cache: MutableMapping[Domain, Range]) -> Operator[Map]:
+    """
+    Returns decorator that calls wrapped function
+    if nothing was found in cache for its argument
+    and reuses result afterwards.
+
+    Wrapped function arguments should be hashable.
+    """
+
     def wrapper(function: Map[Domain, Range]) -> Map[Domain, Range]:
         @wraps(function)
         def wrapped(argument: Domain) -> Range:
