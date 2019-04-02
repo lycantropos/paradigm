@@ -25,7 +25,8 @@ from typing import (Any,
                     Dict,
                     Iterable,
                     List,
-                    Optional)
+                    Optional,
+                    Tuple)
 
 from .hints import (Domain,
                     Map,
@@ -120,29 +121,33 @@ class Base(ABC):
 
 class Plain(Base):
     def __init__(self, *parameters: Parameter) -> None:
-        self.parameters = parameters
+        self._parameters = parameters
+
+    @property
+    def parameters(self) -> Tuple[Parameter, ...]:
+        return self._parameters
 
     def __eq__(self, other: Base) -> bool:
         if not isinstance(other, Base):
             return NotImplemented
         if not isinstance(other, Plain):
             return False
-        return self.parameters == other.parameters
+        return self._parameters == other._parameters
 
     def __hash__(self) -> int:
-        return hash(self.parameters)
+        return hash(self._parameters)
 
     def __repr__(self) -> str:
         return (type(self).__qualname__
-                + '(' + ', '.join(map(repr, self.parameters)) + ')')
+                + '(' + ', '.join(map(repr, self._parameters)) + ')')
 
     def __str__(self) -> str:
-        return '(' + ', '.join(map(str, self.parameters)) + ')'
+        return '(' + ', '.join(map(str, self._parameters)) + ')'
 
     @property
     @lru_cache(None)
     def parameters_by_kind(self) -> Dict[Parameter.Kind, List[Parameter]]:
-        return to_parameters_by_kind(self.parameters)
+        return to_parameters_by_kind(self._parameters)
 
     def all_set(self, *args: Domain, **kwargs: Domain) -> bool:
         positionals = (
