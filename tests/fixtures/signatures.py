@@ -11,10 +11,10 @@ def signature() -> signatures.Base:
 
 
 @pytest.fixture(scope='function')
-def second_signature() -> signatures.Base:
+def other_signature() -> signatures.Base:
     return find(strategies.signatures)
 
 
 @pytest.fixture(scope='function')
-def third_signature() -> signatures.Base:
+def another_signature() -> signatures.Base:
     return find(strategies.signatures)

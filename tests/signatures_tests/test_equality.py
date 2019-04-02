@@ -7,14 +7,14 @@ def test_reflexivity(signature: signatures.Base) -> None:
 
 
 def test_symmetry(signature: signatures.Base,
-                  second_signature: signatures.Base) -> None:
-    assert implication(signature == second_signature,
-                       second_signature == signature)
+                  other_signature: signatures.Base) -> None:
+    assert implication(signature == other_signature,
+                       other_signature == signature)
 
 
 def test_transitivity(signature: signatures.Base,
-                      second_signature: signatures.Base,
-                      third_signature: signatures.Base) -> None:
-    assert implication(signature == second_signature
-                       and second_signature == third_signature,
-                       signature == third_signature)
+                      other_signature: signatures.Base,
+                      another_signature: signatures.Base) -> None:
+    assert implication(signature == other_signature
+                       and other_signature == another_signature,
+                       signature == another_signature)
