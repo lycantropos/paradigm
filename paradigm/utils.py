@@ -51,15 +51,4 @@ def memoized_property(getter: Map[Domain, Range]) -> property:
 
     Class instances should be hashable and weak referenceable.
     """
-    memo = WeakKeyDictionary()
-
-    @wraps(getter)
-    def memoized(self: Domain) -> Range:
-        try:
-            result = memo[self]
-        except KeyError:
-            result = getter(self)
-            memo[self] = result
-        return result
-
-    return property(memoized)
+    return property(cached_map(WeakKeyDictionary())(getter))
