@@ -100,4 +100,5 @@ def overloaded_signature_to_all_keywords(signature: signatures.Overloaded
         return {**left_dictionary, **right_dictionary}
 
     return reduce(merge_dictionaries,
-                  map(signature_to_all_keywords, signature.signatures))
+                  map(signature_to_all_keywords, signature.signatures),
+                  {})
