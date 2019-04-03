@@ -1,11 +1,25 @@
 from functools import singledispatch
 from itertools import chain
+from typing import (Any,
+                    Dict,
+                    Tuple)
 
 from paradigm import signatures
 
 
 def test_basic(signature: signatures.Base) -> None:
     assert signature.all_set() or is_signature_unset(signature)
+
+
+def test_unexpected_positionals(non_variadic_signature: signatures.Base,
+                                unexpected_positionals: Tuple[Any, ...]
+                                ) -> None:
+    assert not non_variadic_signature.all_set(*unexpected_positionals)
+
+
+def test_unexpected_keywords(non_variadic_signature: signatures.Base,
+                             unexpected_keywords: Dict[str, Any]) -> None:
+    assert not non_variadic_signature.all_set(**unexpected_keywords)
 
 
 @singledispatch
