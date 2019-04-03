@@ -8,7 +8,6 @@ from functools import (partial,
                        singledispatch,
                        wraps)
 from itertools import (chain,
-                       product,
                        starmap,
                        zip_longest)
 from operator import (attrgetter,
@@ -24,6 +23,7 @@ from typing import (Any,
                     List,
                     Optional,
                     Tuple)
+from weakref import WeakKeyDictionary
 
 from . import cached
 from .hints import (Domain,
@@ -227,6 +227,7 @@ def from_callable(object_: Callable[..., Any]) -> Base:
     return Plain(*parameters)
 
 
+from_class_cache = WeakKeyDictionary()
 if platform.python_implementation() == 'PyPy':
     def from_class(object_: type) -> Base:
         try:
@@ -273,8 +274,16 @@ else:
 
     from_callable = with_typeshed(from_callable)
 
-    to_method_path = methodcaller(catalog.Path.join.__name__,
-                                  catalog.factory('__init__'))
+    from_class_cache[int] = Overloaded(
+            Plain(Parameter(name='x',
+                            kind=Parameter.Kind.POSITIONAL_ONLY,
+                            has_default=True)),
+            Plain(Parameter(name='x',
+                            kind=Parameter.Kind.POSITIONAL_ONLY,
+                            has_default=False),
+                  Parameter(name='base',
+                            kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
+                            has_default=False)))
 
 
     def from_class(object_: type) -> Base:
@@ -292,6 +301,10 @@ else:
                 raise error
             else:
                 return slice_parameters(method_signature, slice(1, None))
+
+
+    to_method_path = methodcaller(catalog.Path.join.__name__,
+                                  catalog.factory('__init__'))
 
 
     def to_signature(object_path: catalog.Path,
@@ -375,17 +388,6 @@ from_callable = [factory.register(cls, from_callable)
                              MethodType,
                              MethodDescriptorType,
                              WrapperDescriptorType)][-1]
-from_class_cache = {
-    product: Plain(Parameter(name='iterables',
-                             kind=Parameter.Kind.VARIADIC_POSITIONAL,
-                             has_default=False),
-                   Parameter(name='repeat',
-                             kind=Parameter.Kind.KEYWORD_ONLY,
-                             has_default=True)),
-    zip: Plain(Parameter(name='iterables',
-                         kind=Parameter.Kind.VARIADIC_POSITIONAL,
-                         has_default=False)),
-}
 from_class = factory.register(type)(cached.map_(from_class_cache)(from_class))
 
 
