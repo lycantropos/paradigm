@@ -1,32 +1,20 @@
-import platform
+from functools import singledispatch
 from itertools import chain
-from typing import (Any,
-                    Callable)
-
-import pytest
 
 from paradigm import signatures
 
 
-def test_basic(callable_: Callable[..., Any]) -> None:
-    result = signatures.factory(callable_)
-
-    if isinstance(result, signatures.Plain):
-        assert result.all_set() or is_plain_signature_unset(result)
-    else:
-        assert isinstance(result, signatures.Overloaded)
-        assert result.all_set() or is_overloaded_signature_unset(result)
+def test_basic(signature: signatures.Base) -> None:
+    assert signature.all_set() or is_signature_unset(signature)
 
 
-@pytest.mark.skipif(platform.python_implementation() == 'PyPy',
-                    reason='requires CPython')
-def test_overloaded(overloaded_callable: Callable[..., Any]) -> None:
-    result = signatures.factory(overloaded_callable)
-
-    assert isinstance(result, signatures.Overloaded)
-    assert result.all_set() or is_overloaded_signature_unset(result)
+@singledispatch
+def is_signature_unset(signature: signatures.Base) -> bool:
+    raise TypeError('Unsupported signature type: {type}.'
+                    .format(type=type(signature)))
 
 
+@is_signature_unset.register(signatures.Plain)
 def is_plain_signature_unset(signature: signatures.Plain) -> bool:
     variadic_parameters_kinds = {signatures.Parameter.Kind.VARIADIC_POSITIONAL,
                                  signatures.Parameter.Kind.VARIADIC_KEYWORD}
@@ -40,5 +28,6 @@ def is_plain_signature_unset(signature: signatures.Plain) -> bool:
                        for parameter in signature.parameters))
 
 
+@is_signature_unset.register(signatures.Overloaded)
 def is_overloaded_signature_unset(signature: signatures.Overloaded) -> bool:
-    return all(map(is_plain_signature_unset, signature.signatures))
+    return all(map(is_signature_unset, signature.signatures))
