@@ -88,10 +88,8 @@ def to_parameters_by_kind(parameters: Iterable[Parameter]
 
 def to_parameters_by_name(parameters: Iterable[Parameter]
                           ) -> Dict[str, Parameter]:
-    result = {}
-    for parameter in parameters:
-        result[parameter.name] = parameter
-    return result
+    return {parameter.name: parameter
+            for parameter in parameters}
 
 
 def all_parameters_has_defaults(parameters: Iterable[Parameter]) -> bool:
