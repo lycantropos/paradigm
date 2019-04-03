@@ -115,6 +115,10 @@ class Base(ABC):
     def all_set(self, *args: Domain, **kwargs: Domain) -> bool:
         pass
 
+    @abstractmethod
+    def expects(self, *args: Domain, **kwargs: Domain) -> bool:
+        pass
+
 
 class Plain(Base):
     def __init__(self, *parameters: Parameter) -> None:
@@ -149,10 +153,10 @@ class Plain(Base):
         positionals = (self.parameters_by_kind[Parameter.Kind.POSITIONAL_ONLY]
                        + self.parameters_by_kind[
                            Parameter.Kind.POSITIONAL_OR_KEYWORD])
-        invalid_positional_arguments_found = (
+        unexpected_positional_arguments_found = (
                 not self.parameters_by_kind[Parameter.Kind.VARIADIC_POSITIONAL]
                 and len(args) > len(positionals))
-        if invalid_positional_arguments_found:
+        if unexpected_positional_arguments_found:
             return False
         rest_positionals = positionals[len(args):]
         rest_positionals_by_kind = to_parameters_by_kind(rest_positionals)
@@ -160,10 +164,10 @@ class Plain(Base):
                 rest_positionals_by_kind[Parameter.Kind.POSITIONAL_OR_KEYWORD]
                 + self.parameters_by_kind[Parameter.Kind.KEYWORD_ONLY])
         rest_keywords_by_name = to_parameters_by_name(rest_keywords)
-        invalid_keyword_arguments_found = (
+        unexpected_keyword_arguments_found = (
                 not self.parameters_by_kind[Parameter.Kind.VARIADIC_KEYWORD]
                 and kwargs.keys() - rest_keywords_by_name.keys())
-        if invalid_keyword_arguments_found:
+        if unexpected_keyword_arguments_found:
             return False
         rest_keywords_by_name = {
             name: parameter
@@ -174,6 +178,28 @@ class Plain(Base):
         rest_keywords = rest_keywords_by_name.values()
         return (all_parameters_has_defaults(rest_positionals_only)
                 and all_parameters_has_defaults(rest_keywords))
+
+    def expects(self, *args: Domain, **kwargs: Domain) -> bool:
+        positionals = (self.parameters_by_kind[Parameter.Kind.POSITIONAL_ONLY]
+                       + self.parameters_by_kind[
+                           Parameter.Kind.POSITIONAL_OR_KEYWORD])
+        unexpected_positional_arguments_found = (
+                not self.parameters_by_kind[Parameter.Kind.VARIADIC_POSITIONAL]
+                and len(args) > len(positionals))
+        if unexpected_positional_arguments_found:
+            return False
+        rest_positionals = positionals[len(args):]
+        rest_positionals_by_kind = to_parameters_by_kind(rest_positionals)
+        rest_keywords = (
+                rest_positionals_by_kind[Parameter.Kind.POSITIONAL_OR_KEYWORD]
+                + self.parameters_by_kind[Parameter.Kind.KEYWORD_ONLY])
+        rest_keywords_by_name = to_parameters_by_name(rest_keywords)
+        unexpected_keyword_arguments_found = (
+                not self.parameters_by_kind[Parameter.Kind.VARIADIC_KEYWORD]
+                and kwargs.keys() - rest_keywords_by_name.keys())
+        if unexpected_keyword_arguments_found:
+            return False
+        return True
 
 
 class Overloaded(Base):
@@ -202,6 +228,10 @@ class Overloaded(Base):
 
     def __str__(self) -> str:
         return ' or '.join(map(str, self.signatures))
+
+    def expects(self, *args: Domain, **kwargs: Domain) -> bool:
+        return any(map(methodcaller(Base.expects.__name__, *args, **kwargs),
+                       self.signatures))
 
     def all_set(self, *args: Domain, **kwargs: Domain) -> bool:
         return any(map(methodcaller(Base.all_set.__name__, *args, **kwargs),
