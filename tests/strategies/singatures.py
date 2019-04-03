@@ -7,7 +7,7 @@ from hypothesis import strategies
 from paradigm.signatures import (Overloaded,
                                  Parameter,
                                  Plain)
-from tests.config import MAX_ARGUMENTS_COUNT
+from tests.configs import MAX_ARGUMENTS_COUNT
 from tests.utils import (negate,
                          pack)
 
