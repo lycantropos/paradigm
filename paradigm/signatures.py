@@ -229,12 +229,12 @@ class Overloaded(Base):
     def __str__(self) -> str:
         return ' or '.join(map(str, self.signatures))
 
-    def expects(self, *args: Domain, **kwargs: Domain) -> bool:
-        return any(map(methodcaller(Base.expects.__name__, *args, **kwargs),
-                       self.signatures))
-
     def all_set(self, *args: Domain, **kwargs: Domain) -> bool:
         return any(map(methodcaller(Base.all_set.__name__, *args, **kwargs),
+                       self.signatures))
+
+    def expects(self, *args: Domain, **kwargs: Domain) -> bool:
+        return any(map(methodcaller(Base.expects.__name__, *args, **kwargs),
                        self.signatures))
 
 
