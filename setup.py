@@ -9,7 +9,7 @@ project_base_url = 'https://github.com/lycantropos/paradigm/'
 
 install_requires = [
     'typing_extensions>=3.6.5',
-    'mypy>=0.670; platform_python_implementation != "PyPy"'
+    'mypy>=0.700; platform_python_implementation != "PyPy"'
 ]
 setup_requires = [
     'pytest-runner>=4.2',
