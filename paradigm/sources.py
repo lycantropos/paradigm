@@ -12,8 +12,7 @@ from typing import (Any,
 import mypy
 
 from . import catalog
-from .file_system import (INIT_MODULE_NAME,
-                          find_files)
+from .file_system import find_files
 from .hints import Map
 
 STUB_EXTENSION = '.pyi'
@@ -27,7 +26,10 @@ def factory(object_: Any) -> Path:
 
 @factory.register(ModuleType)
 def from_module(object_: ModuleType) -> Path:
-    return Path(inspect.getfile(object_))
+    try:
+        return Path(object_.__path__[0])
+    except AttributeError:
+        return Path(inspect.getfile(object_))
 
 
 @factory.register(catalog.Path)
@@ -107,11 +109,4 @@ def is_stub(path: Path) -> bool:
     return path.suffixes == [STUB_EXTENSION]
 
 
-def to_package_path(path: Path) -> Path:
-    if path.with_suffix('').name == INIT_MODULE_NAME:
-        path = path.parent
-    return path
-
-
-cache = dict(generate_stubs_cache_items(to_package_path(factory(mypy))
-                                        / 'typeshed' / 'stdlib'))
+cache = dict(generate_stubs_cache_items(factory(mypy) / 'typeshed' / 'stdlib'))
