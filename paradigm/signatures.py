@@ -43,6 +43,9 @@ class Parameter:
         def __repr__(self) -> str:
             return type(self).__qualname__ + '.' + self.name
 
+        def __str__(self) -> str:
+            return self.name.lower().replace('_', ' ')
+
     positionals_kinds = {Kind.POSITIONAL_ONLY, Kind.POSITIONAL_OR_KEYWORD}
     keywords_kinds = {Kind.POSITIONAL_OR_KEYWORD, Kind.KEYWORD_ONLY}
     kinds_prefixes = defaultdict(str,
@@ -117,6 +120,10 @@ class Base(ABC):
 
     @abstractmethod
     def expects(self, *args: Domain, **kwargs: Domain) -> bool:
+        pass
+
+    @abstractmethod
+    def bind(self, *args: Domain, **kwargs: Domain) -> 'Base':
         pass
 
 
@@ -201,6 +208,76 @@ class Plain(Base):
             return False
         return True
 
+    def bind(self, *args: Domain, **kwargs: Domain) -> Base:
+        parameters = _bind_keywords(_bind_positionals(
+                self.parameters,
+                args, kwargs,
+                has_variadic=bool(self.parameters_by_kind[
+                                      Parameter.Kind.VARIADIC_POSITIONAL])),
+                kwargs,
+                has_variadic=bool(self.parameters_by_kind[
+                                      Parameter.Kind.VARIADIC_KEYWORD]))
+        return Plain(*parameters)
+
+
+def _bind_positionals(parameters: Iterable[Parameter],
+                      args: Tuple[Domain, ...],
+                      kwargs: Dict[str, Domain],
+                      *,
+                      has_variadic: bool) -> Iterable[Parameter]:
+    positionals_count = 0
+    parameters = iter(parameters)
+    for _ in args:
+        for parameter in parameters:
+            if parameter.kind in Parameter.positionals_kinds:
+                if parameter.name in kwargs:
+                    if parameter.kind in Parameter.keywords_kinds:
+                        raise TypeError('Got multiple values '
+                                        'for parameter "{parameter}".'
+                                        .format(parameter=parameter.name))
+                    else:
+                        raise TypeError('Parameter "{parameter}" is {kind!s}, '
+                                        'but was passed as a keyword.'
+                                        .format(kind=parameter.kind,
+                                                parameter=parameter.name))
+                positionals_count += 1
+                break
+            yield parameter
+        else:
+            if has_variadic:
+                return
+            value = 'argument' + 's' * (positionals_count - 1)
+            raise TypeError('Takes {parameters_count} positional {value} '
+                            'but {arguments_count} were given.'
+                            .format(parameters_count=positionals_count,
+                                    value=value,
+                                    arguments_count=len(args)))
+    yield from parameters
+
+
+def _bind_keywords(parameters: Iterable[Parameter],
+                   kwargs: Dict[str, Any],
+                   *,
+                   has_variadic: bool) -> Iterable[Parameter]:
+    kwargs_names = set(kwargs)
+    for parameter in parameters:
+        if parameter.name in kwargs_names:
+            if parameter.kind not in Parameter.keywords_kinds:
+                raise TypeError('Parameter "{parameter}" is {kind!s}, '
+                                'but was passed as a keyword.'
+                                .format(kind=parameter.kind,
+                                        parameter=parameter.name))
+            yield Parameter(name=parameter.name,
+                            kind=parameter.kind,
+                            has_default=True)
+            kwargs_names.remove(parameter.name)
+            continue
+        yield parameter
+    if kwargs_names and not has_variadic:
+        raise TypeError('Got unexpected '
+                        'keyword arguments "{arguments_names}".'
+                        .format(arguments_names='", "'.join(kwargs_names)))
+
 
 class Overloaded(Base):
     def __new__(cls, *signatures: Base) -> Base:
@@ -241,6 +318,16 @@ class Overloaded(Base):
     def expects(self, *args: Domain, **kwargs: Domain) -> bool:
         return any(map(methodcaller(Base.expects.__name__, *args, **kwargs),
                        self.signatures))
+
+    def bind(self, *args: Domain, **kwargs: Domain) -> Base:
+        signatures = list(filter(methodcaller(Base.expects.__name__,
+                                              *args, **kwargs),
+                                 self.signatures))
+        if not signatures:
+            raise TypeError('No corresponding signature found.')
+        signatures = map(methodcaller(Base.bind.__name__, *args, **kwargs),
+                         signatures)
+        return Overloaded(*signatures)
 
 
 @singledispatch
