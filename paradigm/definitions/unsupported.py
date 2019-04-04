@@ -156,7 +156,6 @@ if platform.python_implementation() != 'PyPy':
 classes = set()
 
 if platform.python_implementation() != 'PyPy':
-    import _ast
     import _collections_abc
     import _io
     import _ssl
@@ -178,8 +177,7 @@ if platform.python_implementation() != 'PyPy':
     import warnings
 
     # not supported by ``typeshed`` package
-    classes.update({_ast.excepthandler,
-                    _collections_abc.mappingproxy,
+    classes.update({_collections_abc.mappingproxy,
                     _io._BufferedIOBase,
                     _io._IOBase,
                     _io._RawIOBase,
@@ -198,7 +196,6 @@ if platform.python_implementation() != 'PyPy':
                     encodings.CodecRegistryError,
                     macpath.norm_error,
                     pdb._rstr,
-                    pdb.Restart,
                     random._MethodType,
                     runpy._Error,
                     smtplib.SMTPNotSupportedError,
@@ -213,6 +210,7 @@ if platform.python_implementation() != 'PyPy':
                     warnings._OptionError})
 
     if sys.version_info >= (3, 6):
+        import _ast
         import asyncio.base_futures
 
         classes.update({_ast.Constant,
@@ -290,9 +288,7 @@ if platform.python_implementation() != 'PyPy':
     if sys.version_info >= (3, 7):
         import socket
 
-        methods_descriptors.update({bytes.isascii,
-                                    bytearray.isascii,
-                                    socket.socket.getblocking})
+        methods_descriptors.add(socket.socket.getblocking)
     else:
         import zipimport
 
