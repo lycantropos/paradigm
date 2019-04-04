@@ -41,7 +41,7 @@ class Parameter:
         VARIADIC_KEYWORD = 4
 
         def __repr__(self) -> str:
-            return type(self).__qualname__ + '.' + self._name_
+            return type(self).__qualname__ + '.' + self.name
 
     kinds_prefixes = defaultdict(str,
                                  {Kind.VARIADIC_POSITIONAL: '*',
