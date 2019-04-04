@@ -1,7 +1,8 @@
 import importlib
 import inspect
 import platform
-from functools import reduce
+from functools import (partial,
+                       reduce)
 from types import ModuleType
 from typing import (Any,
                     Union)
@@ -65,6 +66,7 @@ callables = (built_in_functions
              | methods
              | methods_descriptors
              | wrappers_descriptors)
+partial_callables = callables.map(partial)
 if platform.python_implementation() == 'PyPy':
     overloaded_callables = strategies.nothing()
 else:
