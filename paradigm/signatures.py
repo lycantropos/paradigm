@@ -516,6 +516,11 @@ from_callable = [factory.register(cls, from_callable)
 from_class = factory.register(type)(cached.map_(from_class_cache)(from_class))
 
 
+@factory.register(partial)
+def from_partial(object_: partial) -> Base:
+    return factory(object_.func).bind(*object_.args, **object_.keywords)
+
+
 @singledispatch
 def slice_parameters(signature: Base,
                      slice_: slice) -> Base:
