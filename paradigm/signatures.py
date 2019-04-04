@@ -201,6 +201,11 @@ class Plain(Base):
 
 
 class Overloaded(Base):
+    def __new__(cls, *signatures: Base) -> Base:
+        if len(signatures) == 1:
+            return signatures[0]
+        return super().__new__(cls)
+
     def __init__(self, *signatures: Base) -> None:
         def flatten(signature: Base) -> Iterable[Base]:
             if isinstance(signature, type(self)):
@@ -346,8 +351,8 @@ else:
             return None
         else:
             try:
-                return flatten_signatures(map(from_ast, map(attrgetter('args'),
-                                                            object_nodes)))
+                return Overloaded(*map(from_ast, map(attrgetter('args'),
+                                                     object_nodes)))
             except AttributeError:
                 return None
 
@@ -420,16 +425,6 @@ from_callable = [factory.register(cls, from_callable)
                              MethodDescriptorType,
                              WrapperDescriptorType)][-1]
 from_class = factory.register(type)(cached.map_(from_class_cache)(from_class))
-
-
-def flatten_signatures(signatures: Iterable[Base]) -> Base:
-    signatures = list(signatures)
-    try:
-        signature, = signatures
-    except ValueError:
-        return Overloaded(*signatures)
-    else:
-        return signature
 
 
 @singledispatch
