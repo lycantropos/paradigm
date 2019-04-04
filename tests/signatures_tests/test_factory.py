@@ -1,4 +1,5 @@
 import platform
+from functools import partial
 from types import (BuiltinFunctionType,
                    FunctionType,
                    MethodType)
@@ -17,13 +18,15 @@ def test_basic(built_in_function: BuiltinFunctionType,
                function: FunctionType,
                method: MethodType,
                method_descriptor: MethodDescriptorType,
-               wrapper_descriptor: WrapperDescriptorType) -> None:
+               wrapper_descriptor: WrapperDescriptorType,
+               partial_callable: partial) -> None:
     for callable_ in (built_in_function,
                       class_,
                       function,
                       method,
                       method_descriptor,
-                      wrapper_descriptor):
+                      wrapper_descriptor,
+                      partial_callable):
         result = signatures.factory(callable_)
 
         assert isinstance(result, signatures.Base)

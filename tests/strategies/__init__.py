@@ -4,6 +4,7 @@ from .definitions import (built_in_functions,
                           functions,
                           methods,
                           methods_descriptors,
+                          partial_callables,
                           overloaded_callables,
                           unsupported_callables,
                           wrappers_descriptors)
