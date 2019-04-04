@@ -9,4 +9,8 @@ from .definitions import (built_in_functions,
                           wrappers_descriptors)
 from .singatures import (identifiers,
                          non_variadic_signatures,
-                         signatures)
+                         signatures,
+                         to_expected_args,
+                         to_expected_kwargs,
+                         to_unexpected_args,
+                         to_unexpected_kwargs)
