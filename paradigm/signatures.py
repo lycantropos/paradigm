@@ -243,15 +243,18 @@ def factory(object_: Callable[..., Any]) -> Base:
 
 
 def from_callable(object_: Callable[..., Any]) -> Base:
-    raw_signature = inspect.signature(object_)
+    return from_raw_signature(inspect.signature(object_))
 
+
+@factory.register(inspect.Signature)
+def from_raw_signature(object_: inspect.Signature) -> Base:
     def normalize_parameter(raw_parameter: inspect.Parameter) -> Parameter:
         has_default = raw_parameter.default is not inspect._empty
         return Parameter(name=raw_parameter.name,
                          kind=Parameter.Kind(raw_parameter.kind),
                          has_default=has_default)
 
-    parameters = map(normalize_parameter, raw_signature.parameters.values())
+    parameters = map(normalize_parameter, object_.parameters.values())
     return Plain(*parameters)
 
 
