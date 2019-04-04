@@ -43,6 +43,8 @@ class Parameter:
         def __repr__(self) -> str:
             return type(self).__qualname__ + '.' + self.name
 
+    positionals_kinds = {Kind.POSITIONAL_ONLY, Kind.POSITIONAL_OR_KEYWORD}
+    keywords_kinds = {Kind.POSITIONAL_OR_KEYWORD, Kind.KEYWORD_ONLY}
     kinds_prefixes = defaultdict(str,
                                  {Kind.VARIADIC_POSITIONAL: '*',
                                   Kind.VARIADIC_KEYWORD: '**'})
