@@ -18,10 +18,16 @@ def to_typed_to_plain_visitor(cls: Type[ast3.AST]) -> TypedToPlainMethod:
     try:
         plain_cls = getattr(ast, cls.__name__)
     except AttributeError:
-        def node_deleter(_: ast3.NodeTransformer, __: ast3.AST) -> None:
+        if issubclass(cls, ast3.stmt):
+            def passer(_: ast3.NodeTransformer, node: cls) -> None:
+                return ast.copy_location(ast.Pass(), node)
+
+            return passer
+
+        def deleter(_: ast3.NodeTransformer, __: cls) -> None:
             return None
 
-        return node_deleter
+        return deleter
 
     def visit(self: ast3.NodeTransformer, node: ast3.AST) -> ast.AST:
         node = self.generic_visit(node)
