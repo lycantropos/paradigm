@@ -451,7 +451,8 @@ class Reducer(Base):
             alias_path = self.resolve_path(to_alias_path(name_alias))
             actual_path = to_actual_path(name_alias)
             if actual_path == catalog.WILDCARD_IMPORT:
-                nodes = module_path_to_nodes(parent_module_path)
+                nodes = dict(module_path_to_nodes(parent_module_path))
+                nodes.pop(ROOT_PATH)
                 self.nodes.update(nodes)
                 continue
             object_path = parent_module_path.join(actual_path)
