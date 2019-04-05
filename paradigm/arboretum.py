@@ -440,7 +440,8 @@ class Reducer(Base):
         for child in node.names:
             alias_path = to_alias_path(child)
             actual_path = to_actual_path(child)
-            nodes = module_path_to_nodes(actual_path)
+            nodes = dict(module_path_to_nodes(actual_path))
+            nodes.pop(ROOT_PATH)
             self.nodes.update(dict(zip(map(alias_path.join, nodes.keys()),
                                        nodes.values())))
         return node
