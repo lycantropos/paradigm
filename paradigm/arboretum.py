@@ -576,9 +576,9 @@ def to_actual_path(node: ast3.alias) -> catalog.Path:
 def expression_to_assignment(node: ast3.expr,
                              *,
                              name: str) -> ast3.Assign:
-    name_node = ast3.Name(name, ast3.Store())
+    name_node = ast3.copy_location(ast3.Name(name, ast3.Store()), node)
     result = ast3.Assign([name_node], node, None)
-    return ast3.fix_missing_locations(result)
+    return ast3.copy_location(result, node)
 
 
 @singledispatch
