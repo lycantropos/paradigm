@@ -26,6 +26,7 @@ from .hints import Namespace
 Node = Union[ast3.AST, catalog.Path, List[ast3.AST]]
 Nodes = MutableMapping[catalog.Path, Node]
 
+ROOT_PATH = catalog.Path()
 TYPING_MODULE_PATH = catalog.factory(typing)
 OVERLOAD_DECORATORS_PATHS = frozenset(next(
         (TYPING_MODULE_PATH.join(path), path)
@@ -64,7 +65,7 @@ def to_nodes(object_path: catalog.Path,
                                  base=built_ins_nodes)
     reduce_node = Reducer(nodes=nodes,
                           parent_path=catalog.Path()).visit
-    root = nodes[catalog.Path()]
+    root = nodes[ROOT_PATH]
     reduce_node(root)
     while True:
         try:
@@ -271,7 +272,7 @@ class Registry(Base):
         self.module_path = module_path
 
     def visit_Module(self, node: ast3.Module) -> ast3.Module:
-        self.nodes[catalog.Path()] = node
+        self.nodes[ROOT_PATH] = node
         for child in node.body:
             self.visit(child)
         return node
