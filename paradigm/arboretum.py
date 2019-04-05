@@ -1,5 +1,4 @@
 import builtins
-import copy
 import importlib
 import typing
 from contextlib import suppress
@@ -116,7 +115,7 @@ def module_path_to_nodes(module_path: catalog.Path,
     root = to_flat_root(module_path)
     if base is None:
         base = {}
-    result = copy.copy(base)
+    result = dict(base)
     Registry(nodes=result,
              module_path=module_path,
              parent_path=catalog.Path()).visit(root)
