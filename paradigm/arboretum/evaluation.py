@@ -34,8 +34,7 @@ def evaluate_name(node: ast3.Name,
     return catalog.factory(node.id)
 
 
-@evaluate_node.register(ast3.Ellipsis)
-@evaluate_node.register(ast3.Num)
+@evaluate_node.register(ast3.expr)
 def evaluate_ellipsis_or_num(node: Union[ast3.Ellipsis, ast3.Num],
                              *,
                              scope: Scope,
