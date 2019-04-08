@@ -88,13 +88,6 @@ if platform.python_implementation() != 'PyPy':
 
         stdlib_modules.add(_msi)
 
-        try:
-            import _findvs
-        except ImportError:
-            pass
-        else:
-            stdlib_modules.add(_findvs)
-
 
 def to_callables(object_: Union[ModuleType, type]) -> Iterable[Callable]:
     yield from filter(callable, to_contents(object_))
