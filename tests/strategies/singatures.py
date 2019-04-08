@@ -1,8 +1,6 @@
 from functools import (reduce,
                        singledispatch)
-from keyword import iskeyword
 from operator import attrgetter
-from string import ascii_letters
 from typing import (Dict,
                     Tuple)
 
@@ -17,15 +15,11 @@ from paradigm.signatures import (Base,
                                  Plain,
                                  to_parameters_by_name)
 from tests.configs import MAX_ARGUMENTS_COUNT
-from tests.strategies.utils import to_homogeneous_tuples
 from tests.utils import (negate,
                          pack)
+from .utils import (identifiers,
+                    to_homogeneous_tuples)
 
-identifiers_characters = strategies.sampled_from(ascii_letters + '_')
-identifiers = (strategies.text(identifiers_characters,
-                               min_size=1)
-               .filter(str.isidentifier)
-               .filter(negate(iskeyword)))
 positionals_kinds = strategies.sampled_from(list(Parameter.positionals_kinds))
 keywords_kinds = strategies.sampled_from(list(Parameter.keywords_kinds))
 variadic_kinds = strategies.sampled_from(list(set(Parameter.Kind)
