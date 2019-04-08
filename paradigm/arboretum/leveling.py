@@ -94,8 +94,12 @@ class Flattener(ast3.NodeTransformer):
                                 is_nested=True)
         return transformer.generic_visit(node)
 
+    def visit_FunctionDef(self, node: ast3.FunctionDef) -> ast3.FunctionDef:
+        return node
+
     def visit_If(self, node: ast3.If) -> Iterable[ast3.AST]:
-        if self.visit(node.test):
+        if evaluate_expression(node.test,
+                               namespace=self.namespace):
             children = node.body
         else:
             children = node.orelse
@@ -103,28 +107,25 @@ class Flattener(ast3.NodeTransformer):
             self.visit(child)
         yield from children
 
-    def visit_BoolOp(self, node: ast3.BoolOp) -> bool:
-        return self.evaluate_expression(node)
-
-    def visit_Compare(self, node: ast3.Compare) -> bool:
-        return self.evaluate_expression(node)
-
-    def evaluate_expression(self, node: ast3.expr) -> Any:
-        # to avoid name conflicts
-        # we're using name that won't be present
-        # because it'll lead to ``SyntaxError`` otherwise
-        # and no AST will be generated
-        temporary_name = '@tmp'
-        assignment = expression_to_assignment(node,
-                                              name=temporary_name)
-        execute(assignment,
-                namespace=self.namespace)
-        return self.namespace.pop(temporary_name)
-
     def resolve_path(self, path: catalog.Path) -> catalog.Path:
         if self.is_nested:
             return self.parent_path.join(path)
         return path
+
+
+def evaluate_expression(node: ast3.expr,
+                        *,
+                        namespace: Namespace) -> Any:
+    # to avoid name conflicts
+    # we're using name that won't be present
+    # because it'll lead to ``SyntaxError`` otherwise
+    # and no AST will be generated
+    temporary_name = '@tmp'
+    assignment = expression_to_assignment(node,
+                                          name=temporary_name)
+    execute(assignment,
+            namespace=namespace)
+    return namespace.pop(temporary_name)
 
 
 built_ins_namespace = namespaces.factory(builtins)
