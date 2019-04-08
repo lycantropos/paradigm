@@ -7,6 +7,13 @@ def test_type(signature: signatures.Base) -> None:
     assert isinstance(result, str)
 
 
+def test_nesting(overloaded_signature: signatures.Overloaded) -> None:
+    result = repr(overloaded_signature)
+
+    assert all(repr(signature) in result
+               for signature in overloaded_signature.signatures)
+
+
 def test_evaluation(signature: signatures.Base) -> None:
     signature_repr = repr(signature)
 
