@@ -1,5 +1,6 @@
 import builtins
 from itertools import chain
+from pathlib import Path
 from typing import (Any,
                     Iterable)
 
@@ -42,10 +43,12 @@ class Flattener(ast3.NodeTransformer):
     def __init__(self,
                  *,
                  namespace: Namespace,
+                 source_path: Path,
                  module_path: catalog.Path,
                  parent_path: catalog.Path,
                  is_nested: bool = False) -> None:
         self.namespace = namespace
+        self.source_path = source_path
         self.module_path = module_path
         self.parent_path = parent_path
         self.is_nested = is_nested
@@ -98,12 +101,13 @@ class Flattener(ast3.NodeTransformer):
 
     def visit_If(self, node: ast3.If) -> Iterable[ast3.AST]:
         if evaluate_expression(node.test,
+                               source_path=self.source_path,
                                namespace=self.namespace):
             children = node.body
         else:
             children = node.orelse
         for child in children:
-            self.visit(child)
+            self.generic_visit(child)
         yield from children
 
     def resolve_path(self, path: catalog.Path) -> catalog.Path:
@@ -114,6 +118,7 @@ class Flattener(ast3.NodeTransformer):
 
 def evaluate_expression(node: ast3.expr,
                         *,
+                        source_path: Path,
                         namespace: Namespace) -> Any:
     # to avoid name conflicts
     # we're using name that won't be present
@@ -123,6 +128,7 @@ def evaluate_expression(node: ast3.expr,
     assignment = expression_to_assignment(node,
                                           name=temporary_name)
     execute(assignment,
+            source_path=source_path,
             namespace=namespace)
     return namespace.pop(temporary_name)
 
@@ -136,6 +142,7 @@ def to_flat_root(module_path: catalog.Path) -> ast3.Module:
     namespace = namespaces.factory(module_path)
     namespace = namespaces.merge(built_ins_namespace, namespace)
     Flattener(namespace=namespace,
+              source_path=source_path,
               module_path=module_path,
               parent_path=catalog.Path()).visit(result)
     return result
