@@ -1,15 +1,17 @@
-import importlib.abc
-import importlib.machinery
 import sys
 import types
-from functools import singledispatch
+from functools import (reduce,
+                       singledispatch)
+from importlib import (abc,
+                       machinery)
 from itertools import chain
 from operator import methodcaller
 from types import ModuleType
 from typing import (Any,
                     Iterable)
 
-from . import catalog
+from paradigm import catalog
+from . import importing
 from .hints import Namespace
 
 
@@ -20,8 +22,8 @@ def factory(object_: Any) -> Namespace:
 
 replacing_modules_names = {
     '_importlib_modulespec': [types.__name__,
-                              importlib.abc.__name__,
-                              importlib.machinery.__name__]}
+                              abc.__name__,
+                              machinery.__name__]}
 if sys.platform == 'win32':
     import nt
 
@@ -38,7 +40,7 @@ def from_module_path(object_: catalog.Path) -> Namespace:
     modules_names = list(to_replacing_modules_names(object_.parts))
 
     if modules_names:
-        return merge(map(from_module_name, modules_names))
+        return merge(*map(from_module_name, modules_names))
     return from_module_name(str(object_))
 
 
@@ -49,8 +51,21 @@ def from_module(object_: ModuleType) -> Namespace:
 
 @factory.register(str)
 def from_module_name(object_: str) -> Namespace:
-    return factory(importlib.import_module(object_))
+    return from_module(importing.safe(object_))
 
 
-def merge(namespaces: Iterable[Namespace]) -> Namespace:
+def merge(*namespaces: Namespace) -> Namespace:
     return dict(chain.from_iterable(map(methodcaller('items'), namespaces)))
+
+
+def search(namespace: Namespace, path: catalog.Path) -> Any:
+    return reduce(getattr, path.parts[1:], namespace[path.parts[0]])
+
+
+def contains(namespace: Namespace, path: catalog.Path) -> bool:
+    try:
+        search(namespace, path)
+    except (KeyError, AttributeError):
+        return False
+    else:
+        return True

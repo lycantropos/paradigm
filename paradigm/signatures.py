@@ -435,15 +435,13 @@ else:
     def to_signature(object_path: catalog.Path,
                      module_path: catalog.Path) -> Optional[Base]:
         try:
-            object_nodes = arboretum.to_nodes(object_path, module_path)
+            nodes = arboretum.to_functions_defs(object_path, module_path)
         except KeyError:
             return None
         else:
-            try:
-                return Overloaded(*map(from_ast, map(attrgetter('args'),
-                                                     object_nodes)))
-            except AttributeError:
+            if not nodes:
                 return None
+            return Overloaded(*map(from_ast, map(attrgetter('args'), nodes)))
 
 
     def from_ast(signature_ast: ast3.arguments) -> Base:

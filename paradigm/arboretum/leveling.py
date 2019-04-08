@@ -1,0 +1,141 @@
+import builtins
+from itertools import chain
+from typing import (Any,
+                    Iterable)
+
+from typed_ast import ast3
+
+from paradigm import (catalog,
+                      sources)
+from . import (construction, importing, namespaces)
+from .evaluation import (to_actual_path,
+                         to_alias_path)
+from .execution import execute
+from .hints import Namespace
+
+
+def to_parent_module_path(object_: ast3.ImportFrom,
+                          *,
+                          parent_module_path: catalog.Path) -> catalog.Path:
+    level = object_.level
+    import_is_relative = level > 0
+    if not import_is_relative:
+        return catalog.factory(object_.module)
+    depth = (len(parent_module_path.parts)
+             + catalog.is_package(parent_module_path)
+             - level) or None
+    module_path_parts = filter(None,
+                               chain(parent_module_path.parts[:depth],
+                                     (object_.module,)))
+    return catalog.Path(*module_path_parts)
+
+
+def expression_to_assignment(node: ast3.expr,
+                             *,
+                             name: str) -> ast3.Assign:
+    name_node = ast3.copy_location(ast3.Name(name, ast3.Store()), node)
+    result = ast3.Assign([name_node], node, None)
+    return ast3.copy_location(result, node)
+
+
+class Flattener(ast3.NodeTransformer):
+    def __init__(self,
+                 *,
+                 namespace: Namespace,
+                 module_path: catalog.Path,
+                 parent_path: catalog.Path,
+                 is_nested: bool = False) -> None:
+        self.namespace = namespace
+        self.module_path = module_path
+        self.parent_path = parent_path
+        self.is_nested = is_nested
+
+    def visit_Import(self, node: ast3.Import) -> Iterable[ast3.Import]:
+        for name_alias in node.names:
+            alias_path = self.resolve_path(to_alias_path(name_alias))
+            actual_path = to_actual_path(name_alias)
+            if not namespaces.contains(self.namespace, alias_path):
+                parent_module_name = actual_path.parts[0]
+                module = importing.safe(parent_module_name)
+                self.namespace[parent_module_name] = module
+            yield ast3.Import([name_alias])
+
+    def visit_ImportFrom(self, node: ast3.ImportFrom
+                         ) -> Iterable[ast3.ImportFrom]:
+        parent_module_path = to_parent_module_path(
+                node,
+                parent_module_path=self.module_path)
+        for name_alias in node.names:
+            alias_path = self.resolve_path(to_alias_path(name_alias))
+            actual_path = to_actual_path(name_alias)
+            if actual_path == catalog.WILDCARD_IMPORT:
+                self.namespace.update(namespaces.factory(parent_module_path))
+                yield from to_flat_root(parent_module_path).body
+                continue
+            elif not namespaces.contains(self.namespace, alias_path):
+                namespace = namespaces.factory(parent_module_path)
+                try:
+                    self.namespace[str(alias_path)] = namespaces.search(
+                            namespace,
+                            actual_path)
+                except KeyError:
+                    module_path = parent_module_path.join(actual_path)
+                    self.namespace[str(alias_path)] = importing.safe(
+                            str(module_path))
+            yield ast3.copy_location(ast3.ImportFrom(str(parent_module_path),
+                                                     [name_alias], 0),
+                                     node)
+
+    def visit_ClassDef(self, node: ast3.ClassDef) -> ast3.ClassDef:
+        path = self.resolve_path(catalog.factory(node.name))
+        transformer = Flattener(namespace=self.namespace,
+                                parent_path=path,
+                                module_path=self.module_path,
+                                is_nested=True)
+        return transformer.generic_visit(node)
+
+    def visit_If(self, node: ast3.If) -> Iterable[ast3.AST]:
+        if self.visit(node.test):
+            children = node.body
+        else:
+            children = node.orelse
+        for child in children:
+            self.visit(child)
+        yield from children
+
+    def visit_BoolOp(self, node: ast3.BoolOp) -> bool:
+        return self.evaluate_expression(node)
+
+    def visit_Compare(self, node: ast3.Compare) -> bool:
+        return self.evaluate_expression(node)
+
+    def evaluate_expression(self, node: ast3.expr) -> Any:
+        # to avoid name conflicts
+        # we're using name that won't be present
+        # because it'll lead to ``SyntaxError`` otherwise
+        # and no AST will be generated
+        temporary_name = '@tmp'
+        assignment = expression_to_assignment(node,
+                                              name=temporary_name)
+        execute(assignment,
+                namespace=self.namespace)
+        return self.namespace.pop(temporary_name)
+
+    def resolve_path(self, path: catalog.Path) -> catalog.Path:
+        if self.is_nested:
+            return self.parent_path.join(path)
+        return path
+
+
+built_ins_namespace = namespaces.factory(builtins)
+
+
+def to_flat_root(module_path: catalog.Path) -> ast3.Module:
+    source_path = sources.factory(module_path)
+    result = construction.from_source_path(source_path)
+    namespace = namespaces.factory(module_path)
+    namespace = namespaces.merge(built_ins_namespace, namespace)
+    Flattener(namespace=namespace,
+              module_path=module_path,
+              parent_path=catalog.Path()).visit(result)
+    return result
