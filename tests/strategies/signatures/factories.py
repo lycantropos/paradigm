@@ -45,7 +45,7 @@ def to_plain_signatures(parameters: SearchStrategy[Parameter],
 
 def to_overloaded_signatures(bases: SearchStrategy[Base],
                              *,
-                             min_size: int = 1,
+                             min_size: int = 2,
                              max_size: int = None
                              ) -> SearchStrategy[Base]:
     return (strategies.lists(bases,
@@ -68,6 +68,8 @@ def to_expected_kwargs(signature: Base,
                        values: SearchStrategy[Domain] = strategies.none()
                        ) -> SearchStrategy[Dict[str, Domain]]:
     keywords = signature_to_keywords_intersection(signature)
+    if not keywords:
+        return strategies.fixed_dictionaries({})
     return strategies.dictionaries(strategies.sampled_from(list(keywords
                                                                 .keys())),
                                    values)
