@@ -75,13 +75,11 @@ class Flattener(ast3.NodeTransformer):
             elif not namespaces.contains(self.namespace, alias_path):
                 namespace = namespaces.factory(parent_module_path)
                 try:
-                    self.namespace[str(alias_path)] = namespaces.search(
-                            namespace,
-                            actual_path)
+                    object_ = namespaces.search(namespace, actual_path)
                 except KeyError:
                     module_path = parent_module_path.join(actual_path)
-                    self.namespace[str(alias_path)] = importing.safe(
-                            str(module_path))
+                    object_ = importing.safe(str(module_path))
+                self.namespace[str(alias_path)] = object_
             yield ast3.copy_location(ast3.ImportFrom(str(parent_module_path),
                                                      [name_alias], 0),
                                      node)
