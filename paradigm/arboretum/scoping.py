@@ -9,7 +9,7 @@ from .leveling import to_flat_root
 def to_children_scope(path: catalog.Path,
                       *,
                       scope: Scope) -> Scope:
-    return {object_path: nodes
+    return {object_path: nodes[:]
             for object_path, nodes in scope.items()
             if object_path.is_child_of(path)
             and object_path != path}
