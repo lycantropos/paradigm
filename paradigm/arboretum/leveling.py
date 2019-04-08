@@ -86,11 +86,12 @@ class Flattener(ast3.NodeTransformer):
 
     def visit_ClassDef(self, node: ast3.ClassDef) -> ast3.ClassDef:
         path = self.resolve_path(catalog.factory(node.name))
-        transformer = Flattener(namespace=self.namespace,
-                                parent_path=path,
-                                module_path=self.module_path,
-                                is_nested=True)
-        return transformer.generic_visit(node)
+        return (Flattener(namespace=self.namespace,
+                          source_path=self.source_path,
+                          parent_path=path,
+                          module_path=self.module_path,
+                          is_nested=True)
+                .generic_visit(node))
 
     def visit_FunctionDef(self, node: ast3.FunctionDef) -> ast3.FunctionDef:
         return node
