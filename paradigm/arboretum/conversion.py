@@ -8,7 +8,7 @@ from typing import (Callable,
 
 from typed_ast import ast3
 
-from .hints import Domain
+from paradigm.hints import Domain
 
 TypedToPlainMethod = Callable[[ast3.NodeTransformer, ast3.AST],
                               Optional[ast.AST]]
@@ -77,3 +77,6 @@ class TypedToPlain(ast3.NodeTransformer):
                 else:
                     setattr(node, field, new_node)
         return node
+
+
+typed_to_plain = TypedToPlain().visit

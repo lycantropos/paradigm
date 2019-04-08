@@ -244,7 +244,8 @@ if platform.python_implementation() != 'PyPy':
         if sys.version_info < (3, 7):
             import os
 
-            classes.add(os.statvfs_result)
+            classes.update({os.uname_result,
+                            os.statvfs_result})
     else:
         import termios
 

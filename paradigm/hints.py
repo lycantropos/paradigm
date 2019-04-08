@@ -1,6 +1,4 @@
-from typing import (Any,
-                    Callable,
-                    Dict,
+from typing import (Callable,
                     TypeVar)
 
 Domain = TypeVar('Domain')
@@ -16,5 +14,3 @@ try:
     from types import WrapperDescriptorType
 except ImportError:
     WrapperDescriptorType = type(list.__init__)
-
-Namespace = Dict[str, Any]

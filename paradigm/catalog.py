@@ -57,6 +57,10 @@ class Path:
         return self.parts[:len(parent.parts)] == parent.parts
 
 
+def is_attribute(path: Path) -> bool:
+    return len(path.parts) > 1
+
+
 WILDCARD_IMPORT = Path('*')
 
 
@@ -186,3 +190,7 @@ def module_name_from_class_or_function(object_: Union[BuiltinMethodType,
 @module_name_factory.register(WrapperDescriptorType)
 def module_name_from_method_descriptor(object_: MethodDescriptorType) -> str:
     return module_name_factory(object_.__objclass__)
+
+
+def is_package(module_path: Path) -> bool:
+    return hasattr(importlib.import_module(str(module_path)), '__path__')
