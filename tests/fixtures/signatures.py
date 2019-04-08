@@ -27,6 +27,11 @@ def another_signature() -> signatures.Base:
 
 
 @pytest.fixture(scope='function')
+def overloaded_signature() -> signatures.Overloaded:
+    return find(strategies.overloaded_signatures)
+
+
+@pytest.fixture(scope='function')
 def non_empty_signature() -> signatures.Base:
     return find(strategies.signatures.filter(negate(is_signature_empty)))
 
