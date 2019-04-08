@@ -50,7 +50,7 @@ class Reducer(ast3.NodeVisitor):
             actual_path = to_actual_path(name_alias)
             if actual_path == catalog.WILDCARD_IMPORT:
                 for path, nodes in scoping.factory(parent_module_path).items():
-                    self.batch_register_left(path, nodes)
+                    self.batch_register_if_not_found(path, nodes)
                 continue
             object_path = parent_module_path.join(actual_path)
             if is_module_path(object_path):
@@ -109,8 +109,8 @@ class Reducer(ast3.NodeVisitor):
             base_scope = scoping.to_children_scope(base_node,
                                                    scope=self.scope)
             for base_object_path, base_object_nodes in base_scope.items():
-                self.batch_register_left(base_object_path.with_parent(path),
-                                         base_object_nodes)
+                self.batch_register_if_not_found(base_object_path.with_parent(path),
+                                                 base_object_nodes)
         children_scope = {}
         visit_child = Reducer(scope=children_scope,
                               module_path=path).visit
@@ -122,8 +122,8 @@ class Reducer(ast3.NodeVisitor):
     def batch_register(self, path, nodes: List[Node]) -> None:
         self.scope.setdefault(path, []).extend(nodes)
 
-    def batch_register_left(self, path, nodes: List[Node]) -> None:
-        self.scope[path] = nodes + self.scope.get(path, [])
+    def batch_register_if_not_found(self, path, nodes: List[Node]) -> None:
+        self.scope.setdefault(path, nodes)
 
     @property
     def evaluator(self) -> Map[ast3.expr, catalog.Path]:
