@@ -37,12 +37,13 @@ def to_functions_defs(object_path: catalog.Path,
                     break
             if not parent_nodes:
                 raise
-            if is_link(parent_nodes[-1]):
-                object_path = object_path.with_parent(parent_nodes[-1])
+            last_parent_node = parent_nodes[-1]
+            if is_link(last_parent_node):
+                object_path = object_path.with_parent(last_parent_node)
                 continue
             children_scope_before = scoping.to_children_scope(parent_path,
                                                               scope=scope)
-            reduce_node(parent_nodes[-1])
+            reduce_node(last_parent_node)
             children_remain_intact = are_dicts_similar(
                     scoping.to_children_scope(parent_path,
                                               scope=scope),
