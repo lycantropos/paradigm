@@ -96,7 +96,7 @@ def find_spec(module_path: catalog.Path
               ) -> Optional[importlib.machinery.ModuleSpec]:
     try:
         return importlib.util.find_spec(str(module_path))
-    except ModuleNotFoundError:
+    except ImportError:
         return None
 
 
