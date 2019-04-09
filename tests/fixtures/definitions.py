@@ -1,4 +1,6 @@
+import sys
 from functools import partial
+from pathlib import Path
 from types import (BuiltinFunctionType,
                    FunctionType,
                    MethodType)
@@ -6,11 +8,13 @@ from typing import (Any,
                     Callable)
 
 import pytest
+from py._path.local import LocalPath
 
 from paradigm.hints import (MethodDescriptorType,
                             WrapperDescriptorType)
 from tests import strategies
-from tests.utils import find
+from tests.utils import (find,
+                         negate)
 
 
 @pytest.fixture(scope='function')
@@ -71,3 +75,20 @@ def unsupported_callable() -> Callable[..., Any]:
 @pytest.fixture(scope='function')
 def wrapper_descriptor() -> WrapperDescriptorType:
     return find(strategies.methods_descriptors)
+
+
+@pytest.fixture(scope='function')
+def non_existent_file_path() -> Path:
+    return find(strategies.paths.filter(negate(Path.exists)))
+
+
+@pytest.fixture(scope='function')
+def non_python_file_path(tmpdir: LocalPath) -> Path:
+    source = find(strategies.invalid_sources)
+    raw_file = tmpdir.join(find(strategies.identifiers))
+    raw_file.write_text(source,
+                        encoding=sys.getdefaultencoding())
+    try:
+        yield Path(raw_file.strpath)
+    finally:
+        raw_file.remove()
