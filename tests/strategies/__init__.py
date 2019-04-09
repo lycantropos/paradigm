@@ -16,4 +16,6 @@ from .signatures.factories import (to_expected_args,
                                    to_expected_kwargs,
                                    to_unexpected_args,
                                    to_unexpected_kwargs)
-from .utils import identifiers
+from .utils import (identifiers,
+                    invalid_sources,
+                    paths)
