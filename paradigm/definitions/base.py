@@ -1,4 +1,5 @@
 import ast
+import importlib.machinery
 import importlib.util
 import os
 import sys
@@ -11,6 +12,7 @@ from types import (BuiltinFunctionType,
 from typing import (Any,
                     Callable,
                     Iterable,
+                    Optional,
                     Union)
 
 from paradigm import catalog
@@ -81,13 +83,21 @@ def is_module_path_supported(module_path: catalog.Path) -> bool:
             return False
         module = importlib.import_module(module_name)
         return is_supported(module)
-    spec = importlib.util.find_spec(module_name)
+    spec = find_spec(module_path)
     if spec is None:
         return False
     source_path_string = spec.origin
     if source_path_string is None:
         return False
     return is_supported(Path(source_path_string))
+
+
+def find_spec(module_path: catalog.Path
+              ) -> Optional[importlib.machinery.ModuleSpec]:
+    try:
+        return importlib.util.find_spec(str(module_path))
+    except ModuleNotFoundError:
+        return None
 
 
 @is_supported.register(BuiltinFunctionType)
