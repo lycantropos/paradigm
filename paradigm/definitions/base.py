@@ -58,7 +58,7 @@ def is_module_supported(object_: ModuleType) -> bool:
     return (module_name in stdlib_modules_names
             and module_name not in unsupported.stdlib_modules_names
             and object_ not in unsupported.stdlib_modules
-            or has_python_source_file(object_))
+            or has_supported_python_source_file(object_))
 
 
 @is_supported.register(Path)
@@ -137,7 +137,7 @@ def is_wrapper_descriptor_supported(object_: WrapperDescriptorType) -> bool:
             and object_ not in unsupported.wrappers_descriptors)
 
 
-def has_python_source_file(module: ModuleType) -> bool:
+def has_supported_python_source_file(module: ModuleType) -> bool:
     try:
         file_path_string = module.__file__
     except AttributeError:
