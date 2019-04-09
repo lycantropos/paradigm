@@ -52,7 +52,8 @@ def is_wrapper_descriptor(object_: Any) -> bool:
 
 wrappers_descriptors = (classes_callables.filter(is_wrapper_descriptor)
                         .filter(is_supported))
-functions = modules_callables.filter(inspect.isfunction)
+functions = (modules_callables.filter(inspect.isfunction)
+             .filter(is_supported))
 built_in_functions = (modules_callables.filter(inspect.isbuiltin)
                       .filter(is_supported))
 unsupported_callables = strategies.sampled_from(
