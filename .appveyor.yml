@@ -1,9 +1,6 @@
 environment:
   EXECUTABLE: "python.exe"
   matrix:
-    - PYTHON: "pypy3.5-v7.0.0-win32"
-      EXECUTABLE: "pypy3.exe"
-      platform: x86
     - PYTHON: "C:\\Python35"
     - PYTHON: "C:\\Python35-x64"
     - PYTHON: "C:\\Python36"
@@ -12,14 +9,6 @@ environment:
     - PYTHON: "C:\\Python37-x64"
 
 install:
-  - ps: |
-      if ($env:PYTHON.StartsWith("pypy"))
-      {
-          $source = "https://bitbucket.org/pypy/pypy/downloads/$env:PYTHON.zip"
-          $cwd = (Get-Location).Path
-          (New-Object Net.WebClient).DownloadFile($source, "$cwd/$env:PYTHON.zip")
-          Expand-Archive "$env:PYTHON.zip" -DestinationPath $cwd
-      }
   - "%PYTHON%\\%EXECUTABLE% -m ensurepip"
   - "%PYTHON%\\%EXECUTABLE% -m pip install --upgrade pip setuptools"
   - "%PYTHON%\\%EXECUTABLE% -m pip install --upgrade codecov"
