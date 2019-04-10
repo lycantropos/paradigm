@@ -6,8 +6,17 @@ environment:
     - PYTHON: "C:\\Python36-x64"
     - PYTHON: "C:\\Python37"
     - PYTHON: "C:\\Python37-x64"
+    - PYTHON: "pypy3.5-v7.0.0-win32"
 
 install:
+  - ps: |
+      if ($PYTHON.StartsWith("pypy"))
+      {
+          $source = "https://bitbucket.org/pypy/pypy/downloads/$PYTHON.zip"
+          (New-Object Net.WebClient).DownloadFile($source, $env:appveyor_build_folder)
+          Expand-Archive "$env:appveyor_build_folder/$PYTHON.zip" -DestinationPath $env:appveyor_build_folder
+          Copy-Item "$PYTHON/pypy3.exe" -Destination "$PYTHON/python.exe"
+      }
   - "%PYTHON%\\python.exe -m pip install --upgrade pip wheel setuptools"
   - "%PYTHON%\\python.exe -m pip install --upgrade codecov"
 
