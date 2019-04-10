@@ -1,6 +1,6 @@
 from hypothesis import strategies
 
-from paradigm.signatures import Parameter
+from paradigm.models import Parameter
 from tests.configs import MAX_ARGUMENTS_COUNT
 from .factories import (to_overloaded_signatures,
                         to_parameters,

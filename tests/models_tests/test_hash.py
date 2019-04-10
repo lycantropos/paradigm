@@ -1,9 +1,9 @@
-from paradigm import signatures
+from paradigm import models
 from tests.utils import equivalence
 
 
-def test_relation_with_equality(signature: signatures.Base,
-                                other_signature: signatures.Base) -> None:
+def test_relation_with_equality(signature: models.Base,
+                                other_signature: models.Base) -> None:
     signature_hash = hash(signature)
     other_signature_hash = hash(other_signature)
 

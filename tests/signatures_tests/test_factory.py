@@ -8,7 +8,8 @@ from typing import (Any,
 
 import pytest
 
-from paradigm import signatures
+from paradigm import (models,
+                      signatures)
 from paradigm.hints import (MethodDescriptorType,
                             WrapperDescriptorType)
 
@@ -29,7 +30,7 @@ def test_basic(built_in_function: BuiltinFunctionType,
                       partial_callable):
         result = signatures.factory(callable_)
 
-        assert isinstance(result, signatures.Base)
+        assert isinstance(result, models.Base)
 
 
 @pytest.mark.skipif(platform.python_implementation() == 'PyPy',
@@ -37,7 +38,7 @@ def test_basic(built_in_function: BuiltinFunctionType,
 def test_overloaded(overloaded_callable: Callable[..., Any]) -> None:
     result = signatures.factory(overloaded_callable)
 
-    assert isinstance(result, signatures.Overloaded)
+    assert isinstance(result, models.Overloaded)
 
 
 @pytest.mark.skipif(platform.python_implementation() == 'PyPy',
