@@ -1,29 +1,33 @@
 environment:
+  EXECUTABLE: "python.exe"
   matrix:
+    - PYTHON: "pypy3.5-v7.0.0-win32"
+      EXECUTABLE: "pypy3.exe"
+      platform: x86
     - PYTHON: "C:\\Python35"
     - PYTHON: "C:\\Python35-x64"
     - PYTHON: "C:\\Python36"
     - PYTHON: "C:\\Python36-x64"
     - PYTHON: "C:\\Python37"
     - PYTHON: "C:\\Python37-x64"
-    - PYTHON: "pypy3.5-v7.0.0-win32"
 
 install:
   - ps: |
-      if ($PYTHON.StartsWith("pypy"))
+      if ($env:PYTHON.StartsWith("pypy"))
       {
-          $source = "https://bitbucket.org/pypy/pypy/downloads/$PYTHON.zip"
-          (New-Object Net.WebClient).DownloadFile($source, $env:appveyor_build_folder)
-          Expand-Archive "$env:appveyor_build_folder/$PYTHON.zip" -DestinationPath $env:appveyor_build_folder
-          Copy-Item "$PYTHON/pypy3.exe" -Destination "$PYTHON/python.exe"
+          $source = "https://bitbucket.org/pypy/pypy/downloads/$env:PYTHON.zip"
+          $cwd = (Get-Location).Path
+          (New-Object Net.WebClient).DownloadFile($source, "$cwd/$env:PYTHON.zip")
+          Expand-Archive "$env:PYTHON.zip" -DestinationPath $cwd
       }
-  - "%PYTHON%\\python.exe -m pip install --upgrade pip wheel setuptools"
-  - "%PYTHON%\\python.exe -m pip install --upgrade codecov"
+  - "%PYTHON%\\%EXECUTABLE% -m ensurepip"
+  - "%PYTHON%\\%EXECUTABLE% -m pip install --upgrade pip setuptools"
+  - "%PYTHON%\\%EXECUTABLE% -m pip install --upgrade codecov"
 
 build: false
 
 test_script:
-  - "%PYTHON%\\python.exe setup.py test"
+  - "%PYTHON%\\%EXECUTABLE% setup.py test"
 
 on_success:
-  - "%PYTHON%\\python.exe -m codecov -f coverage.xml -X gcov"
+  - "%PYTHON%\\%EXECUTABLE% -m codecov -f coverage.xml -X gcov"
