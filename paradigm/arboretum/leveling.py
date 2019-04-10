@@ -8,7 +8,9 @@ from typed_ast import ast3
 
 from paradigm import (catalog,
                       sources)
-from . import (construction, importing, namespaces)
+from . import (construction,
+               importing,
+               namespaces)
 from .evaluation import (to_actual_path,
                          to_alias_path)
 from .execution import execute
