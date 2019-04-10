@@ -21,8 +21,6 @@ if platform.python_implementation() == 'PyPy':
     stdlib_modules_names.update({'msilib',
                                  'symtable',
                                  'tracemalloc'})
-    if sys.platform == 'win32':
-        stdlib_modules_names.add('asyncio')
 
 stdlib_modules = set()
 
