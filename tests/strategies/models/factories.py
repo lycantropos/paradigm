@@ -9,11 +9,11 @@ from hypothesis.searchstrategy import SearchStrategy
 
 from paradigm.hints import (Domain,
                             Range)
-from paradigm.signatures import (Base,
-                                 Overloaded,
-                                 Parameter,
-                                 Plain,
-                                 to_parameters_by_name)
+from paradigm.models import (Base,
+                             Overloaded,
+                             Parameter,
+                             Plain,
+                             to_parameters_by_name)
 from tests.strategies.utils import (identifiers,
                                     to_homogeneous_tuples)
 from tests.utils import (negate,

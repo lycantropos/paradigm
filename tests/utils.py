@@ -10,7 +10,7 @@ from hypothesis.errors import (NoSuchExample,
                                Unsatisfiable)
 from hypothesis.searchstrategy import SearchStrategy
 
-from paradigm import signatures
+from paradigm import models
 from paradigm.hints import (Domain,
                             Map,
                             Range)
@@ -66,16 +66,16 @@ def pack(function: Callable[..., Range]) -> Map[Tuple[Domain, ...], Range]:
 
 
 @singledispatch
-def is_signature_empty(signature: signatures.Base) -> bool:
+def is_signature_empty(signature: models.Base) -> bool:
     raise TypeError('Unsupported signature type: {type}.'
                     .format(type=type(signature)))
 
 
-@is_signature_empty.register(signatures.Plain)
-def is_plain_signature_empty(signature: signatures.Plain) -> bool:
+@is_signature_empty.register(models.Plain)
+def is_plain_signature_empty(signature: models.Plain) -> bool:
     return False
 
 
-@is_signature_empty.register(signatures.Overloaded)
-def is_overloaded_signature_empty(signature: signatures.Overloaded) -> bool:
+@is_signature_empty.register(models.Overloaded)
+def is_overloaded_signature_empty(signature: models.Overloaded) -> bool:
     return not signature.signatures
