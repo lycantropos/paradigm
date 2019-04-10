@@ -1,8 +1,9 @@
 from typing import List
 
 from paradigm import catalog
-from paradigm.arboretum.hints import Node, Scope
-from paradigm.arboretum.logical import is_link
+from .hints import (Node,
+                    Scope)
+from .logical import is_link
 
 
 def search_nodes(path: catalog.Path,
