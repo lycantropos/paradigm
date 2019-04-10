@@ -16,5 +16,5 @@ build: false
 test_script:
   - "%PYTHON%\\python.exe setup.py test"
 
-after_test:
-  - codecov
+on_success:
+  - "%PYTHON%\\python.exe -m codecov"
