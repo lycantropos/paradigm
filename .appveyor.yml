@@ -17,4 +17,4 @@ test_script:
   - "%PYTHON%\\python.exe setup.py test"
 
 on_success:
-  - "%PYTHON%\\python.exe -m codecov"
+  - "%PYTHON%\\python.exe -m codecov -f coverage.xml -X gcov"
