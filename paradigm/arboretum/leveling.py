@@ -1,4 +1,5 @@
 import builtins
+import importlib
 from collections import deque
 from functools import (partial,
                        singledispatch)
@@ -11,7 +12,6 @@ from typing import (Any,
 from typed_ast import ast3
 
 from paradigm import (catalog,
-                      importing,
                       sources)
 from paradigm.hints import Predicate
 from . import (construction,
@@ -79,7 +79,7 @@ class NamespaceUpdater(ast3.NodeVisitor):
         for name_alias in node.names:
             actual_path = to_actual_path(name_alias)
             parent_module_name = actual_path.parts[0]
-            module = importing.safe(parent_module_name)
+            module = importlib.import_module(parent_module_name)
             self.namespace[parent_module_name] = module
 
     def visit_ImportFrom(self, node: ast3.ImportFrom) -> None:
@@ -98,7 +98,7 @@ class NamespaceUpdater(ast3.NodeVisitor):
                 object_ = namespaces.search(namespace, actual_path)
             except KeyError:
                 module_path = parent_module_path.join(actual_path)
-                object_ = importing.safe(str(module_path))
+                object_ = importlib.import_module(str(module_path))
             self.namespace[str(alias_path)] = object_
 
     def visit_ClassDef(self, node: ast3.ClassDef) -> None:

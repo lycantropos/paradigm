@@ -1,14 +1,14 @@
+import importlib
 from functools import reduce
 from types import ModuleType
 from typing import Any
 
-from paradigm import (catalog,
-                      importing)
+from paradigm import catalog
 from .hints import Namespace
 
 
 def from_module_path(object_: catalog.Path) -> Namespace:
-    return from_module(importing.safe(str(object_)))
+    return from_module(importlib.import_module(str(object_)))
 
 
 def from_module(object_: ModuleType) -> Namespace:
