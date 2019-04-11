@@ -41,21 +41,43 @@ def expression_to_assignment(node: ast3.expr,
     return ast3.copy_location(result, node)
 
 
-class Flattener(ast3.NodeTransformer):
+class ImportsFlattener(ast3.NodeTransformer):
+    def __init__(self, module_path: catalog.Path) -> None:
+        self.module_path = module_path
+
+    def visit_Import(self, node: ast3.Import) -> Iterable[ast3.Import]:
+        for name_alias in node.names:
+            yield ast3.Import([name_alias])
+
+    def visit_ImportFrom(self, node: ast3.ImportFrom
+                         ) -> Iterable[ast3.ImportFrom]:
+        parent_module_path = to_parent_module_path(
+                node,
+                parent_module_path=self.module_path)
+        for name_alias in node.names:
+            actual_path = to_actual_path(name_alias)
+            if actual_path == catalog.WILDCARD_IMPORT:
+                yield from to_flat_root(parent_module_path).body
+            else:
+                yield ast3.ImportFrom(str(parent_module_path), [name_alias], 0)
+
+    def visit_FunctionDef(self, node: ast3.FunctionDef) -> ast3.FunctionDef:
+        return node
+
+
+class NamespaceCollector(ast3.NodeVisitor):
     def __init__(self,
                  *,
                  namespace: Namespace,
-                 source_path: Path,
                  module_path: catalog.Path,
                  parent_path: catalog.Path,
                  is_nested: bool = False) -> None:
         self.namespace = namespace
-        self.source_path = source_path
         self.module_path = module_path
         self.parent_path = parent_path
         self.is_nested = is_nested
 
-    def visit_Import(self, node: ast3.Import) -> Iterable[ast3.Import]:
+    def visit_Import(self, node: ast3.Import) -> None:
         for name_alias in node.names:
             alias_path = self.resolve_path(to_alias_path(name_alias))
             actual_path = to_actual_path(name_alias)
@@ -63,10 +85,8 @@ class Flattener(ast3.NodeTransformer):
                 parent_module_name = actual_path.parts[0]
                 module = importing.safe(parent_module_name)
                 self.namespace[parent_module_name] = module
-            yield ast3.Import([name_alias])
 
-    def visit_ImportFrom(self, node: ast3.ImportFrom
-                         ) -> Iterable[ast3.ImportFrom]:
+    def visit_ImportFrom(self, node: ast3.ImportFrom) -> None:
         parent_module_path = to_parent_module_path(
                 node,
                 parent_module_path=self.module_path)
@@ -85,18 +105,31 @@ class Flattener(ast3.NodeTransformer):
                     module_path = parent_module_path.join(actual_path)
                     object_ = importing.safe(str(module_path))
                 self.namespace[str(alias_path)] = object_
-            yield ast3.copy_location(ast3.ImportFrom(str(parent_module_path),
-                                                     [name_alias], 0),
-                                     node)
 
-    def visit_ClassDef(self, node: ast3.ClassDef) -> ast3.ClassDef:
+    def visit_ClassDef(self, node: ast3.ClassDef) -> None:
         path = self.resolve_path(catalog.factory(node.name))
-        return (Flattener(namespace=self.namespace,
-                          source_path=self.source_path,
-                          parent_path=path,
-                          module_path=self.module_path,
-                          is_nested=True)
-                .generic_visit(node))
+        (NamespaceCollector(namespace=self.namespace,
+                            parent_path=path,
+                            module_path=self.module_path,
+                            is_nested=True)
+         .generic_visit(node))
+
+    def visit_FunctionDef(self, node: ast3.FunctionDef) -> None:
+        return
+
+    def resolve_path(self, path: catalog.Path) -> catalog.Path:
+        if self.is_nested:
+            return self.parent_path.join(path)
+        return path
+
+
+class IfsFlattener(ast3.NodeTransformer):
+    def __init__(self,
+                 *,
+                 namespace: Namespace,
+                 source_path: Path) -> None:
+        self.namespace = namespace
+        self.source_path = source_path
 
     def visit_FunctionDef(self, node: ast3.FunctionDef) -> ast3.FunctionDef:
         return node
@@ -111,11 +144,6 @@ class Flattener(ast3.NodeTransformer):
         for child in children:
             self.generic_visit(child)
         yield from children
-
-    def resolve_path(self, path: catalog.Path) -> catalog.Path:
-        if self.is_nested:
-            return self.parent_path.join(path)
-        return path
 
 
 def evaluate_expression(node: ast3.expr,
@@ -141,10 +169,12 @@ built_ins_namespace = namespaces.factory(builtins)
 def to_flat_root(module_path: catalog.Path) -> ast3.Module:
     source_path = sources.factory(module_path)
     result = construction.from_source_path(source_path)
-    namespace = namespaces.factory(module_path)
-    namespace = namespaces.merge(built_ins_namespace, namespace)
-    Flattener(namespace=namespace,
-              source_path=source_path,
-              module_path=module_path,
-              parent_path=catalog.Path()).visit(result)
+    namespace = namespaces.merge(built_ins_namespace,
+                                 namespaces.from_module_path(module_path))
+    ImportsFlattener(module_path).visit(result)
+    NamespaceCollector(namespace=namespace,
+                       module_path=module_path,
+                       parent_path=catalog.Path()).visit(result)
+    IfsFlattener(namespace=namespace,
+                 source_path=source_path).visit(result)
     return result
