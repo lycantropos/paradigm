@@ -109,7 +109,8 @@ class Reducer(ast3.NodeVisitor):
             base_scope = scoping.to_children_scope(base_node,
                                                    scope=self.scope)
             for base_object_path, base_object_nodes in base_scope.items():
-                self.batch_register_if_not_found(base_object_path.with_parent(path),
+                self.batch_register_if_not_found(base_object_path
+                                                 .with_parent(path),
                                                  base_object_nodes)
         children_scope = {}
         visit_child = Reducer(scope=children_scope,
