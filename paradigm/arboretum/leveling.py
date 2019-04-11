@@ -174,17 +174,32 @@ def to_flat_root(module_path: catalog.Path) -> ast3.Module:
     result = construction.from_source_path(source_path)
     flatten_root(result,
                  module_path=module_path,
-                 source_path=source_path,
-                 namespace=dict(builtins_namespace))
+                 source_path=source_path)
     return result
 
 
 def flatten_root(module_root: ast3.Module,
                  *,
                  module_path: catalog.Path,
-                 source_path: Path,
-                 namespace: Namespace) -> None:
+                 source_path: Path) -> None:
+    flatten_imports(module_root,
+                    module_path=module_path)
+    flatten_ifs(module_root,
+                module_path=module_path,
+                source_path=source_path)
+
+
+def flatten_imports(module_root: ast3.Module,
+                    *,
+                    module_path: catalog.Path) -> None:
     ImportsFlattener(module_path).visit(module_root)
+
+
+def flatten_ifs(module_root: ast3.Module,
+                *,
+                module_path: catalog.Path,
+                source_path: Path) -> None:
+    namespace = dict(builtins_namespace)
     for node in left_search_within_children(module_root,
                                             ast3.If.__instancecheck__):
         dependencies_names = set()
