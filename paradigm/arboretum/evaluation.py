@@ -175,7 +175,8 @@ def to_actual_path(node: ast3.alias) -> catalog.Path:
 
 
 def to_alias_path(node: ast3.alias) -> catalog.Path:
-    result = node.asname
-    if result is None:
-        result = node.name
-    return catalog.factory(result)
+    return catalog.factory(to_alias_string(node))
+
+
+def to_alias_string(node: ast3.alias) -> str:
+    return node.asname or node.name

@@ -1,6 +1,6 @@
 from types import ModuleType
 
-from paradigm.namespaces import from_module
+from paradigm.arboretum.namespaces import from_module
 
 
 def test_basic(module: ModuleType) -> None:

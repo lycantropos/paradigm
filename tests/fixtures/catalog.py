@@ -13,8 +13,3 @@ def object_path() -> catalog.Path:
 @pytest.fixture(scope='function')
 def module_path() -> catalog.Path:
     return find(strategies.modules_paths)
-
-
-@pytest.fixture(scope='function')
-def module_path_from_replacing_modules_names() -> catalog.Path:
-    return find(strategies.modules_paths_from_replacing_modules_names)
