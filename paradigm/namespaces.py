@@ -20,10 +20,9 @@ def factory(object_: Any) -> Namespace:
     return object_
 
 
-replacing_modules_names = {
-    '_importlib_modulespec': [types.__name__,
-                              abc.__name__,
-                              machinery.__name__]}
+replacing_modules_names = {'_importlib_modulespec': [types.__name__,
+                                                     abc.__name__,
+                                                     machinery.__name__]}
 if sys.platform == 'win32':
     import nt
 
@@ -38,7 +37,6 @@ def to_replacing_modules_names(path_parts: Iterable[str]) -> Iterable[str]:
 @factory.register(catalog.Path)
 def from_module_path(object_: catalog.Path) -> Namespace:
     modules_names = list(to_replacing_modules_names(object_.parts))
-
     if modules_names:
         return merge(*map(from_module_name, modules_names))
     return from_module_name(str(object_))
