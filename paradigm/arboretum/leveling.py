@@ -7,14 +7,14 @@ from typing import (Any,
 from typed_ast import ast3
 
 from paradigm import (catalog,
+                      importing,
+                      namespaces,
                       sources)
-from . import (construction,
-               importing,
-               namespaces)
+from paradigm.hints import Namespace
+from . import construction
 from .evaluation import (to_actual_path,
                          to_alias_path)
 from .execution import execute
-from .hints import Namespace
 
 
 def to_parent_module_path(object_: ast3.ImportFrom,
