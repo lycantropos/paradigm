@@ -7,8 +7,7 @@ from typed_ast import ast3
 from paradigm import catalog
 from . import (reduction,
                scoping)
-from .data_access import (follow_links,
-                          search_nodes)
+from .data_access import search_nodes
 from .evaluation import is_overloaded_function
 from .logical import (are_dicts_similar,
                       are_lists_similar,
@@ -61,17 +60,10 @@ def to_functions_defs(object_path: catalog.Path,
                 return []
             continue
         break
-    candidates = follow_links(candidates,
-                              scope=scope)
-    candidates = takewhile(is_function_def, reversed(candidates))
-    try:
-        function_def = next(candidates)
-    except StopIteration:
-        return []
+    last_candidate = candidates[-1]
     is_overload = partial(is_overloaded_function,
                           scope=scope,
                           module_path=module_path)
-    result = [function_def]
-    if is_overload(function_def):
-        result += list(takewhile(is_overload, candidates))
-    return result
+    if is_overload(last_candidate):
+        return list(takewhile(is_overload, candidates))
+    return [last_candidate]
