@@ -10,8 +10,8 @@ from types import ModuleType
 from typing import (Any,
                     Iterable)
 
-from paradigm import catalog
-from . import importing
+from . import (catalog,
+               importing)
 from .hints import Namespace
 
 
