@@ -4,6 +4,7 @@ import pathlib
 import struct
 import sys
 import types
+import weakref
 from functools import singledispatch
 from itertools import chain
 from types import (BuiltinMethodType,
@@ -161,6 +162,7 @@ module_name_from_class_or_function_cache = {
     types.CodeType: types.__name__,
     types.FrameType: types.__name__,
     types.ModuleType: types.__name__,
+    weakref.ref: weakref.__name__,
 }
 
 if sys.version_info >= (3, 7):
