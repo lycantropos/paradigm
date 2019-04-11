@@ -96,6 +96,11 @@ def non_python_file_path(tmpdir: LocalPath) -> Path:
 
 
 @pytest.fixture(scope='function')
+def module() -> ModuleType:
+    return find(strategies.modules)
+
+
+@pytest.fixture(scope='function')
 def plain_python_module() -> ModuleType:
     return find(strategies.plain_python_modules)
 
