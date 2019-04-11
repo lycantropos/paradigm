@@ -4,7 +4,7 @@ from typing import Any
 
 from paradigm import (catalog,
                       importing)
-from paradigm.arboretum.hints import Namespace
+from .hints import Namespace
 
 
 def from_module_path(object_: catalog.Path) -> Namespace:
