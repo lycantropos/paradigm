@@ -1,4 +1,6 @@
-from .catalog import objects_paths
+from .catalog import (modules_paths,
+                      modules_paths_from_replacing_modules_names,
+                      objects_paths)
 from .definitions import (built_in_functions,
                           callables,
                           classes,
