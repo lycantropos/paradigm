@@ -7,6 +7,8 @@ from .definitions import (built_in_functions,
                           methods_descriptors,
                           overloaded_callables,
                           partial_callables,
+                          plain_python_modules,
+                          python_packages,
                           unsupported_callables,
                           wrappers_descriptors)
 from .models.base import (non_variadic_signatures,

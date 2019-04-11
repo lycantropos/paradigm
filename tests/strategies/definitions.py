@@ -16,12 +16,38 @@ from paradigm.definitions import (is_supported,
                                   unsupported)
 from paradigm.hints import (MethodDescriptorType,
                             WrapperDescriptorType)
+from tests.utils import negate
 
 stdlib_modules = list(map(importlib.import_module,
                           stdlib_modules_names
                           - unsupported.stdlib_modules_names))
 modules = (strategies.sampled_from(stdlib_modules)
            .filter(is_supported))
+
+
+def is_python_module(module: ModuleType) -> bool:
+    try:
+        module.__file__
+    except AttributeError:
+        return False
+    else:
+        return True
+
+
+python_modules = modules.filter(is_python_module)
+
+
+def is_python_package(module: ModuleType) -> bool:
+    try:
+        module.__path__
+    except AttributeError:
+        return False
+    else:
+        return True
+
+
+plain_python_modules = python_modules.filter(negate(is_python_package))
+python_packages = modules.filter(is_python_package)
 
 
 def flatten_module_or_class(object_: Union[ModuleType, type]

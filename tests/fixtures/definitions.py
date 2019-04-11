@@ -3,7 +3,8 @@ from functools import partial
 from pathlib import Path
 from types import (BuiltinFunctionType,
                    FunctionType,
-                   MethodType)
+                   MethodType,
+                   ModuleType)
 from typing import (Any,
                     Callable)
 
@@ -92,3 +93,13 @@ def non_python_file_path(tmpdir: LocalPath) -> Path:
         yield Path(raw_file.strpath)
     finally:
         raw_file.remove()
+
+
+@pytest.fixture(scope='function')
+def plain_python_module() -> ModuleType:
+    return find(strategies.plain_python_modules)
+
+
+@pytest.fixture(scope='function')
+def python_package() -> ModuleType:
+    return find(strategies.python_packages)
