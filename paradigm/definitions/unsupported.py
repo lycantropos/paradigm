@@ -213,6 +213,8 @@ if platform.python_implementation() != 'PyPy':
 
         classes.update({_ast.Constant,
                         asyncio.base_futures.InvalidStateError})
+    else:
+        classes.add(pdb.Restart)
 
     if sys.version_info < (3, 7):
         import os
