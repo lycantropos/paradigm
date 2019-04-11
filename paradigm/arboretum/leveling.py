@@ -23,7 +23,7 @@ from .execution import execute
 from .hints import Namespace
 
 
-class ImportsFlattener(ast3.NodeTransformer):
+class ImportsRectifier(ast3.NodeTransformer):
     def __init__(self, module_path: catalog.Path) -> None:
         self.module_path = module_path
 
@@ -118,7 +118,7 @@ class NamespaceUpdater(ast3.NodeVisitor):
         return path
 
 
-class IfsFlattener(ast3.NodeTransformer):
+class IfsRectifier(ast3.NodeTransformer):
     def __init__(self,
                  *,
                  namespace: Namespace,
@@ -192,7 +192,7 @@ def flatten_root(module_root: ast3.Module,
 def flatten_imports(module_root: ast3.Module,
                     *,
                     module_path: catalog.Path) -> None:
-    ImportsFlattener(module_path).visit(module_root)
+    ImportsRectifier(module_path).visit(module_root)
 
 
 def flatten_ifs(module_root: ast3.Module,
@@ -218,7 +218,7 @@ def flatten_ifs(module_root: ast3.Module,
                     partial(node_has_name,
                             name=dependency_name)))
             update_namespace(dependency_node)
-    IfsFlattener(namespace=namespace,
+    IfsRectifier(namespace=namespace,
                  source_path=source_path).visit(module_root)
 
 
