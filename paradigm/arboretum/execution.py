@@ -3,9 +3,9 @@ from pathlib import Path
 
 from typed_ast import ast3
 
-from paradigm.hints import Namespace
 from . import (construction,
                conversion)
+from .hints import Namespace
 
 
 @singledispatch
