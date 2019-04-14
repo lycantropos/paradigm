@@ -230,8 +230,8 @@ def _bind_positionals(parameters: Iterable[Parameter],
         else:
             if has_variadic:
                 return
-            value = 'argument' + 's' * (positionals_count - 1)
-            raise TypeError('Takes {parameters_count} positional {value} '
+            value = 'argument' + 's' * (positionals_count != 1)
+            raise TypeError('Takes {parameters_count} positional {value}, '
                             'but {arguments_count} were given.'
                             .format(parameters_count=positionals_count,
                                     value=value,
