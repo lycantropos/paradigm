@@ -7,6 +7,13 @@ def test_type(signature: models.Base) -> None:
     assert isinstance(result, str)
 
 
+def test_plain(plain_signature: models.Plain) -> None:
+    result = str(plain_signature)
+
+    assert all(str(parameter) in result
+               for parameter in plain_signature.parameters)
+
+
 def test_nesting(overloaded_signature: models.Overloaded) -> None:
     result = str(overloaded_signature)
 
