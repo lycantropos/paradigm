@@ -123,6 +123,60 @@ class Base(ABC):
 
 
 class Plain(Base):
+    def __new__(cls, *parameters: Parameter) -> 'Plain':
+        try:
+            prior, *rest = parameters
+        except ValueError:
+            pass
+        else:
+            visited_names = {prior.name}
+            visited_kinds = {prior.kind}
+            for parameter in rest:
+                name = parameter.name
+
+                if name in visited_names:
+                    raise ValueError('Parameters should have unique names, '
+                                     'but found duplicate '
+                                     'for parameter "{name}".'
+                                     .format(name=name))
+
+                kind = parameter.kind
+
+                if kind < prior.kind:
+                    raise ValueError('Invalid parameters order: '
+                                     'parameter "{prior_name}" '
+                                     'with kind "{prior_kind!s}" '
+                                     'precedes parameter "{parameter}" '
+                                     'with kind "{kind!s}".'
+                                     .format(prior_name=prior.name,
+                                             prior_kind=prior.kind,
+                                             kind=kind,
+                                             parameter=name))
+
+                if kind in Parameter.positionals_kinds:
+                    if not parameter.has_default:
+                        if prior.has_default:
+                            raise ValueError('Invalid parameters order: '
+                                             'parameter "{name}" '
+                                             'without default argument '
+                                             'follows '
+                                             'parameter "{prior_name}" '
+                                             'with default argument.'
+                                             .format(name=name,
+                                                     prior_name=prior.name))
+                elif kind not in Parameter.keywords_kinds:
+                    if kind in visited_kinds:
+                        raise ValueError('Variadic parameters '
+                                         'should have unique kinds, '
+                                         'but found duplicate '
+                                         'for kind "{kind!s}".'
+                                         .format(kind=kind))
+
+                prior = parameter
+                visited_names.add(name)
+                visited_kinds.add(kind)
+        return super().__new__(cls)
+
     def __init__(self, *parameters: Parameter) -> None:
         self._parameters = parameters
 
