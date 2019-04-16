@@ -158,7 +158,6 @@ if platform.python_implementation() != 'PyPy':
     import _io
     import _ssl
     import _thread
-    import _weakrefset
     import asyncio.events
     import encodings
     import imaplib
@@ -183,7 +182,6 @@ if platform.python_implementation() != 'PyPy':
                     _ssl._SSLContext,
                     _thread.RLock,
                     _thread._local,
-                    _weakrefset.ref,
                     asyncio.events._RunningLoop,
                     imaplib.IMAP4.abort,
                     imaplib.IMAP4.error,
@@ -213,8 +211,6 @@ if platform.python_implementation() != 'PyPy':
 
         classes.update({_ast.Constant,
                         asyncio.base_futures.InvalidStateError})
-    else:
-        classes.add(pdb.Restart)
 
     if sys.version_info < (3, 7):
         import os
