@@ -123,6 +123,9 @@ class Base(ABC):
 
 
 class Plain(Base):
+    POSITIONAL_ONLY_SEPARATOR = '/'
+    KEYWORD_ONLY_SEPARATOR = '*'
+
     def __new__(cls, *parameters: Parameter) -> 'Plain':
         try:
             prior, *rest = parameters
@@ -199,7 +202,24 @@ class Plain(Base):
                 + '(' + ', '.join(map(repr, self._parameters)) + ')')
 
     def __str__(self) -> str:
-        return '(' + ', '.join(map(str, self._parameters)) + ')'
+        positionals_only = self.parameters_by_kind[
+            Parameter.Kind.POSITIONAL_ONLY]
+        parts = list(map(str, positionals_only))
+        if positionals_only:
+            parts.append(self.POSITIONAL_ONLY_SEPARATOR)
+        parts.extend(map(str, self.parameters_by_kind[
+            Parameter.Kind.POSITIONAL_OR_KEYWORD]))
+        variadic_positionals = self.parameters_by_kind[
+            Parameter.Kind.VARIADIC_POSITIONAL]
+        parts.extend(map(str, variadic_positionals))
+        keywords_only = self.parameters_by_kind[
+            Parameter.Kind.KEYWORD_ONLY]
+        if keywords_only and not variadic_positionals:
+            parts.append(self.KEYWORD_ONLY_SEPARATOR)
+        parts.extend(map(str, keywords_only))
+        parts.extend(map(str, self.parameters_by_kind[
+            Parameter.Kind.VARIADIC_KEYWORD]))
+        return '(' + ', '.join(parts) + ')'
 
     @cached.property_
     def parameters_by_kind(self) -> Dict[Parameter.Kind, List[Parameter]]:
