@@ -1,18 +1,24 @@
-from functools import (reduce,
+from functools import (partial,
+                       reduce,
                        singledispatch)
-from operator import attrgetter
-from typing import (Dict,
+from operator import (attrgetter,
+                      le)
+from typing import (Any,
+                    Dict,
+                    Optional,
                     Tuple)
 
 from hypothesis import strategies
 from hypothesis.searchstrategy import SearchStrategy
 
 from paradigm.hints import (Domain,
+                            Map,
                             Range)
 from paradigm.models import (Base,
                              Overloaded,
                              Parameter,
                              Plain,
+                             to_parameters_by_kind,
                              to_parameters_by_name)
 from tests.strategies.utils import (identifiers,
                                     to_homogeneous_tuples)
@@ -20,27 +26,98 @@ from tests.utils import (negate,
                          pack)
 
 
-def to_parameters(*,
-                  names: SearchStrategy[str] = identifiers,
-                  kinds: SearchStrategy[Parameter.Kind],
-                  has_default_flags: SearchStrategy[bool] =
-                  strategies.booleans()) -> SearchStrategy[Parameter]:
-    return strategies.builds(Parameter,
-                             name=names,
-                             kind=kinds,
-                             has_default=has_default_flags)
-
-
-def to_plain_signatures(parameters: SearchStrategy[Parameter],
-                        *,
+def to_plain_signatures(*,
+                        parameters_names: SearchStrategy[str] = identifiers,
+                        parameters_kinds: SearchStrategy[Parameter.Kind],
+                        parameters_has_default_flags: SearchStrategy[bool] =
+                        strategies.booleans(),
                         min_size: int = 0,
-                        max_size: int = None
+                        max_size: Optional[int] = None
                         ) -> SearchStrategy[Base]:
-    return (strategies.lists(parameters,
-                             min_size=min_size,
-                             max_size=max_size,
-                             unique_by=attrgetter('name'))
-            .map(pack(Plain)))
+    validate_bounds(min_size, max_size)
+
+    empty = strategies.builds(Plain)
+    if max_size == 0:
+        return empty
+
+    def to_parameters(*,
+                      names: SearchStrategy[str] = identifiers,
+                      kinds: SearchStrategy[Parameter.Kind],
+                      has_default_flags: SearchStrategy[bool] =
+                      strategies.booleans()) -> SearchStrategy[Parameter]:
+        def normalize_mapping(mapping: Dict[str, Any]) -> Dict[str, Any]:
+            if mapping['kind'] not in (Parameter.positionals_kinds
+                                       | Parameter.keywords_kinds):
+                return {**mapping, 'has_default': False}
+            return mapping
+
+        return (strategies.fixed_dictionaries(dict(
+                name=names,
+                kind=kinds,
+                has_default=has_default_flags))
+                .map(normalize_mapping)
+                .map(lambda mapping: Parameter(**mapping)))
+
+    @strategies.composite
+    def extend(draw: Map[SearchStrategy[Domain], Domain],
+               base: SearchStrategy[Tuple[Parameter, ...]]
+               ) -> SearchStrategy[Tuple[Parameter, ...]]:
+        precursors = draw(base)
+        precursors_names = set(map(attrgetter('name'), precursors))
+        precursors_kinds = to_parameters_by_kind(precursors)
+        last_precursor = precursors[-1]
+
+        def is_kind_valid(parameter: Parameter) -> bool:
+            if parameter.kind not in (Parameter.positionals_kinds
+                                      | Parameter.keywords_kinds):
+                return not precursors_kinds[parameter.kind]
+            return True
+
+        def normalize(parameter: Parameter) -> Parameter:
+            if parameter.kind in Parameter.positionals_kinds:
+                if last_precursor.has_default and not parameter.has_default:
+                    return Parameter(name=parameter.name,
+                                     kind=parameter.kind,
+                                     has_default=True)
+            return parameter
+
+        follower = draw(to_parameters(
+                names=identifiers.filter(negate(precursors_names
+                                                .__contains__)),
+                kinds=(parameters_kinds
+                       .filter(partial(le, max(precursors_kinds)))),
+                has_default_flags=parameters_has_default_flags)
+                        .filter(is_kind_valid)
+                        .map(normalize))
+        return precursors + (follower,)
+
+    base_parameters = to_parameters(names=parameters_names,
+                                    kinds=parameters_kinds,
+                                    has_default_flags=
+                                    parameters_has_default_flags)
+    non_empty = (strategies.recursive(strategies.tuples(base_parameters),
+                                      extend,
+                                      max_leaves=max_size)
+                 .map(pack(Plain)))
+    if min_size == 0:
+        return empty | non_empty
+    return non_empty
+
+
+def validate_bounds(min_size: int, max_size: Optional[int]) -> None:
+    if min_size < 0:
+        raise ValueError('Min size '
+                         'should not be negative, '
+                         'but found {min_size}.'
+                         .format(min_size=min_size))
+    if max_size is not None:
+        if min_size > max_size:
+            raise ValueError('Min size '
+                             'should not be greater '
+                             'than max size, '
+                             'but found {min_size} > {max_size}.'
+                             .format(min_size=min_size,
+                                     max_size=max_size))
 
 
 def to_overloaded_signatures(bases: SearchStrategy[Base],
