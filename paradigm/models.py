@@ -36,6 +36,17 @@ class Parameter:
                                  {Kind.VARIADIC_POSITIONAL: '*',
                                   Kind.VARIADIC_KEYWORD: '**'})
 
+    def __new__(cls,
+                *,
+                name: str,
+                kind: Kind,
+                has_default: bool) -> 'Parameter':
+        if kind not in (cls.positionals_kinds | cls.keywords_kinds):
+            if has_default:
+                raise ValueError('Variadic parameters '
+                                 'can\'t have default arguments.')
+        return super().__new__(cls)
+
     def __init__(self,
                  *,
                  name: str,
