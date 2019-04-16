@@ -32,9 +32,20 @@ def to_plain_signatures(*,
                         parameters_has_default_flags: SearchStrategy[bool] =
                         strategies.booleans(),
                         min_size: int = 0,
-                        max_size: Optional[int] = None
+                        max_size: int
                         ) -> SearchStrategy[Base]:
-    validate_bounds(min_size, max_size)
+    if min_size < 0:
+        raise ValueError('Min size '
+                         'should not be negative, '
+                         'but found {min_size}.'
+                         .format(min_size=min_size))
+    if min_size > max_size:
+        raise ValueError('Min size '
+                         'should not be greater '
+                         'than max size, '
+                         'but found {min_size} > {max_size}.'
+                         .format(min_size=min_size,
+                                 max_size=max_size))
 
     empty = strategies.builds(Plain)
     if max_size == 0:
@@ -102,22 +113,6 @@ def to_plain_signatures(*,
     if min_size == 0:
         return empty | non_empty
     return non_empty
-
-
-def validate_bounds(min_size: int, max_size: Optional[int]) -> None:
-    if min_size < 0:
-        raise ValueError('Min size '
-                         'should not be negative, '
-                         'but found {min_size}.'
-                         .format(min_size=min_size))
-    if max_size is not None:
-        if min_size > max_size:
-            raise ValueError('Min size '
-                             'should not be greater '
-                             'than max size, '
-                             'but found {min_size} > {max_size}.'
-                             .format(min_size=min_size,
-                                     max_size=max_size))
 
 
 def to_overloaded_signatures(bases: SearchStrategy[Base],
