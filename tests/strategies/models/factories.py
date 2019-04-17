@@ -5,7 +5,6 @@ from operator import (attrgetter,
                       le)
 from typing import (Any,
                     Dict,
-                    Optional,
                     Tuple)
 
 from hypothesis import strategies
