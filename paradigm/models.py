@@ -300,10 +300,11 @@ def _bind_positionals(parameters: Tuple[Parameter, ...],
     if len(args) > len(positionals) and not has_variadic:
         value = 'argument' + 's' * (len(positionals) != 1)
         raise TypeError('Takes {parameters_count} positional {value}, '
-                        'but {arguments_count} were given.'
+                        'but {arguments_count} {verb} given.'
                         .format(parameters_count=len(positionals),
                                 value=value,
-                                arguments_count=len(args)))
+                                arguments_count=len(args),
+                                verb='were' if len(args) > 1 else 'was'))
     for positional in positionals[:len(args)]:
         if positional.name in kwargs:
             if positional.kind in Parameter.keywords_kinds:
