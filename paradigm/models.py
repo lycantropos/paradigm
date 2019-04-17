@@ -341,10 +341,9 @@ def _bind_keywords(parameters: Iterable[Parameter],
                             'but was passed as a keyword.'
                             .format(name=name,
                                     kind=parameter.kind))
-        parameters_by_name[name] = Parameter(
-                name=name,
-                kind=Parameter.Kind.KEYWORD_ONLY,
-                has_default=True)
+        parameters_by_name[name] = Parameter(name=name,
+                                             kind=Parameter.Kind.KEYWORD_ONLY,
+                                             has_default=True)
     yield from chain.from_iterable(to_parameters_by_kind(parameters_by_name
                                                          .values())
                                    .values())
