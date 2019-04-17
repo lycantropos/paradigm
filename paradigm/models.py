@@ -1,8 +1,7 @@
 import enum
 from abc import (ABC,
                  abstractmethod)
-from collections import (OrderedDict,
-                         defaultdict)
+from collections import defaultdict
 from itertools import (chain,
                        starmap,
                        takewhile)
@@ -280,26 +279,24 @@ class Plain(Base):
         return True
 
     def bind(self, *args: Domain, **kwargs: Domain) -> Base:
-        parameters = _bind_keywords(_bind_positionals(
-                self.parameters,
-                args, kwargs,
+        return Plain(*_bind_keywords(_bind_positionals(
+                self.parameters, args, kwargs,
                 has_variadic=bool(self.parameters_by_kind[
                                       Parameter.Kind.VARIADIC_POSITIONAL])),
                 kwargs,
                 has_variadic=bool(self.parameters_by_kind[
-                                      Parameter.Kind.VARIADIC_KEYWORD]))
-        return Plain(*parameters)
+                                      Parameter.Kind.VARIADIC_KEYWORD])))
 
 
-def _bind_positionals(parameters: Iterable[Parameter],
+def _bind_positionals(parameters: Tuple[Parameter, ...],
                       args: Tuple[Domain, ...],
                       kwargs: Dict[str, Domain],
                       *,
-                      has_variadic: bool) -> Iterable[Parameter]:
+                      has_variadic: bool) -> Tuple[Parameter, ...]:
     def is_positional(parameter: Parameter) -> bool:
         return parameter.kind in Parameter.positionals_kinds
 
-    positionals = list(takewhile(is_positional, parameters))
+    positionals = tuple(takewhile(is_positional, parameters))
     if len(args) > len(positionals) and not has_variadic:
         value = 'argument' + 's' * (len(positionals) != 1)
         raise TypeError('Takes {parameters_count} positional {value}, '
@@ -318,35 +315,42 @@ def _bind_positionals(parameters: Iterable[Parameter],
                                 'but was passed as a keyword.'
                                 .format(name=positional.name,
                                         kind=positional.kind))
-    yield from positionals[len(args):]
-    yield from parameters[len(positionals):]
+    return positionals[len(args):] + parameters[len(positionals):]
 
 
-def _bind_keywords(parameters: Iterable[Parameter],
+def _bind_keywords(parameters: Tuple[Parameter, ...],
                    kwargs: Dict[str, Any],
                    *,
-                   has_variadic: bool) -> Iterable[Parameter]:
-    parameters_by_name = OrderedDict((parameter.name, parameter)
-                                     for parameter in parameters)
-    unexpected_kwargs_names = set(kwargs) - set(parameters_by_name)
-    if unexpected_kwargs_names and not has_variadic:
-        value = 'argument' + 's' * (len(unexpected_kwargs_names) != 1)
+                   has_variadic: bool) -> Tuple[Parameter, ...]:
+    kwargs_names = set(kwargs)
+    extra_kwargs_names = (kwargs_names -
+                          {parameter.name
+                           for parameter in parameters
+                           if parameter.kind in Parameter.keywords_kinds})
+    if extra_kwargs_names and not has_variadic:
+        value = 'argument' + 's' * (len(extra_kwargs_names) != 1)
         raise TypeError('Got unexpected keyword {value} "{names}".'
                         .format(value=value,
-                                names='", "'.join(unexpected_kwargs_names)))
-    for name in kwargs:
-        parameter = parameters_by_name[name]
-        if parameter.kind not in Parameter.keywords_kinds:
-            raise TypeError('Parameter "{name}" is {kind!s}, '
-                            'but was passed as a keyword.'
-                            .format(name=name,
-                                    kind=parameter.kind))
-        parameters_by_name[name] = Parameter(name=name,
-                                             kind=Parameter.Kind.KEYWORD_ONLY,
-                                             has_default=True)
-    yield from chain.from_iterable(to_parameters_by_kind(parameters_by_name
-                                                         .values())
-                                   .values())
+                                names='", "'.join(extra_kwargs_names)))
+    kwargs_names -= extra_kwargs_names
+    if not kwargs_names:
+        return parameters
+    first_kwarg_index = next(index
+                             for index, parameter in enumerate(parameters)
+                             if parameter.name in kwargs_names)
+
+    def process_keyword(parameter: Parameter) -> Parameter:
+        return Parameter(name=parameter.name,
+                         kind=Parameter.Kind.KEYWORD_ONLY,
+                         has_default=(parameter.has_default
+                                      or parameter.name in kwargs_names))
+
+    return (parameters[:first_kwarg_index]
+            + tuple(process_keyword(parameter)
+                    if parameter.kind in Parameter.keywords_kinds
+                    else parameter
+                    for parameter in parameters[first_kwarg_index:]
+                    if parameter.kind != Parameter.Kind.VARIADIC_POSITIONAL))
 
 
 class Overloaded(Base):
