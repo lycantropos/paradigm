@@ -1,9 +1,11 @@
 import enum
 from abc import (ABC,
                  abstractmethod)
-from collections import defaultdict
+from collections import (OrderedDict,
+                         defaultdict)
 from itertools import (chain,
-                       starmap)
+                       starmap,
+                       takewhile)
 from operator import (attrgetter,
                       methodcaller)
 from typing import (Any,
@@ -294,58 +296,58 @@ def _bind_positionals(parameters: Iterable[Parameter],
                       kwargs: Dict[str, Domain],
                       *,
                       has_variadic: bool) -> Iterable[Parameter]:
-    positionals_count = 0
-    parameters = iter(parameters)
-    for _ in args:
-        for parameter in parameters:
-            if parameter.kind in Parameter.positionals_kinds:
-                if parameter.name in kwargs:
-                    if parameter.kind in Parameter.keywords_kinds:
-                        raise TypeError('Got multiple values '
-                                        'for parameter "{parameter}".'
-                                        .format(parameter=parameter.name))
-                    else:
-                        raise TypeError('Parameter "{parameter}" is {kind!s}, '
-                                        'but was passed as a keyword.'
-                                        .format(kind=parameter.kind,
-                                                parameter=parameter.name))
-                positionals_count += 1
-                break
-            yield parameter
-        else:
-            if has_variadic:
-                return
-            value = 'argument' + 's' * (positionals_count != 1)
-            raise TypeError('Takes {parameters_count} positional {value}, '
-                            'but {arguments_count} were given.'
-                            .format(parameters_count=positionals_count,
-                                    value=value,
-                                    arguments_count=len(args)))
-    yield from parameters
+    def is_positional(parameter: Parameter) -> bool:
+        return parameter.kind in Parameter.positionals_kinds
+
+    positionals = list(takewhile(is_positional, parameters))
+    if len(args) > len(positionals) and not has_variadic:
+        value = 'argument' + 's' * (len(positionals) != 1)
+        raise TypeError('Takes {parameters_count} positional {value}, '
+                        'but {arguments_count} were given.'
+                        .format(parameters_count=len(positionals),
+                                value=value,
+                                arguments_count=len(args)))
+    for positional in positionals[:len(args)]:
+        if positional.name in kwargs:
+            if positional.kind in Parameter.keywords_kinds:
+                raise TypeError('Got multiple values '
+                                'for parameter "{name}".'
+                                .format(name=positional.name))
+            else:
+                raise TypeError('Parameter "{name}" is {kind!s}, '
+                                'but was passed as a keyword.'
+                                .format(name=positional.name,
+                                        kind=positional.kind))
+    yield from positionals[len(args):]
+    yield from parameters[len(positionals):]
 
 
 def _bind_keywords(parameters: Iterable[Parameter],
                    kwargs: Dict[str, Any],
                    *,
                    has_variadic: bool) -> Iterable[Parameter]:
-    kwargs_names = set(kwargs)
-    for parameter in parameters:
-        if parameter.name in kwargs_names:
-            if parameter.kind not in Parameter.keywords_kinds:
-                raise TypeError('Parameter "{parameter}" is {kind!s}, '
-                                'but was passed as a keyword.'
-                                .format(kind=parameter.kind,
-                                        parameter=parameter.name))
-            yield Parameter(name=parameter.name,
-                            kind=parameter.kind,
-                            has_default=True)
-            kwargs_names.remove(parameter.name)
-            continue
-        yield parameter
-    if kwargs_names and not has_variadic:
-        raise TypeError('Got unexpected '
-                        'keyword arguments "{arguments_names}".'
-                        .format(arguments_names='", "'.join(kwargs_names)))
+    parameters_by_name = OrderedDict((parameter.name, parameter)
+                                     for parameter in parameters)
+    unexpected_kwargs_names = set(kwargs) - set(parameters_by_name)
+    if unexpected_kwargs_names and not has_variadic:
+        value = 'argument' + 's' * (len(unexpected_kwargs_names) != 1)
+        raise TypeError('Got unexpected keyword {value} "{names}".'
+                        .format(value=value,
+                                names='", "'.join(unexpected_kwargs_names)))
+    for name in kwargs:
+        parameter = parameters_by_name[name]
+        if parameter.kind not in Parameter.keywords_kinds:
+            raise TypeError('Parameter "{name}" is {kind!s}, '
+                            'but was passed as a keyword.'
+                            .format(name=name,
+                                    kind=parameter.kind))
+        parameters_by_name[name] = Parameter(
+                name=name,
+                kind=Parameter.Kind.KEYWORD_ONLY,
+                has_default=True)
+    yield from chain.from_iterable(to_parameters_by_kind(parameters_by_name
+                                                         .values())
+                                   .values())
 
 
 class Overloaded(Base):
