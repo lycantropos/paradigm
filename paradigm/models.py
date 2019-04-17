@@ -339,15 +339,11 @@ def _bind_keywords(parameters: Tuple[Parameter, ...],
     first_kwarg_index = next(index
                              for index, parameter in enumerate(parameters)
                              if parameter.name in kwargs_names)
-
-    def process_keyword(parameter: Parameter) -> Parameter:
-        return Parameter(name=parameter.name,
-                         kind=Parameter.Kind.KEYWORD_ONLY,
-                         has_default=(parameter.has_default
-                                      or parameter.name in kwargs_names))
-
     return (parameters[:first_kwarg_index]
-            + tuple(process_keyword(parameter)
+            + tuple(Parameter(name=parameter.name,
+                              kind=Parameter.Kind.KEYWORD_ONLY,
+                              has_default=(parameter.has_default
+                                           or parameter.name in kwargs_names))
                     if parameter.kind in Parameter.keywords_kinds
                     else parameter
                     for parameter in parameters[first_kwarg_index:]
