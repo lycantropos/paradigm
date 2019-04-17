@@ -304,7 +304,7 @@ def _bind_positionals(parameters: Tuple[Parameter, ...],
                         .format(parameters_count=len(positionals),
                                 value=value,
                                 arguments_count=len(args),
-                                verb='were' if len(args) > 1 else 'was'))
+                                verb='was' if len(args) == 1 else 'were'))
     for positional in positionals[:len(args)]:
         if positional.name in kwargs:
             if positional.kind in Parameter.keywords_kinds:
