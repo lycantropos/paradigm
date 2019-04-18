@@ -42,6 +42,8 @@ class Parameter:
                  name: str,
                  kind: Kind,
                  has_default: bool) -> None:
+        # performing validation inside of `__init__` instead of `__new__`,
+        # because `pickle` does not support keyword only arguments in `__new__`
         if (kind not in (self.positionals_kinds | self.keywords_kinds)
                 and has_default):
             raise ValueError('Variadic parameters '
