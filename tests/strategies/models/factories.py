@@ -25,6 +25,25 @@ from tests.utils import (negate,
                          pack)
 
 
+def to_parameters(*,
+                  names: SearchStrategy[str] = identifiers,
+                  kinds: SearchStrategy[Parameter.Kind],
+                  has_default_flags: SearchStrategy[bool] =
+                  strategies.booleans()) -> SearchStrategy[Parameter]:
+    def normalize_mapping(mapping: Dict[str, Any]) -> Dict[str, Any]:
+        if mapping['kind'] not in (Parameter.positionals_kinds
+                                   | Parameter.keywords_kinds):
+            return {**mapping, 'has_default': False}
+        return mapping
+
+    return (strategies.fixed_dictionaries(dict(
+            name=names,
+            kind=kinds,
+            has_default=has_default_flags))
+            .map(normalize_mapping)
+            .map(lambda mapping: Parameter(**mapping)))
+
+
 def to_plain_signatures(*,
                         parameters_names: SearchStrategy[str] = identifiers,
                         parameters_kinds: SearchStrategy[Parameter.Kind],
@@ -49,24 +68,6 @@ def to_plain_signatures(*,
     empty = strategies.builds(Plain)
     if max_size == 0:
         return empty
-
-    def to_parameters(*,
-                      names: SearchStrategy[str] = identifiers,
-                      kinds: SearchStrategy[Parameter.Kind],
-                      has_default_flags: SearchStrategy[bool] =
-                      strategies.booleans()) -> SearchStrategy[Parameter]:
-        def normalize_mapping(mapping: Dict[str, Any]) -> Dict[str, Any]:
-            if mapping['kind'] not in (Parameter.positionals_kinds
-                                       | Parameter.keywords_kinds):
-                return {**mapping, 'has_default': False}
-            return mapping
-
-        return (strategies.fixed_dictionaries(dict(
-                name=names,
-                kind=kinds,
-                has_default=has_default_flags))
-                .map(normalize_mapping)
-                .map(lambda mapping: Parameter(**mapping)))
 
     @strategies.composite
     def extend(draw: Map[SearchStrategy[Domain], Domain],

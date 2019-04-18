@@ -1,3 +1,4 @@
+import pickle
 from functools import singledispatch
 from typing import (Any,
                     Callable,
@@ -79,3 +80,7 @@ def is_plain_signature_empty(signature: models.Plain) -> bool:
 @is_signature_empty.register(models.Overloaded)
 def is_overloaded_signature_empty(signature: models.Overloaded) -> bool:
     return not signature.signatures
+
+
+def round_trip_pickle(object_: Any) -> Any:
+    return pickle.loads(pickle.dumps(object_))

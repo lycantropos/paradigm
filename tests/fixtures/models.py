@@ -12,6 +12,11 @@ from tests.utils import (find,
 
 
 @pytest.fixture(scope='function')
+def parameter() -> models.Parameter:
+    return find(strategies.parameters)
+
+
+@pytest.fixture(scope='function')
 def signature() -> models.Base:
     return find(strategies.signatures)
 
