@@ -15,6 +15,7 @@ from .definitions import (built_in_functions,
                           wrappers_descriptors)
 from .models.base import (non_variadic_signatures,
                           overloaded_signatures,
+                          parameters,
                           plain_signatures,
                           signatures)
 from .models.factories import (to_expected_args,
