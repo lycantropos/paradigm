@@ -1,8 +1,8 @@
 from hypothesis import given
 
 from paradigm import catalog
-from tests import strategies
 from tests.utils import equivalence
+from . import strategies
 
 
 @given(strategies.objects_paths)

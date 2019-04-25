@@ -1,7 +1,13 @@
+from hypothesis import given
+
 from paradigm import models
 from tests.utils import round_trip_pickle
+from . import strategies
 
 
+@given(strategies.parameters,
+       strategies.plain_signatures,
+       strategies.overloaded_signatures)
 def test_models(parameter: models.Parameter,
                 plain_signature: models.Plain,
                 overloaded_signature: models.Overloaded) -> None:

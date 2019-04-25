@@ -7,13 +7,22 @@ from typing import (Any,
                     Callable)
 
 import pytest
+from hypothesis import given
 
 from paradigm import (models,
                       signatures)
 from paradigm.hints import (MethodDescriptorType,
                             WrapperDescriptorType)
+from . import strategies
 
 
+@given(strategies.built_in_functions,
+       strategies.classes,
+       strategies.functions,
+       strategies.methods,
+       strategies.methods_descriptors,
+       strategies.wrappers_descriptors,
+       strategies.partial_callables)
 def test_basic(built_in_function: BuiltinFunctionType,
                class_: type,
                function: FunctionType,
@@ -35,14 +44,16 @@ def test_basic(built_in_function: BuiltinFunctionType,
 
 @pytest.mark.skipif(platform.python_implementation() == 'PyPy',
                     reason='requires CPython')
-def test_overloaded(overloaded_callable: Callable[..., Any]) -> None:
-    result = signatures.factory(overloaded_callable)
+@given(strategies.overloaded_callables)
+def test_overloaded(callable_: Callable[..., Any]) -> None:
+    result = signatures.factory(callable_)
 
     assert isinstance(result, models.Overloaded)
 
 
 @pytest.mark.skipif(platform.python_implementation() == 'PyPy',
                     reason='requires CPython')
-def test_fail(unsupported_callable: Callable[..., Any]) -> None:
+@given(strategies.unsupported_callables)
+def test_fail(callable_: Callable[..., Any]) -> None:
     with pytest.raises(ValueError):
-        signatures.factory(unsupported_callable)
+        signatures.factory(callable_)

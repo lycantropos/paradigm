@@ -1,35 +1,45 @@
-from typing import (Any,
-                    Dict,
-                    Tuple)
+from typing import Tuple
+
+from hypothesis import given
 
 from paradigm import models
+from tests.utils import (Args,
+                         Kwargs)
+from . import strategies
 
 
-def test_basic(non_empty_signature: models.Base) -> None:
-    assert non_empty_signature.expects()
+@given(strategies.signatures)
+def test_basic(signature: models.Base) -> None:
+    assert signature.expects()
 
 
-def test_expected_args(non_empty_signature: models.Base,
-                       non_empty_signature_expected_args: Tuple[Any, ...]
-                       ) -> None:
-    assert non_empty_signature.expects(*non_empty_signature_expected_args)
+@given(strategies.non_empty_signatures_with_expected_args)
+def test_expected_args(
+        signature_with_expected_args: Tuple[models.Base, Args]) -> None:
+    signature, expected_args = signature_with_expected_args
+
+    assert signature.expects(*expected_args)
 
 
-def test_expected_kwargs(non_empty_signature: models.Base,
-                         non_empty_signature_expected_kwargs: Dict[str, Any]
-                         ) -> None:
-    assert non_empty_signature.expects(**non_empty_signature_expected_kwargs)
+@given(strategies.non_empty_signatures_with_expected_kwargs)
+def test_expected_args(
+        signature_with_expected_kwargs: Tuple[models.Base, Kwargs]) -> None:
+    signature, expected_kwargs = signature_with_expected_kwargs
+
+    assert signature.expects(**expected_kwargs)
 
 
+@given(strategies.non_variadic_signatures_with_unexpected_args)
 def test_unexpected_args(
-        non_variadic_signature: models.Base,
-        non_variadic_signature_unexpected_args: Tuple[Any, ...]) -> None:
-    assert not non_variadic_signature.expects(
-            *non_variadic_signature_unexpected_args)
+        signature_with_unexpected_args: Tuple[models.Base, Args]) -> None:
+    signature, unexpected_args = signature_with_unexpected_args
+
+    assert not signature.expects(*unexpected_args)
 
 
+@given(strategies.non_variadic_signatures_with_unexpected_kwargs)
 def test_unexpected_kwargs(
-        non_variadic_signature: models.Base,
-        non_variadic_signature_unexpected_kwargs: Dict[str, Any]) -> None:
-    assert not non_variadic_signature.expects(
-            **non_variadic_signature_unexpected_kwargs)
+        signature_with_unexpected_kwargs: Tuple[models.Base, Kwargs]) -> None:
+    signature, unexpected_kwargs = signature_with_unexpected_kwargs
+
+    assert not signature.expects(**unexpected_kwargs)
