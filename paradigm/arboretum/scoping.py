@@ -1,4 +1,5 @@
 import builtins
+import copy
 
 from paradigm import catalog
 from . import examination
@@ -15,16 +16,24 @@ def to_children_scope(path: catalog.Path,
             and object_path != path}
 
 
+def populate(module_path: catalog.Path,
+             *,
+             scope: Scope) -> None:
+    root = to_flat_root(module_path)
+    examination.conduct(root,
+                        module_path=module_path,
+                        scope=scope)
+
+
+builtins_module_path = catalog.factory(builtins)
 builtins_scope = {}
+populate(builtins_module_path,
+         scope=builtins_scope)
 
 
 def factory(module_path: catalog.Path) -> Scope:
-    root = to_flat_root(module_path)
-    result = dict(builtins_scope)
-    examination.conduct(root,
-                        module_path=module_path,
-                        scope=result)
+    result = copy.deepcopy(builtins_scope)
+    if module_path != builtins_module_path:
+        populate(module_path,
+                 scope=result)
     return result
-
-
-builtins_scope.update(factory(catalog.factory(builtins)))
