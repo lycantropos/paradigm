@@ -2,12 +2,13 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any
 
+from paradigm import catalog
 from tests.strategies import (invalid_sources,
-                              modules_paths,
+                              modules,
                               paths)
 from tests.utils import negate
 
-modules_paths = modules_paths
+modules_paths = modules.map(catalog.from_module)
 non_existent_files_paths = paths.filter(negate(Path.exists))
 
 

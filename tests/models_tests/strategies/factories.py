@@ -8,7 +8,6 @@ from typing import (Any,
                     Tuple)
 
 from hypothesis import strategies
-from hypothesis.searchstrategy import SearchStrategy
 
 from paradigm.hints import (Domain,
                             Map,
@@ -19,17 +18,20 @@ from paradigm.models import (Base,
                              Plain,
                              to_parameters_by_kind,
                              to_parameters_by_name)
-from tests.strategies.utils import (identifiers,
-                                    to_homogeneous_tuples)
-from tests.utils import (negate,
+from tests.strategies import (identifiers,
+                              to_homogeneous_tuples)
+from tests.utils import (Args,
+                         Kwargs,
+                         Strategy,
+                         negate,
                          pack)
 
 
 def to_parameters(*,
-                  names: SearchStrategy[str] = identifiers,
-                  kinds: SearchStrategy[Parameter.Kind],
-                  has_default_flags: SearchStrategy[bool] =
-                  strategies.booleans()) -> SearchStrategy[Parameter]:
+                  names: Strategy[str] = identifiers,
+                  kinds: Strategy[Parameter.Kind],
+                  has_default_flags: Strategy[bool] =
+                  strategies.booleans()) -> Strategy[Parameter]:
     def normalize_mapping(mapping: Dict[str, Any]) -> Dict[str, Any]:
         if mapping['kind'] not in (Parameter.positionals_kinds
                                    | Parameter.keywords_kinds):
@@ -45,13 +47,12 @@ def to_parameters(*,
 
 
 def to_plain_signatures(*,
-                        parameters_names: SearchStrategy[str] = identifiers,
-                        parameters_kinds: SearchStrategy[Parameter.Kind],
-                        parameters_has_default_flags: SearchStrategy[bool] =
+                        parameters_names: Strategy[str] = identifiers,
+                        parameters_kinds: Strategy[Parameter.Kind],
+                        parameters_has_default_flags: Strategy[bool] =
                         strategies.booleans(),
                         min_size: int = 0,
-                        max_size: int
-                        ) -> SearchStrategy[Base]:
+                        max_size: int) -> Strategy[Base]:
     if min_size < 0:
         raise ValueError('Min size '
                          'should not be negative, '
@@ -70,9 +71,9 @@ def to_plain_signatures(*,
         return empty
 
     @strategies.composite
-    def extend(draw: Map[SearchStrategy[Domain], Domain],
-               base: SearchStrategy[Tuple[Parameter, ...]]
-               ) -> SearchStrategy[Tuple[Parameter, ...]]:
+    def extend(draw: Map[Strategy[Domain], Domain],
+               base: Strategy[Tuple[Parameter, ...]]
+               ) -> Strategy[Tuple[Parameter, ...]]:
         precursors = draw(base)
         precursors_names = set(map(attrgetter('name'), precursors))
         precursors_kinds = to_parameters_by_kind(precursors)
@@ -115,21 +116,44 @@ def to_plain_signatures(*,
     return non_empty
 
 
-def to_overloaded_signatures(bases: SearchStrategy[Base],
+def to_overloaded_signatures(bases: Strategy[Base],
                              *,
                              min_size: int = 2,
-                             max_size: int = None
-                             ) -> SearchStrategy[Base]:
+                             max_size: int = None) -> Strategy[Base]:
     return (strategies.lists(bases,
                              min_size=min_size,
                              max_size=max_size)
             .map(pack(Overloaded)))
 
 
+def to_signature_with_unexpected_args(signature: Base
+                                      ) -> Strategy[Tuple[Base, Args]]:
+    return strategies.tuples(strategies.just(signature),
+                             to_unexpected_args(signature))
+
+
+def to_signature_with_unexpected_kwargs(signature: Base
+                                        ) -> Strategy[Tuple[Base, Kwargs]]:
+    return strategies.tuples(strategies.just(signature),
+                             to_unexpected_kwargs(signature))
+
+
+def to_signature_with_expected_args(signature: Base
+                                    ) -> Strategy[Tuple[Base, Args]]:
+    return strategies.tuples(strategies.just(signature),
+                             to_expected_args(signature))
+
+
+def to_signature_with_expected_kwargs(signature: Base
+                                      ) -> Strategy[Tuple[Base, Kwargs]]:
+    return strategies.tuples(strategies.just(signature),
+                             to_expected_kwargs(signature))
+
+
 def to_expected_args(signature: Base,
                      *,
-                     values: SearchStrategy[Domain] = strategies.none()
-                     ) -> SearchStrategy[Tuple[Domain, ...]]:
+                     values: Strategy[Domain] = strategies.none()
+                     ) -> Strategy[Args]:
     count = signature_to_min_positionals_count(signature)
     return to_homogeneous_tuples(values,
                                  max_size=count)
@@ -137,8 +161,8 @@ def to_expected_args(signature: Base,
 
 def to_expected_kwargs(signature: Base,
                        *,
-                       values: SearchStrategy[Domain] = strategies.none()
-                       ) -> SearchStrategy[Dict[str, Domain]]:
+                       values: Strategy[Domain] = strategies.none()
+                       ) -> Strategy[Kwargs]:
     keywords = signature_to_keywords_intersection(signature)
     if not keywords:
         return strategies.fixed_dictionaries({})
@@ -149,8 +173,8 @@ def to_expected_kwargs(signature: Base,
 
 def to_unexpected_args(signature: Base,
                        *,
-                       values: SearchStrategy[Domain] = strategies.none()
-                       ) -> SearchStrategy[Tuple[Domain, ...]]:
+                       values: Strategy[Domain] = strategies.none()
+                       ) -> Strategy[Args]:
     count = signature_to_max_positionals_count(signature) + 1
     return to_homogeneous_tuples(values,
                                  min_size=count)
@@ -158,8 +182,8 @@ def to_unexpected_args(signature: Base,
 
 def to_unexpected_kwargs(signature: Base,
                          *,
-                         values: SearchStrategy[Domain] = strategies.none()
-                         ) -> SearchStrategy[Dict[str, Domain]]:
+                         values: Strategy[Domain] = strategies.none()
+                         ) -> Strategy[Kwargs]:
     keywords = signature_to_keywords_union(signature)
     is_unexpected = negate(keywords.__contains__)
     return (strategies.dictionaries(identifiers.filter(is_unexpected), values)

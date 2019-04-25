@@ -1,40 +1,46 @@
 from functools import (partial,
                        singledispatch)
-from typing import (Any,
-                    Dict,
-                    Iterable,
+from typing import (Iterable,
                     Tuple)
 
 import pytest
+from hypothesis import given
 
 from paradigm import models
-from tests.utils import implication
+from tests.utils import (Args,
+                         Kwargs,
+                         implication)
+from . import strategies
 
 
-def test_basic(non_empty_signature: models.Base) -> None:
-    result = non_empty_signature.bind()
+@given(strategies.signatures)
+def test_basic(signature) -> None:
+    result = signature.bind()
 
-    assert result == non_empty_signature
+    assert result == signature
 
 
-def test_expected_args(non_empty_signature: models.Base,
-                       non_empty_signature_expected_args: Tuple[Any, ...]
+@given(strategies.non_empty_signatures_with_expected_args)
+def test_expected_args(signature_with_expected_args: Tuple[models.Base, Args]
                        ) -> None:
-    result = non_empty_signature.bind(*non_empty_signature_expected_args)
+    signature, expected_args = signature_with_expected_args
 
-    assert implication(bool(non_empty_signature_expected_args),
-                       result != non_empty_signature)
+    result = signature.bind(*expected_args)
+
+    assert implication(bool(expected_args),
+                       result != signature)
 
 
-def test_expected_kwargs(non_empty_signature: models.Base,
-                         non_empty_signature_expected_kwargs: Dict[str, Any]
-                         ) -> None:
-    result = non_empty_signature.bind(**non_empty_signature_expected_kwargs)
+@given(strategies.non_empty_signatures_with_expected_kwargs)
+def test_expected_kwargs(
+        signature_with_expected_kwargs: Tuple[models.Base, Kwargs]) -> None:
+    signature, expected_kwargs = signature_with_expected_kwargs
+    result = signature.bind(**expected_kwargs)
 
-    assert implication(bool(non_empty_signature_expected_kwargs),
+    assert implication(bool(expected_kwargs),
                        signature_parameters_has_defaults(
                                result,
-                               names=non_empty_signature_expected_kwargs))
+                               names=expected_kwargs))
 
 
 @singledispatch
@@ -63,15 +69,19 @@ def overloaded_signature_parameters_has_defaults(
                    signature.signatures))
 
 
+@given(strategies.non_variadic_signatures_with_unexpected_args)
 def test_unexpected_args(
-        non_variadic_signature: models.Base,
-        non_variadic_signature_unexpected_args: Tuple[Any, ...]) -> None:
+        signature_with_unexpected_args: Tuple[models.Base, Args]) -> None:
+    signature, unexpected_args = signature_with_unexpected_args
+
     with pytest.raises(TypeError):
-        non_variadic_signature.bind(*non_variadic_signature_unexpected_args)
+        signature.bind(*unexpected_args)
 
 
+@given(strategies.non_variadic_signatures_with_unexpected_args)
 def test_unexpected_kwargs(
-        non_variadic_signature: models.Base,
-        non_variadic_signature_unexpected_kwargs: Dict[str, Any]) -> None:
+        signature_with_unexpected_kwargs: Tuple[models.Base, Kwargs]) -> None:
+    signature, unexpected_kwargs = signature_with_unexpected_kwargs
+
     with pytest.raises(TypeError):
-        non_variadic_signature.bind(**non_variadic_signature_unexpected_kwargs)
+        signature.bind(**unexpected_kwargs)
