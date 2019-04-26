@@ -1,3 +1,3 @@
 """Python objects metadata parser."""
 
-__version__ = '0.2.5-alpha'
+__version__ = '0.2.5'
