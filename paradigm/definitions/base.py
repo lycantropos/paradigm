@@ -94,9 +94,10 @@ def is_module_path_supported(module_path: catalog.Path) -> bool:
 
 def find_spec(module_path: catalog.Path
               ) -> Optional[importlib.machinery.ModuleSpec]:
+    module_name = str(module_path)
     try:
-        return importlib.util.find_spec(str(module_path))
-    except ImportError:
+        return importlib.util.find_spec(module_name)
+    except (ImportError, ValueError):
         return None
 
 
