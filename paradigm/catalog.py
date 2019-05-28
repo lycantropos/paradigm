@@ -15,7 +15,8 @@ from typing import (Any,
                     Optional,
                     Union)
 
-from . import cached
+from memoir import cached
+
 from .file_system import INIT_MODULE_NAME
 from .hints import (MethodDescriptorType,
                     WrapperDescriptorType)
