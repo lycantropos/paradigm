@@ -18,7 +18,8 @@ from typing import (Any,
                     Optional)
 from weakref import WeakKeyDictionary
 
-from . import cached
+from memoir import cached
+
 from .hints import (Map,
                     MethodDescriptorType,
                     WrapperDescriptorType)

@@ -13,7 +13,8 @@ from typing import (Any,
                     List,
                     Tuple)
 
-from . import cached
+from memoir import cached
+
 from .hints import Domain
 
 
