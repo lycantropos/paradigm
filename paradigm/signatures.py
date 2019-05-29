@@ -123,6 +123,14 @@ else:
                 method_signature = next(filter(None, map(signature_factory,
                                                          method_paths)))
             except StopIteration:
+                try:
+                    base, = object_.__bases__
+                except ValueError:
+                    pass
+                else:
+                    if (object_.__init__ is base.__init__
+                            and object_.__new__ is base.__new__):
+                        return from_class(base)
                 raise error
             else:
                 return slice_parameters(method_signature, slice(1, None))
