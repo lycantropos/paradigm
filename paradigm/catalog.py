@@ -78,13 +78,14 @@ def paths_factory(object_: Any) -> Iterable[Path]:
 @paths_factory.register(type)
 def paths_from_class_or_function(object_: Union[BuiltinMethodType,
                                                 FunctionType,
-                                                MethodDescriptorType, type]
-                                 ) -> Iterable[Path]:
+                                                MethodDescriptorType, type],
+                                 *,
+                                 max_depth: int = 2) -> Iterable[Path]:
     module = importlib.import_module(module_name_factory(object_))
-    propertyspaces = iter(((Path(), module),))
+    propertyspaces = iter(((Path(), module, 0),))
     while True:
         try:
-            parent_path, propertyspace = next(propertyspaces)
+            parent_path, propertyspace, depth = next(propertyspaces)
         except StopIteration:
             break
 
@@ -95,10 +96,12 @@ def paths_from_class_or_function(object_: Union[BuiltinMethodType,
         yield from (to_path(name)
                     for name, content in namespace.items()
                     if content is object_)
-        propertyspaces = chain(propertyspaces,
-                               [(to_path(name), content)
-                                for name, content in namespace.items()
-                                if inspect.isclass(content)])
+        next_depth = depth + 1
+        if next_depth < max_depth:
+            propertyspaces = chain(propertyspaces,
+                                   [(to_path(name), content, next_depth)
+                                    for name, content in namespace.items()
+                                    if inspect.isclass(content)])
     yield from paths_factory(object_.__qualname__)
 
 
