@@ -57,17 +57,18 @@ if platform.python_implementation() == 'PyPy':
         try:
             return from_callable(object_)
         except ValueError:
-            method = None
-            for cls, next_cls in zip(object_.__mro__, object_.__mro__[1:]):
-                if cls.__new__ is not next_cls.__new__:
-                    method = cls.__new__
-                    break
-                elif cls.__init__ is not next_cls.__init__:
-                    method = cls.__init__
-                    break
+            method = find_initializer_or_constructor(object_)
             if method is None:
                 raise
             return slice_parameters(factory(method), slice(1, None))
+
+
+    def find_initializer_or_constructor(class_: type) -> Callable:
+        for cls, next_cls in zip(class_.__mro__, class_.__mro__[1:]):
+            if cls.__init__ is not next_cls.__init__:
+                return cls.__init__
+            elif cls.__new__ is not next_cls.__new__:
+                return cls.__new__
 else:
     from typed_ast import ast3
 
