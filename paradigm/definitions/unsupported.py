@@ -36,15 +36,8 @@ if platform.python_implementation() != 'PyPy':
     import _multibytecodec
     import _multiprocessing
     import _string
-    import aifc
     import audioop
-    import bdb
-    import ctypes
-    import faulthandler
-    import mailbox
     import parser
-    import turtle
-    import unittest
     import xxsubtype
 
     # not supported by ``typeshed`` package
@@ -59,15 +52,8 @@ if platform.python_implementation() != 'PyPy':
                            _multibytecodec,
                            _multiprocessing,
                            _string,
-                           aifc,
                            audioop,
-                           bdb,
-                           ctypes,
-                           faulthandler,
-                           mailbox,
                            parser,
-                           turtle,
-                           unittest,
                            xxsubtype})
 
     if sys.version_info >= (3, 6):
@@ -101,6 +87,7 @@ if platform.python_implementation() != 'PyPy':
     import _json
     import _thread
     import codecs
+    import ctypes
     import socket
 
     # not supported by ``typeshed`` package
@@ -122,6 +109,8 @@ if platform.python_implementation() != 'PyPy':
                                codecs.replace_errors,
                                codecs.strict_errors,
                                codecs.xmlcharrefreplace_errors,
+                               ctypes._dlopen,
+                               ctypes.pointer,
                                socket.dup,
                                sys.callstats,
                                sys.getallocatedblocks,
@@ -159,19 +148,11 @@ if platform.python_implementation() != 'PyPy':
     import _ssl
     import _thread
     import asyncio.events
+    import ctypes
     import encodings
-    import imaplib
     import itertools
-    import macpath
-    import pdb
     import random
-    import runpy
-    import smtplib
     import socket
-    import tarfile
-    import tkinter
-    import unittest
-    import warnings
 
     # not supported by ``typeshed`` package
     classes.update({_collections_abc.mappingproxy,
@@ -183,59 +164,27 @@ if platform.python_implementation() != 'PyPy':
                     _thread.RLock,
                     _thread._local,
                     asyncio.events._RunningLoop,
-                    imaplib.IMAP4.abort,
-                    imaplib.IMAP4.error,
-                    imaplib.IMAP4.readonly,
+                    ctypes._CFuncPtr,
                     itertools._grouper,
                     itertools._tee,
                     itertools._tee_dataobject,
                     encodings.CodecRegistryError,
-                    macpath.norm_error,
-                    pdb._rstr,
-                    random._MethodType,
-                    runpy._Error,
-                    smtplib.SMTPNotSupportedError,
-                    socket._GiveupOnSendfile,
-                    tarfile.EmptyHeaderError,
-                    tarfile.EOFHeaderError,
-                    tarfile.InvalidHeaderError,
-                    tarfile.TruncatedHeaderError,
-                    tarfile.SubsequentHeaderError,
-                    tkinter.TclError,
-                    unittest.case.SkipTest,
-                    warnings._OptionError})
-
-    if sys.version_info >= (3, 6):
-        import _ast
-        import asyncio.base_futures
-
-        classes.update({_ast.Constant,
-                        asyncio.base_futures.InvalidStateError})
+                    random._MethodType})
 
     if sys.version_info < (3, 7):
-        import os
-        import plistlib
-
-        classes.update({_collections_abc.range_iterator,
-                        plistlib._InternalDict})
+        classes.add(_collections_abc.range_iterator)
     else:
         import dataclasses
-        import typing
 
-        classes.update({asyncio.events.SendfileNotAvailableError,
-                        dataclasses._InitVarMeta,
-                        typing._ProtocolMeta})
+        classes.add(dataclasses._InitVarMeta)
 
     if sys.platform == 'win32':
         import msilib
-        import subprocess
 
         classes.update({msilib.UuidCreate,
                         msilib.FCICreate,
                         msilib.OpenDatabase,
-                        msilib.CreateRecord,
-                        msilib.MSIError,
-                        subprocess.Handle})
+                        msilib.CreateRecord})
 
         if sys.version_info < (3, 7):
             import os
