@@ -130,6 +130,12 @@ else:
                 else:
                     if (object_.__init__ is base.__init__
                             and object_.__new__ is base.__new__):
+                        if object_ is not type and base is type:
+                            result = from_class(type)
+                            if isinstance(result, Overloaded):
+                                result = max(result.signatures,
+                                             key=to_max_parameters_count)
+                            return result
                         return from_class(base)
                 raise error
             else:
@@ -246,3 +252,19 @@ def slice_overloaded_parameters(signature: Overloaded,
     return Overloaded(*map(partial(slice_parameters,
                                    slice_=slice_),
                            signature.signatures))
+
+
+@singledispatch
+def to_max_parameters_count(signature: Base) -> int:
+    raise TypeError('Unsupported signature type: {type}.'
+                    .format(type=type(signature)))
+
+
+@to_max_parameters_count.register(Plain)
+def to_max_plain_parameters_count(signature: Plain) -> int:
+    return len(signature.parameters)
+
+
+@to_max_parameters_count.register(Overloaded)
+def to_max_overloaded_parameters_count(signature: Overloaded) -> int:
+    return max(map(to_max_parameters_count, signature.signatures))
