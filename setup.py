@@ -11,7 +11,7 @@ install_requires = [
     'memoir>=0.0.1',
     'reprit>=0.0.1',
     'typing_extensions>=3.6.5',
-    'mypy>=0.700; platform_python_implementation != "PyPy"'
+    'mypy>=0.700; platform_python_implementation != "PyPy"',
 ]
 setup_requires = [
     'pytest-runner>=4.2',
@@ -25,6 +25,15 @@ tests_require = [
 setup(name='paradigm',
       packages=find_packages(exclude=('tests', 'tests.*',)),
       version=paradigm.__version__,
+      classifiers=[
+          'Intended Audience :: Developers',
+          'License :: OSI Approved :: MIT License',
+          'Programming Language :: Python :: 3.5',
+          'Programming Language :: Python :: 3.6',
+          'Programming Language :: Python :: 3.7',
+          'Programming Language :: Python :: Implementation :: CPython',
+          'Programming Language :: Python :: Implementation :: PyPy',
+      ],
       description=paradigm.__doc__,
       long_description=Path('README.md').read_text(encoding='utf-8'),
       long_description_content_type='text/markdown',
