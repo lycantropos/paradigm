@@ -16,8 +16,8 @@ install:
 build: false
 
 test_script:
-  - "%PYTHON%\\%EXECUTABLE% -m doctest README.md"
   - "%PYTHON%\\%EXECUTABLE% setup.py test"
+  - "%PYTHON%\\%EXECUTABLE% -m doctest README.md"
 
 on_success:
   - "%PYTHON%\\%EXECUTABLE% -m codecov -f coverage.xml -X gcov"
