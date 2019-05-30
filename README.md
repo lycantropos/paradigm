@@ -62,56 +62,81 @@ Usage
 `paradigm` can be used to obtain signature
 ```python
 >>> from paradigm import signatures
+
 ```
 for user-defined functions
 ```python
 >>> def func(foo, bar=None, **kwargs):
-        pass
+...     pass
 >>> signatures.factory(func)
 Plain(Parameter(name='foo', kind=Parameter.Kind.POSITIONAL_OR_KEYWORD, has_default=False), Parameter(name='bar', kind=Parameter.Kind.POSITIONAL_OR_KEYWORD, has_default=True), Parameter(name='kwargs', kind=Parameter.Kind.VARIADIC_KEYWORD, has_default=False))
+
 ```
 for user-defined classes
 ```python
 >>> class UpperOut:
-        def __init__(self, outfile):
-            self._outfile = outfile
-    
-        def write(self, s):
-            self._outfile.write(s.upper())
-    
-        def __getattr__(self, name):
-            return getattr(self._outfile, name)
+...     def __init__(self, outfile):
+...         self._outfile = outfile
+... 
+...     def write(self, s):
+...         self._outfile.write(s.upper())
+... 
+...     def __getattr__(self, name):
+...         return getattr(self._outfile, name)
 >>> signatures.factory(UpperOut)
 Plain(Parameter(name='outfile', kind=Parameter.Kind.POSITIONAL_OR_KEYWORD, has_default=False))
+
 ```
 for user-defined classes methods
 ```python
 >>> signatures.factory(UpperOut.write)
 Plain(Parameter(name='self', kind=Parameter.Kind.POSITIONAL_OR_KEYWORD, has_default=False), Parameter(name='s', kind=Parameter.Kind.POSITIONAL_OR_KEYWORD, has_default=False))
+
 ```
 for built-in functions
 ```python
->>> signatures.factory(any)
-# CPython
-Plain(Parameter(name='iterable', kind=Parameter.Kind.POSITIONAL_ONLY, has_default=False))
-# PyPy
-Plain(Parameter(name='seq', kind=Parameter.Kind.POSITIONAL_OR_KEYWORD, has_default=False))
+>>> import platform
+>>> from paradigm.models import Parameter, Plain
+>>> signatures.factory(any) == (
+...     Plain(Parameter(name='seq',
+...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
+...                     has_default=False))
+...     if platform.python_implementation() == 'PyPy'
+...     else Plain(Parameter(name='iterable',
+...                          kind=Parameter.Kind.POSITIONAL_ONLY,
+...                          has_default=False)))
+True
+
 ```
 for built-in classes
 ```python
->>> signatures.factory(float)
-# CPython
-Plain(Parameter(name='x', kind=Parameter.Kind.POSITIONAL_ONLY, has_default=True))
-# PyPy
-Plain(Parameter(name='x', kind=Parameter.Kind.POSITIONAL_OR_KEYWORD, has_default=True))
+>>> import platform
+>>> from paradigm.models import Parameter, Plain
+>>> signatures.factory(float) == (
+...     Plain(Parameter(name='x', 
+...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
+...                     has_default=True))
+...     if platform.python_implementation() == 'PyPy'
+...     else Plain(Parameter(name='x', 
+...                          kind=Parameter.Kind.POSITIONAL_ONLY,
+...                          has_default=True)))
+True
+
 ```
 for built-in classes methods
 ```python
->>> signatures.factory(float.as_integer_ratio)
-# CPython
-Plain(Parameter(name='self', kind=Parameter.Kind.POSITIONAL_ONLY, has_default=False))
-# PyPy
-Plain(Parameter(name='self', kind=Parameter.Kind.POSITIONAL_OR_KEYWORD, has_default=False))
+>>> import platform
+>>> from paradigm.models import Parameter, Plain
+>>> signatures.factory(float.as_integer_ratio) == (
+...     Plain(Parameter(name='self',
+...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
+...                     has_default=False))
+...     if platform.python_implementation() == 'PyPy'
+...     else Plain(Parameter(name='self',
+...                          kind=Parameter.Kind.POSITIONAL_ONLY,
+...                          has_default=False)))
+True
+
 ```
 
 Checking if object is supported by `paradigm` can be done with
@@ -119,6 +144,7 @@ Checking if object is supported by `paradigm` can be done with
 >>> from paradigm import definitions
 >>> definitions.is_supported(int.bit_length)
 True
+
 ```
 
 Development
