@@ -9,6 +9,7 @@ project_base_url = 'https://github.com/lycantropos/paradigm/'
 
 install_requires = [
     'memoir>=0.0.1',
+    'reprit>=0.0.1',
     'typing_extensions>=3.6.5',
     'mypy>=0.700; platform_python_implementation != "PyPy"'
 ]

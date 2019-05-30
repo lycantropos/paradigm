@@ -3,7 +3,6 @@ from abc import (ABC,
                  abstractmethod)
 from collections import defaultdict
 from itertools import (chain,
-                       starmap,
                        takewhile)
 from operator import (attrgetter,
                       methodcaller)
@@ -14,6 +13,7 @@ from typing import (Any,
                     Tuple)
 
 from memoir import cached
+from reprit.base import generate_repr
 
 from .hints import Domain
 
@@ -63,11 +63,7 @@ class Parameter:
     def __hash__(self) -> int:
         return hash((self.name, self.kind, self.has_default))
 
-    def __repr__(self) -> str:
-        return (type(self).__qualname__
-                + '('
-                + ', '.join(starmap('{}={!r}'.format, vars(self).items()))
-                + ')')
+    __repr__ = generate_repr(__init__)
 
     def __str__(self) -> str:
         return ''.join([self.kinds_prefixes[self.kind],
@@ -194,9 +190,7 @@ class Plain(Base):
     def __hash__(self) -> int:
         return hash(self._parameters)
 
-    def __repr__(self) -> str:
-        return (type(self).__qualname__
-                + '(' + ', '.join(map(repr, self._parameters)) + ')')
+    __repr__ = generate_repr(__init__)
 
     def __str__(self) -> str:
         positionals_only = self.parameters_by_kind[
@@ -371,9 +365,7 @@ class Overloaded(Base):
     def __hash__(self) -> int:
         return hash(self.signatures)
 
-    def __repr__(self) -> str:
-        return (type(self).__qualname__
-                + '(' + ', '.join(map(repr, self.signatures)) + ')')
+    __repr__ = generate_repr(__init__)
 
     def __str__(self) -> str:
         return ' or '.join(map(str, self.signatures))
