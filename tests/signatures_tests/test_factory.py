@@ -13,6 +13,7 @@ from paradigm import (models,
                       signatures)
 from paradigm.hints import (MethodDescriptorType,
                             WrapperDescriptorType)
+from tests.utils import slow_data_generation
 from . import strategies
 
 
@@ -23,6 +24,7 @@ from . import strategies
        strategies.methods_descriptors,
        strategies.wrappers_descriptors,
        strategies.partial_callables)
+@slow_data_generation
 def test_basic(built_in_function: BuiltinFunctionType,
                class_: type,
                function: FunctionType,
@@ -54,6 +56,7 @@ def test_overloaded(callable_: Callable[..., Any]) -> None:
 @pytest.mark.skipif(platform.python_implementation() == 'PyPy',
                     reason='requires CPython')
 @given(strategies.unsupported_callables)
+@slow_data_generation
 def test_fail(callable_: Callable[..., Any]) -> None:
     with pytest.raises(ValueError):
         signatures.factory(callable_)

@@ -4,6 +4,7 @@ from typing import (Any,
                     Dict,
                     Tuple)
 
+from hypothesis import settings
 from hypothesis.searchstrategy import SearchStrategy
 
 from paradigm.hints import (Domain,
@@ -40,3 +41,6 @@ def pack(function: Callable[..., Range]) -> Map[Tuple[Domain, ...], Range]:
 
 def round_trip_pickle(object_: Any) -> Any:
     return pickle.loads(pickle.dumps(object_))
+
+
+slow_data_generation = settings(max_examples=30)
