@@ -130,13 +130,15 @@ else:
                 else:
                     if (object_.__init__ is base.__init__
                             and object_.__new__ is base.__new__):
-                        if object_ is not type and base is type:
-                            result = from_class(type)
+                        result = from_class(base)
+                        is_metaclass = base is type and object_ is not type
+                        if is_metaclass:
                             if isinstance(result, Overloaded):
+                                # metaclasses do not inherit
+                                # single-argument constructor of `type`
                                 result = max(result.signatures,
                                              key=to_max_parameters_count)
-                            return result
-                        return from_class(base)
+                        return result
                 raise error
             else:
                 return slice_parameters(method_signature, slice(1, None))
