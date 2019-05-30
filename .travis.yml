@@ -16,8 +16,8 @@ install:
   - python -m pip install --upgrade codecov
 
 script:
-  - python -m doctest README.md
   - python setup.py test
+  - python -m doctest README.md
 
 after_success:
   - codecov
