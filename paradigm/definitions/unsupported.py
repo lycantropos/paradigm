@@ -173,10 +173,6 @@ if platform.python_implementation() != 'PyPy':
 
     if sys.version_info < (3, 7):
         classes.add(_collections_abc.range_iterator)
-    else:
-        import dataclasses
-
-        classes.add(dataclasses._InitVarMeta)
 
     if sys.platform == 'win32':
         import msilib
@@ -191,10 +187,6 @@ if platform.python_implementation() != 'PyPy':
 
             classes.update({os.uname_result,
                             os.statvfs_result})
-    else:
-        import termios
-
-        classes.add(termios.error)
 
 methods_descriptors = set()
 
