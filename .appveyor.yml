@@ -16,6 +16,7 @@ install:
 build: false
 
 test_script:
+  - "%PYTHON%\\%EXECUTABLE% -m doctest README.md"
   - "%PYTHON%\\%EXECUTABLE% setup.py test"
 
 on_success:
