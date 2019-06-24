@@ -2,7 +2,7 @@ paradigm
 ========
 
 [![](https://travis-ci.org/lycantropos/paradigm.svg?branch=master)](https://travis-ci.org/lycantropos/paradigm "Travis CI")
-[![](https://ci.appveyor.com/api/projects/status/github/lycantropos/paradigm?branch=master&svg=true)](https://ci.appveyor.com/project/lycantropos/paradigm "AppVeyor")
+[![](https://dev.azure.com/lycantropos/paradigm/_apis/build/status/lycantropos.paradigm?branchName=master)](https://dev.azure.com/azatibrakov/paradigm/_build/latest?definitionId=2&branchName=master "Azure Pipelines")
 [![](https://codecov.io/gh/lycantropos/paradigm/branch/master/graph/badge.svg)](https://codecov.io/gh/lycantropos/paradigm "Codecov")
 [![](https://img.shields.io/github/license/lycantropos/paradigm.svg)](https://github.com/lycantropos/paradigm/blob/master/LICENSE "License")
 [![](https://badge.fury.io/py/paradigm.svg)](https://badge.fury.io/py/paradigm "PyPI")
