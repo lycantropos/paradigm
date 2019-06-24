@@ -11,8 +11,8 @@ from typing import (Any,
 from hypothesis import strategies
 
 from paradigm.definitions import (is_supported,
-                                  to_contents,
                                   unsupported)
+from paradigm.definitions.utils import _to_contents
 from paradigm.hints import (MethodDescriptorType,
                             WrapperDescriptorType)
 from tests.strategies import modules_list
@@ -20,7 +20,7 @@ from tests.strategies import modules_list
 
 def to_inner_callables(objects: List[Union[ModuleType, type]]) -> List[Any]:
     return list(filter(callable,
-                       chain.from_iterable(map(to_contents, objects))))
+                       chain.from_iterable(map(_to_contents, objects))))
 
 
 modules_callables_list = to_inner_callables(modules_list)
