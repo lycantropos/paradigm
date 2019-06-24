@@ -116,13 +116,13 @@ def is_class_supported(object_: type) -> bool:
             and object_ not in unsupported.classes
             or not is_stdlib_object(object_)
             and has_module(object_)
-            and is_supported(catalog.factory(object_.__module__)))
+            and is_supported(catalog.from_string(object_.__module__)))
 
 
 @is_supported.register(FunctionType)
 def is_function_supported(object_: FunctionType) -> bool:
     return (has_module(object_)
-            and is_supported(catalog.factory(object_.__module__)))
+            and is_supported(catalog.from_string(object_.__module__)))
 
 
 @is_supported.register(MethodDescriptorType)
@@ -149,7 +149,7 @@ def has_supported_python_source_file(module: ModuleType) -> bool:
 def is_stdlib_object(object_: Any) -> bool:
     if not has_module(object_):
         return False
-    top_module_name = catalog.factory(object_.__module__).parts[0]
+    top_module_name = catalog.from_string(object_.__module__).parts[0]
     return top_module_name in stdlib_modules_names
 
 

@@ -44,7 +44,7 @@ class Reducer(ast3.NodeVisitor):
                 self.batch_register(alias_path.join(path), nodes)
 
     def visit_ImportFrom(self, node: ast3.ImportFrom) -> None:
-        parent_module_path = catalog.factory(node.module)
+        parent_module_path = catalog.from_string(node.module)
         for name_alias in node.names:
             alias_path = to_alias_path(name_alias)
             actual_path = to_actual_path(name_alias)
@@ -71,7 +71,7 @@ class Reducer(ast3.NodeVisitor):
                 self.scope[alias_path] = target_nodes
 
     def visit_ClassDef(self, node: ast3.ClassDef) -> None:
-        path = catalog.factory(node.name)
+        path = catalog.from_string(node.name)
         bases = node.bases
         for base_index, base_node in enumerate(map(self.evaluator, bases)):
             if not is_link(base_node):

@@ -35,7 +35,7 @@ def from_module_path(object_: catalog.Path) -> Path:
     try:
         return cache[object_]
     except KeyError as original_error:
-        module_name_path = catalog.factory(object_.parts[-1].lstrip('_'))
+        module_name_path = catalog.from_string(object_.parts[-1].lstrip('_'))
         module_path = object_.parent.join(module_name_path)
         try:
             return cache[module_path]
@@ -80,7 +80,8 @@ def generate_stubs_cache_items(root: Path
     def module_full_name_factory(directory: Path) -> Map[Path, catalog.Path]:
         def to_module_path(stub: Path) -> catalog.Path:
             relative_stub_path = stub.relative_to(directory)
-            return catalog.factory(relative_stub_path.with_suffix('.py'))
+            return catalog.from_relative_file_path(relative_stub_path
+                                                   .with_suffix('.py'))
 
         return to_module_path
 

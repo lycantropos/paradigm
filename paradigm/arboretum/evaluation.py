@@ -12,7 +12,7 @@ from .data_access import search_nodes
 from .hints import (Node,
                     Scope)
 
-TYPING_MODULE_PATH = catalog.factory(typing)
+TYPING_MODULE_PATH = catalog.from_module(typing)
 NAMED_TUPLE_CLASS_PATH = next(iter(catalog.paths_factory(NamedTuple)))
 OVERLOAD_FUNCTION_PATH = next(iter(catalog.paths_factory(overload)))
 
@@ -31,7 +31,7 @@ def evaluate_name(node: ast3.Name,
                   *,
                   scope: Scope,
                   module_path: catalog.Path) -> Node:
-    return catalog.factory(node.id)
+    return catalog.from_string(node.id)
 
 
 @evaluate_node.register(ast3.expr)
@@ -39,7 +39,7 @@ def evaluate_ellipsis_or_num(node: Union[ast3.Ellipsis, ast3.Num],
                              *,
                              scope: Scope,
                              module_path: catalog.Path) -> Node:
-    return catalog.factory(str(Ellipsis))
+    return catalog.from_string(str(Ellipsis))
 
 
 @evaluate_node.register(ast3.NameConstant)
@@ -47,7 +47,7 @@ def evaluate_name_constant(node: ast3.NameConstant,
                            *,
                            scope: Scope,
                            module_path: catalog.Path) -> Node:
-    return catalog.factory(str(node.value))
+    return catalog.from_string(str(node.value))
 
 
 @evaluate_node.register(ast3.Attribute)
@@ -58,7 +58,7 @@ def evaluate_attribute(node: ast3.Attribute,
     value_path = evaluate_node(node.value,
                                scope=scope,
                                module_path=module_path)
-    return value_path.join(catalog.factory(node.attr))
+    return value_path.join(catalog.from_string(node.attr))
 
 
 @evaluate_node.register(ast3.Subscript)
@@ -151,12 +151,13 @@ def any_path_has_origin(*candidates: catalog.Path,
                 if isinstance(parent_nodes[-1], ast3.Import):
                     if any(to_actual_path(name_alias) == origin_module_path
                            for name_alias in parent_nodes.names):
-                        return (catalog.factory(candidate.parts[-1])
+                        return (catalog.from_string(candidate.parts[-1])
                                 == origin_object_path)
         else:
             origin_node = candidate_nodes[-1]
             if isinstance(origin_node, ast3.ImportFrom):
-                if catalog.factory(origin_node.module) == origin_module_path:
+                if (catalog.from_string(origin_node.module)
+                        == origin_module_path):
                     try:
                         name_alias = next(
                                 name_alias
@@ -171,11 +172,11 @@ def any_path_has_origin(*candidates: catalog.Path,
 
 
 def to_actual_path(node: ast3.alias) -> catalog.Path:
-    return catalog.factory(node.name)
+    return catalog.from_string(node.name)
 
 
 def to_alias_path(node: ast3.alias) -> catalog.Path:
-    return catalog.factory(to_alias_string(node))
+    return catalog.from_string(to_alias_string(node))
 
 
 def to_alias_string(node: ast3.alias) -> str:

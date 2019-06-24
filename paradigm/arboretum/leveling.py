@@ -53,7 +53,7 @@ def to_parent_module_path(object_: ast3.ImportFrom,
     level = object_.level
     import_is_relative = level > 0
     if not import_is_relative:
-        return catalog.factory(object_.module)
+        return catalog.from_string(object_.module)
     depth = (len(parent_module_path.parts)
              + catalog.is_package(parent_module_path)
              - level) or None
@@ -102,7 +102,7 @@ class NamespaceUpdater(ast3.NodeVisitor):
             self.namespace[str(alias_path)] = object_
 
     def visit_ClassDef(self, node: ast3.ClassDef) -> None:
-        path = self.resolve_path(catalog.factory(node.name))
+        path = self.resolve_path(catalog.from_string(node.name))
         (NamespaceUpdater(namespace=self.namespace,
                           parent_path=path,
                           module_path=self.module_path,
@@ -267,4 +267,4 @@ def right_search_within_children(node, condition):
             children.extendleft(ast3.iter_child_nodes(child))
 
 
-builtins_root = to_flat_root(catalog.factory(builtins))
+builtins_root = to_flat_root(catalog.from_module(builtins))

@@ -25,7 +25,7 @@ def populate(module_path: catalog.Path,
                         scope=scope)
 
 
-builtins_module_path = catalog.factory(builtins)
+builtins_module_path = catalog.from_module(builtins)
 builtins_scope = {}
 populate(builtins_module_path,
          scope=builtins_scope)
