@@ -22,8 +22,8 @@ tests_require = [
     'hypothesis>=3.73.1',
 ]
 
-setup(name='paradigm',
-      packages=find_packages(exclude=('tests', 'tests.*',)),
+setup(name=paradigm.__name__,
+      packages=find_packages(exclude=('tests', 'tests.*')),
       version=paradigm.__version__,
       classifiers=[
           'Intended Audience :: Developers',
