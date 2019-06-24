@@ -3,7 +3,7 @@ from functools import reduce
 from types import ModuleType
 from typing import Any
 
-from paradigm import catalog
+from . import catalog
 from .hints import Namespace
 
 

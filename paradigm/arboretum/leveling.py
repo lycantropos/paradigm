@@ -12,15 +12,15 @@ from typing import (Any,
 from typed_ast import ast3
 
 from paradigm import (catalog,
+                      namespaces,
                       sources)
-from paradigm.hints import Predicate
-from . import (construction,
-               namespaces)
+from paradigm.hints import (Namespace,
+                            Predicate)
+from . import construction
 from .evaluation import (to_actual_path,
                          to_alias_path,
                          to_alias_string)
 from .execution import execute
-from .hints import Namespace
 
 
 class ImportsRectifier(ast3.NodeTransformer):
