@@ -9,8 +9,8 @@ from typing import (Any,
                     Set,
                     Union)
 
-from paradigm import catalog
-from paradigm.arboretum import namespaces
+from paradigm import (catalog,
+                      namespaces)
 
 
 def _update(set_: Set[Any], module_name: str, names: Iterable[str]) -> None:
