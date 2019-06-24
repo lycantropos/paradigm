@@ -66,11 +66,7 @@ if platform.python_implementation() != 'PyPy':
                                              'openssl_sha384',
                                              'openssl_sha512'])
     _add(built_in_functions, '_json', 'encode_basestring')
-    _update(built_in_functions, '_thread', ['allocate',
-                                            'exit_thread',
-                                            'interrupt_main',
-                                            'stack_size',
-                                            'start_new_thread'])
+    _update(built_in_functions, '_thread', ['allocate', 'exit_thread'])
     _update(built_in_functions, 'codecs', ['backslashreplace_errors',
                                            'ignore_errors',
                                            'namereplace_errors',
@@ -90,7 +86,6 @@ if platform.python_implementation() != 'PyPy':
 
     if sys.version_info >= (3, 7):
         _add(built_in_functions, 'socket', 'close')
-        _add(built_in_functions, 'sys', 'breakpointhook')
 
     if sys.platform != 'win32':
         _update(built_in_functions, '_locale', ['bind_textdomain_codeset',
@@ -113,7 +108,7 @@ if platform.python_implementation() != 'PyPy':
                              '_RawIOBase',
                              '_TextIOBase'])
     _add(classes, '_ssl', '_SSLContext')
-    _update(classes, '_thread', ['RLock', 'local'])
+    _update(classes, '_thread', ['RLock', '_local'])
     _update(classes, 'itertools', ['_grouper', '_tee', '_tee_dataobject'])
     _add(classes, 'asyncio.events', '_RunningLoop')
     _add(classes, 'ctypes', '_CFuncPtr')
@@ -146,7 +141,6 @@ if platform.python_implementation() != 'PyPy':
                                                       'coroutine.throw'])
     _add(methods_descriptors, '_io', 'BufferedRWPair.peek')
     _update(methods_descriptors, '_thread', ['LockType.acquire_lock',
-                                             'LockType.locked',
                                              'LockType.locked_lock',
                                              'LockType.release_lock'])
     _update(methods_descriptors, 'collections', ['OrderedDict.clear',
