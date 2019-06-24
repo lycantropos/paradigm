@@ -12,7 +12,8 @@ services:
       - ./paradigm/:/opt/paradigm/paradigm/
       - ./tests/:/opt/paradigm/tests/
       - ./README.md:/opt/paradigm/README.md
+      - ./requirements.txt:/opt/paradigm/requirements.txt
+      - ./requirements-tests.txt:/opt/paradigm/requirements-tests.txt
       - ./setup.py:/opt/paradigm/setup.py
       - ./setup.cfg:/opt/paradigm/setup.cfg
-    entrypoint: python3
-    command: setup.py test
+    entrypoint: pytest
