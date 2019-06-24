@@ -1,12 +1,57 @@
+import importlib
 import platform
 import sys
+import warnings
 from itertools import chain
 from types import ModuleType
-from typing import (Callable,
+from typing import (Any,
+                    Callable,
                     Iterable,
+                    Optional,
+                    Set,
                     Union)
 
+from paradigm import catalog
+from paradigm.arboretum import namespaces
 from .utils import to_contents
+
+
+def _update(set_: Set[Any], module_name: str, names: Iterable[str]) -> None:
+    for name in names:
+        _add(set_, module_name, name)
+
+
+def _add(set_: Set[Any], module_name: str, name: str) -> None:
+    module = _safe_import(module_name)
+    if module is None:
+        return
+    path = catalog.from_string(name)
+    try:
+        object_ = _search_by_path(module, path)
+    except KeyError:
+        warnings.warn('Module "{module}" has no object with name "{name}".'
+                      .format(module=module_name,
+                              name=path.parts[0]))
+    except AttributeError:
+        warnings.warn('Module "{module}" has no object with path "{path}".'
+                      .format(module=module_name,
+                              path=path))
+    else:
+        set_.add(object_)
+
+
+def _safe_import(module_name: str) -> Optional[ModuleType]:
+    try:
+        return importlib.import_module(module_name)
+    except ModuleNotFoundError:
+        warnings.warn('Module "{module}" is not found.'
+                      .format(module=module_name))
+        return None
+
+
+def _search_by_path(module: ModuleType, path: catalog.Path) -> Any:
+    return namespaces.search(namespaces.from_module(module), path)
+
 
 # importing will cause unwanted side effects such as raising error
 stdlib_modules_names = {'antigravity', 'this'}
@@ -25,231 +70,165 @@ if platform.python_implementation() == 'PyPy':
 stdlib_modules = set()
 
 if platform.python_implementation() != 'PyPy':
-    import _collections
-    import _codecs_hk
-    import _codecs_iso2022
-    import _codecs_jp
-    import _codecs_kr
-    import _codecs_cn
-    import _codecs_tw
-    import _lsprof
-    import _multibytecodec
-    import _multiprocessing
-    import _string
-    import audioop
-    import parser
-    import xxsubtype
-
     # not supported by ``typeshed`` package
-    stdlib_modules.update({_collections,
-                           _codecs_hk,
-                           _codecs_iso2022,
-                           _codecs_jp,
-                           _codecs_kr,
-                           _codecs_cn,
-                           _codecs_tw,
-                           _lsprof,
-                           _multibytecodec,
-                           _multiprocessing,
-                           _string,
-                           audioop,
-                           parser,
-                           xxsubtype})
+    stdlib_modules.update(map(_safe_import,
+                              ['_collections',
+                               '_codecs_hk',
+                               '_codecs_iso2022',
+                               '_codecs_jp',
+                               '_codecs_kr',
+                               '_codecs_cn',
+                               '_codecs_tw',
+                               '_lsprof',
+                               '_multibytecodec',
+                               '_multiprocessing',
+                               '_string',
+                               'audioop',
+                               'parser',
+                               'xxsubtype']))
 
     if sys.version_info >= (3, 6):
-        import _sha3
-
-        stdlib_modules.add(_sha3)
+        stdlib_modules.add(_safe_import('_sha3'))
 
     if ((3, 6) <= sys.version_info < (3, 6, 7)
             or (3, 7) <= sys.version_info < (3, 7, 1)):
-        import _blake2
-
-        stdlib_modules.add(_blake2)
+        stdlib_modules.add(_safe_import('_blake2'))
 
     if sys.platform == 'win32':
-        import _msi
-
-        stdlib_modules.add(_msi)
+        stdlib_modules.add(_safe_import('_msi'))
 
 
-def to_callables(object_: Union[ModuleType, type]) -> Iterable[Callable]:
+def _to_callables(object_: Union[ModuleType, type]) -> Iterable[Callable]:
     yield from filter(callable, to_contents(object_))
 
 
-stdlib_modules_callables = list(chain.from_iterable(map(to_callables,
+stdlib_modules_callables = list(chain.from_iterable(map(_to_callables,
                                                         stdlib_modules)))
 
 built_in_functions = set()
 
 if platform.python_implementation() != 'PyPy':
-    import _hashlib
-    import _json
-    import _thread
-    import codecs
-    import ctypes
-    import socket
-
     # not supported by ``typeshed`` package
-    built_in_functions.update({_hashlib.openssl_md5,
-                               _hashlib.openssl_sha1,
-                               _hashlib.openssl_sha224,
-                               _hashlib.openssl_sha256,
-                               _hashlib.openssl_sha384,
-                               _hashlib.openssl_sha512,
-                               _json.encode_basestring,
-                               _thread.allocate,
-                               _thread.exit_thread,
-                               _thread.interrupt_main,
-                               _thread.stack_size,
-                               _thread.start_new_thread,
-                               codecs.backslashreplace_errors,
-                               codecs.ignore_errors,
-                               codecs.namereplace_errors,
-                               codecs.replace_errors,
-                               codecs.strict_errors,
-                               codecs.xmlcharrefreplace_errors,
-                               ctypes._dlopen,
-                               ctypes.pointer,
-                               socket.dup,
-                               sys.callstats,
-                               sys.getallocatedblocks,
-                               sys.get_coroutine_wrapper,
-                               sys.set_coroutine_wrapper})
+    _update(built_in_functions, '_hashlib', ['openssl_md5',
+                                             'openssl_sha1',
+                                             'openssl_sha1',
+                                             'openssl_sha224',
+                                             'openssl_sha256',
+                                             'openssl_sha384',
+                                             'openssl_sha512'])
+    _add(built_in_functions, '_json', 'encode_basestring')
+    _update(built_in_functions, '_thread', ['allocate',
+                                            'exit_thread',
+                                            'interrupt_main',
+                                            'stack_size',
+                                            'start_new_thread'])
+    _update(built_in_functions, 'codecs', ['backslashreplace_errors',
+                                           'ignore_errors',
+                                           'namereplace_errors',
+                                           'replace_errors',
+                                           'strict_errors',
+                                           'xmlcharrefreplace_errors'])
+    _update(built_in_functions, 'ctypes', ['_dlopen', 'pointer'])
+    _add(built_in_functions, 'socket', 'dup')
+    _update(built_in_functions, 'sys', ['callstats',
+                                        'getallocatedblocks',
+                                        'get_coroutine_wrapper',
+                                        'set_coroutine_wrapper'])
     if sys.version_info >= (3, 6):
-        built_in_functions.update({sys.getfilesystemencodeerrors,
-                                   sys.get_asyncgen_hooks,
-                                   sys.set_asyncgen_hooks})
+        _update(built_in_functions, 'sys', ['getfilesystemencodeerrors',
+                                            'get_asyncgen_hooks',
+                                            'set_asyncgen_hooks'])
 
     if sys.version_info >= (3, 7):
-        built_in_functions.update({socket.close,
-                                   sys.breakpointhook})
+        _add(built_in_functions, 'socket', 'close')
+        _add(built_in_functions, 'sys', 'breakpointhook')
 
     if sys.platform != 'win32':
-        import _locale
-
-        built_in_functions.update({_locale.bind_textdomain_codeset,
-                                   _locale.bindtextdomain,
-                                   _locale.dcgettext,
-                                   _locale.dgettext,
-                                   _locale.gettext,
-                                   _locale.textdomain})
+        _update(built_in_functions, '_locale', ['bind_textdomain_codeset',
+                                                'bindtextdomain',
+                                                'dcgettext',
+                                                'dgettext',
+                                                'gettext',
+                                                'textdomain'])
 
         if sys.version_info >= (3, 7):
-            import time
-
-            built_in_functions.add(time.pthread_getcpuclockid)
+            _add(built_in_functions, 'time', 'pthread_getcpuclockid')
 
 classes = set()
 
 if platform.python_implementation() != 'PyPy':
-    import _collections_abc
-    import _io
-    import _ssl
-    import _thread
-    import asyncio.events
-    import ctypes
-    import encodings
-    import itertools
-    import random
-    import socket
-
     # not supported by ``typeshed`` package
-    classes.update({_collections_abc.mappingproxy,
-                    _io._BufferedIOBase,
-                    _io._IOBase,
-                    _io._RawIOBase,
-                    _io._TextIOBase,
-                    _ssl._SSLContext,
-                    _thread.RLock,
-                    _thread._local,
-                    asyncio.events._RunningLoop,
-                    ctypes._CFuncPtr,
-                    itertools._grouper,
-                    itertools._tee,
-                    itertools._tee_dataobject,
-                    encodings.CodecRegistryError,
-                    random._MethodType})
+    _add(classes, '_collections_abc', 'mappingproxy')
+    _update(classes, '_io', ['_BufferedIOBase',
+                             '_IOBase',
+                             '_RawIOBase',
+                             '_TextIOBase'])
+    _add(classes, '_ssl', '_SSLContext')
+    _update(classes, '_thread', ['RLock', 'local'])
+    _update(classes, 'itertools', ['_grouper', '_tee', '_tee_dataobject'])
+    _add(classes, 'asyncio.events', '_RunningLoop')
+    _add(classes, 'ctypes', '_CFuncPtr')
+    _add(classes, 'encodings', 'CodecRegistryError')
+    _add(classes, 'random', '_MethodType')
 
     if sys.version_info < (3, 7):
-        classes.add(_collections_abc.range_iterator)
+        _add(classes, '_collections_abc', 'range_iterator')
 
     if sys.platform == 'win32':
-        import msilib
-
-        classes.update({msilib.UuidCreate,
-                        msilib.FCICreate,
-                        msilib.OpenDatabase,
-                        msilib.CreateRecord})
+        _update(classes, 'msilib', ['UuidCreate',
+                                    'FCICreate',
+                                    'OpenDatabase',
+                                    'CreateRecord'])
 
         if sys.version_info < (3, 7):
-            import os
-
-            classes.update({os.uname_result,
-                            os.statvfs_result})
+            _update(classes, 'os', ['uname_result', 'statvfs_result'])
 
 methods_descriptors = set()
 
 if platform.python_implementation() != 'PyPy':
-    import _collections_abc
-    import _io
-    import _thread
-    import collections
-
     # not supported by ``typeshed`` package
-    methods_descriptors.update({_collections_abc.dict_items.isdisjoint,
-                                _collections_abc.dict_keys.isdisjoint,
-                                _collections_abc.generator.close,
-                                _collections_abc.generator.send,
-                                _collections_abc.generator.throw,
-                                _collections_abc.coroutine.close,
-                                _collections_abc.coroutine.send,
-                                _collections_abc.coroutine.throw,
-                                _io.BufferedRWPair.peek,
-                                _thread.LockType.acquire_lock,
-                                _thread.LockType.locked,
-                                _thread.LockType.locked_lock,
-                                _thread.LockType.release_lock,
-                                collections.OrderedDict.clear,
-                                collections.OrderedDict.pop,
-                                collections.OrderedDict.update})
+    _update(methods_descriptors, '_collections_abc', ['dict_items.isdisjoint',
+                                                      'dict_keys.isdisjoint',
+                                                      'generator.close',
+                                                      'generator.send',
+                                                      'generator.throw',
+                                                      'coroutine.close',
+                                                      'coroutine.send',
+                                                      'coroutine.throw'])
+    _add(methods_descriptors, '_io', 'BufferedRWPair.peek')
+    _update(methods_descriptors, '_thread', ['LockType.acquire_lock',
+                                             'LockType.locked',
+                                             'LockType.locked_lock',
+                                             'LockType.release_lock'])
+    _update(methods_descriptors, 'collections', ['OrderedDict.clear',
+                                                 'OrderedDict.pop',
+                                                 'OrderedDict.update'])
 
     if sys.version_info >= (3, 6):
-        methods_descriptors.update({_collections_abc.async_generator.aclose,
-                                    _collections_abc.async_generator.asend,
-                                    _collections_abc.async_generator.athrow})
+        _update(methods_descriptors, '_collections_abc',
+                ['async_generator.aclose',
+                 'async_generator.asend',
+                 'async_generator.athrow'])
         if sys.platform == 'linux':
-            import socket
-
-            methods_descriptors.add(socket.socket.sendmsg_afalg)
+            _add(methods_descriptors, 'socket', 'socket.sendmsg_afalg')
 
     if sys.version_info >= (3, 7):
-        import socket
-
-        methods_descriptors.add(socket.socket.getblocking)
+        _add(methods_descriptors, 'socket', 'socket.getblocking')
     else:
-        import zipimport
-
-        methods_descriptors.update({collections.OrderedDict.setdefault,
-                                    zipimport.zipimporter.find_loader})
+        _add(methods_descriptors, 'collections', 'OrderedDict.setdefault')
+        _add(methods_descriptors, 'zipimport', 'zipimporter.find_loader')
 
     if sys.platform == 'win32':
-        import socket
-
-        methods_descriptors.add(socket.socket.share)
+        _add(methods_descriptors, 'socket', 'socket.share')
 
 wrappers_descriptors = set()
 
 if platform.python_implementation() != 'PyPy':
-    import _collections_abc
-
     # not supported by ``typeshed`` package
-    wrappers_descriptors.update({
-        _collections_abc.coroutine.__del__,
-        _collections_abc.generator.__del__})
+    _update(wrappers_descriptors, '_collections_abc', ['coroutine.__del__',
+                                                       'generator.__del__'])
 
     if sys.version_info >= (3, 6):
-        import _socket
-
-        wrappers_descriptors.update({_collections_abc.async_generator.__del__,
-                                     _socket.socket.__del__})
+        _add(wrappers_descriptors, '_collections_abc',
+             'async_generator.__del__')
+        _add(wrappers_descriptors, '_socket', 'socket.__del__')
