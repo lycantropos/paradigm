@@ -66,7 +66,9 @@ if platform.python_implementation() != 'PyPy':
                                              'openssl_sha384',
                                              'openssl_sha512'])
     _add(built_in_functions, '_json', 'encode_basestring')
-    _update(built_in_functions, '_thread', ['allocate', 'exit_thread'])
+    _update(built_in_functions, '_thread', ['allocate',
+                                            'exit_thread',
+                                            'start_new'])
     _update(built_in_functions, 'codecs', ['backslashreplace_errors',
                                            'ignore_errors',
                                            'namereplace_errors',
@@ -87,7 +89,7 @@ if platform.python_implementation() != 'PyPy':
     if sys.version_info >= (3, 7):
         _add(built_in_functions, 'socket', 'close')
 
-    if sys.platform != 'win32':
+    if sys.platform == 'linux':
         _update(built_in_functions, '_locale', ['bind_textdomain_codeset',
                                                 'bindtextdomain',
                                                 'dcgettext',
