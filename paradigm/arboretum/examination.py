@@ -30,11 +30,11 @@ class Registry(ast3.NodeVisitor):
 
     def visit_FunctionDef(self, node: ast3.FunctionDef):
         self.generic_visit(node)
-        path = catalog.factory(node.name)
+        path = catalog.from_string(node.name)
         self.register(path, node)
 
     def visit_ClassDef(self, node: ast3.ClassDef):
-        path = catalog.factory(node.name)
+        path = catalog.from_string(node.name)
         self.register(path, node)
         children_scope = {}
         visit_child = Registry(scope=children_scope,

@@ -66,21 +66,10 @@ def is_attribute(path: Path) -> bool:
 WILDCARD_IMPORT = Path('*')
 
 
-@singledispatch
-def paths_factory(object_: Any) -> Iterable[Path]:
-    yield factory(object_)
-
-
-@paths_factory.register(BuiltinMethodType)
-@paths_factory.register(FunctionType)
-@paths_factory.register(MethodDescriptorType)
-@paths_factory.register(WrapperDescriptorType)
-@paths_factory.register(type)
-def paths_from_class_or_function(object_: Union[BuiltinMethodType,
-                                                FunctionType,
-                                                MethodDescriptorType, type],
-                                 *,
-                                 max_depth: int = 2) -> Iterable[Path]:
+def paths_factory(object_: Union[BuiltinMethodType, FunctionType,
+                                 MethodDescriptorType, type],
+                  *,
+                  max_depth: int = 2) -> Iterable[Path]:
     module = importlib.import_module(module_name_factory(object_))
     propertyspaces = iter(((Path(), module, 0),))
     while True:
@@ -90,7 +79,7 @@ def paths_from_class_or_function(object_: Union[BuiltinMethodType,
             break
 
         def to_path(object_name: str) -> Path:
-            return parent_path.join(factory(object_name))
+            return parent_path.join(from_string(object_name))
 
         namespace = dict(vars(propertyspace))
         yield from (to_path(name)
@@ -102,21 +91,13 @@ def paths_from_class_or_function(object_: Union[BuiltinMethodType,
                                    [(to_path(name), content, next_depth)
                                     for name, content in namespace.items()
                                     if inspect.isclass(content)])
-    yield from paths_factory(object_.__qualname__)
+    yield from_string(object_.__qualname__)
 
 
-@singledispatch
-def factory(object_: Any) -> Path:
-    raise TypeError('Unsupported object type: {type}.'
-                    .format(type=type(object_)))
-
-
-@factory.register(ModuleType)
 def from_module(object_: ModuleType) -> Path:
-    return factory(object_.__name__)
+    return from_string(object_.__name__)
 
 
-@factory.register(pathlib.Path)
 def from_relative_file_path(path: pathlib.Path) -> Path:
     if path.is_absolute():
         raise ValueError('Path should be relative.')
@@ -139,7 +120,6 @@ def from_relative_file_path(path: pathlib.Path) -> Path:
 names_replacements = {'Protocol': '_Protocol'}
 
 
-@factory.register(str)
 def from_string(string: str) -> Path:
     parts = string.split(Path.SEPARATOR)
     parts = map(names_replacements.get, parts, parts)

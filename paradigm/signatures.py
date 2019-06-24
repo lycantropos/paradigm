@@ -84,8 +84,8 @@ else:
                 return function(object_)
             except ValueError as error:
                 object_paths = catalog.paths_factory(object_)
-                module_path = catalog.factory(catalog
-                                              .module_name_factory(object_))
+                module_path = catalog.from_string(
+                        catalog.module_name_factory(object_))
                 signature_factory = partial(to_signature,
                                             module_path=module_path)
                 try:
@@ -116,7 +116,8 @@ else:
             return from_callable(object_)
         except ValueError as error:
             method_paths = map(to_method_path, catalog.paths_factory(object_))
-            module_path = catalog.factory(catalog.module_name_factory(object_))
+            module_path = catalog.from_string(
+                    catalog.module_name_factory(object_))
             signature_factory = partial(to_signature,
                                         module_path=module_path)
             try:
@@ -145,7 +146,7 @@ else:
 
 
     to_method_path = methodcaller(catalog.Path.join.__name__,
-                                  catalog.factory('__init__'))
+                                  catalog.from_string('__init__'))
 
 
     def to_signature(object_path: catalog.Path,
