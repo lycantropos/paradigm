@@ -7,20 +7,11 @@ import paradigm
 
 project_base_url = 'https://github.com/lycantropos/paradigm/'
 
-install_requires = [
-    'memoir>=0.0.1',
-    'reprit>=0.0.1',
-    'typing_extensions>=3.6.5',
-    'mypy>=0.700; platform_python_implementation != "PyPy"',
-]
+install_requires = Path('requirements.txt').read_text()
 setup_requires = [
     'pytest-runner>=4.2',
 ]
-tests_require = [
-    'pytest>=3.8.1',
-    'pytest-cov>=2.6.0',
-    'hypothesis>=3.73.1',
-]
+tests_require = Path('requirements-tests.txt').read_text()
 
 setup(name=paradigm.__name__,
       packages=find_packages(exclude=('tests', 'tests.*')),
