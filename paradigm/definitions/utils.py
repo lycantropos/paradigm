@@ -40,7 +40,7 @@ def _add(set_: Set[Any], module_name: str, name: str) -> None:
 def _safe_import(module_name: str) -> Optional[ModuleType]:
     try:
         return importlib.import_module(module_name)
-    except ModuleNotFoundError:
+    except ImportError:
         warnings.warn('Module "{module}" is not found.'
                       .format(module=module_name))
         return None
