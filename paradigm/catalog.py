@@ -13,6 +13,7 @@ from types import (BuiltinMethodType,
 from typing import (Any,
                     Iterable,
                     Optional,
+                    Tuple,
                     Union)
 
 from memoir import cached
@@ -23,40 +24,46 @@ from .hints import (MethodDescriptorType,
 
 
 class Path:
+    __slots__ = ('_parts',)
+
     SEPARATOR = '.'
 
     def __init__(self, *parts: str) -> None:
-        self.parts = parts
+        self._parts = parts
+
+    @property
+    def parts(self) -> Tuple[str, ...]:
+        return self._parts
 
     def __str__(self) -> str:
-        return self.SEPARATOR.join(self.parts)
+        return self.SEPARATOR.join(self._parts)
 
     def __repr__(self) -> str:
         return (type(self).__qualname__
-                + '(' + ', '.join(map(repr, self.parts)) + ')')
+                + '(' + ', '.join(map(repr, self._parts)) + ')')
 
     def __eq__(self, other: 'Path') -> bool:
         if not isinstance(other, Path):
             return NotImplemented
-        return self.parts == other.parts
+        return self._parts == other._parts
 
     def __hash__(self) -> int:
-        return hash(self.parts)
+        return hash(self._parts)
 
     def join(self, other: 'Path') -> 'Path':
         if not isinstance(other, Path):
             return NotImplemented
-        return type(self)(*self.parts, *other.parts)
+        return type(self)(*self._parts, *other._parts)
 
     @property
     def parent(self) -> 'Path':
-        return type(self)(*self.parts[:-1])
+        return type(self)(*self._parts[:-1])
 
     def with_parent(self, parent: 'Path') -> 'Path':
-        return type(self)(*parent.parts, *self.parts[len(parent.parts):])
+        return type(self)(*parent._parts, *self._parts[len(parent._parts):])
 
     def is_child_of(self, parent: 'Path') -> bool:
-        return self.parts[:len(parent.parts)] == parent.parts
+        return self._parts[:len(parent._parts)] == parent._parts
 
 
 def is_attribute(path: Path) -> bool:
