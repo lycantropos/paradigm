@@ -37,16 +37,10 @@ def to_typed_to_plain_visitor(cls: Type[ast3.AST]) -> TypedToPlainMethod:
     return visit
 
 
-def to_subclasses(cls: Type[Domain],
-                  *,
-                  deep: bool = True) -> Iterable[Type[Domain]]:
+def to_subclasses(cls: Type[Domain]) -> Iterable[Type[Domain]]:
     result = cls.__subclasses__()
     yield from result
-    if not deep:
-        return
-    subclasses_factory = partial(to_subclasses,
-                                 deep=deep)
-    yield from chain.from_iterable(map(subclasses_factory, result))
+    yield from chain.from_iterable(map(to_subclasses, result))
 
 
 class TypedToPlain(ast3.NodeTransformer):
