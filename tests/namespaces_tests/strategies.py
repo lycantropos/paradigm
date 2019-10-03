@@ -6,10 +6,11 @@ from paradigm import catalog
 from paradigm.hints import Namespace
 from paradigm.namespaces import from_module
 from tests.strategies import (modules,
+                              modules_paths,
                               non_empty_objects_paths)
 from tests.utils import Strategy
 
-modules_paths = modules.map(catalog.from_module)
+modules_paths = modules_paths
 namespaces = modules.map(from_module)
 
 
