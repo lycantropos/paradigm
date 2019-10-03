@@ -1,6 +1,3 @@
-from paradigm import catalog
-from tests.strategies import (identifiers,
-                              to_homogeneous_tuples)
-from tests.utils import pack
+from tests.strategies import objects_paths
 
-objects_paths = to_homogeneous_tuples(identifiers).map(pack(catalog.Path))
+objects_paths = objects_paths
