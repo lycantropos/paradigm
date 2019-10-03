@@ -56,7 +56,7 @@ class TypedToPlain(ast3.NodeTransformer):
     def __getattr__(self, name: str) -> TypedToPlainMethod:
         return partial(self.visitors[name], self)
 
-    def generic_visit(self, node):
+    def generic_visit(self, node: ast3.AST) -> ast3.AST:
         for field, old_value in ast3.iter_fields(node):
             if isinstance(old_value, list):
                 new_values = []
