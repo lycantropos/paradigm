@@ -120,6 +120,7 @@ if platform.python_implementation() != 'PyPy':
 
         if sys.version_info >= (3, 7):
             _add(built_in_functions, 'time', 'pthread_getcpuclockid')
+    if sys.platform != 'win32':
         if sys.version_info >= (3, 8):
             _update(built_in_functions, 'posix', ['posix_spawn',
                                                   'posix_spawnp'])
