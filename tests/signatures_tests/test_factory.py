@@ -61,5 +61,7 @@ def test_overloaded(callable_: Callable[..., Any]) -> None:
 @given(strategies.unsupported_callables)
 @slow_data_generation
 def test_fail(callable_: Callable[..., Any]) -> None:
-    with pytest.raises(ValueError):
+    # e.g. `AttributeError` is raised
+    # by `curses.window.border` method on Python3.8
+    with pytest.raises((AttributeError, ValueError)):
         signatures.factory(callable_)
