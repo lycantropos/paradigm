@@ -193,7 +193,9 @@ if platform.python_implementation() != 'PyPy':
         _add(methods_descriptors, 'collections', 'OrderedDict.setdefault')
         _add(methods_descriptors, 'zipimport', 'zipimporter.find_loader')
 
-    if sys.version_info >= (3, 8):
+    if sys.platform == 'win32':
+        _add(methods_descriptors, 'socket', 'socket.share')
+    elif sys.version_info >= (3, 8):
         _update(methods_descriptors, 'curses', ['window.addch',
                                                 'window.addnstr',
                                                 'window.addstr',
@@ -256,9 +258,6 @@ if platform.python_implementation() != 'PyPy':
                                                 'window.touchwin',
                                                 'window.untouchwin',
                                                 'window.vline'])
-
-    if sys.platform == 'win32':
-        _add(methods_descriptors, 'socket', 'socket.share')
 
 wrappers_descriptors = set()
 
