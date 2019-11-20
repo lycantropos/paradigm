@@ -7,7 +7,7 @@ services:
       args:
       - PYTHON_IMAGE=${CPYTHON_IMAGE_NAME}
       - PYTHON_IMAGE_VERSION=${CPYTHON_IMAGE_VERSION}
-    image: lycantropos/paradigm-cpython:0.5.1-alpha
+    image: lycantropos/paradigm-cpython:0.5.1
     volumes:
       - ./paradigm/:/opt/paradigm/paradigm/
       - ./tests/:/opt/paradigm/tests/
