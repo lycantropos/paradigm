@@ -1,4 +1,4 @@
-memoir>=0.0.1
-reprit>=0.0.1
-typing_extensions>=3.6.5
-mypy>=0.700; platform_python_implementation != "PyPy"
+memoir>=0.0.2
+reprit>=0.1.0
+typing_extensions>=3.7.0
+mypy>=0.740; platform_python_implementation != "PyPy"
