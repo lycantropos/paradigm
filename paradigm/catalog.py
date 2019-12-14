@@ -4,7 +4,6 @@ import pathlib
 import struct
 import sys
 import types
-import warnings
 import weakref
 from functools import singledispatch
 from itertools import chain
@@ -19,6 +18,7 @@ from typing import (Any,
 
 from memoir import cached
 
+from . import modules
 from .file_system import INIT_MODULE_NAME
 from .hints import (MethodDescriptorType,
                     WrapperDescriptorType)
@@ -187,13 +187,4 @@ def module_name_from_method_descriptor(object_: MethodDescriptorType) -> str:
 
 
 def is_package(module_path: Path) -> bool:
-    return hasattr(_safe_import(str(module_path)), '__path__')
-
-
-def _safe_import(module_name: str) -> Optional[ModuleType]:
-    try:
-        return importlib.import_module(module_name)
-    except ImportError:
-        warnings.warn('Module "{module}" is not found.'
-                      .format(module=module_name))
-        return None
+    return hasattr(modules.safe_import(str(module_path)), '__path__')

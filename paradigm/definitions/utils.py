@@ -8,6 +8,7 @@ from typing import (Any,
                     Union)
 
 from paradigm import (catalog,
+                      modules,
                       namespaces)
 
 
@@ -17,7 +18,7 @@ def _update(set_: Set[Any], module_name: str, names: Iterable[str]) -> None:
 
 
 def _add(set_: Set[Any], module_name: str, name: str) -> None:
-    module = catalog._safe_import(module_name)
+    module = modules.safe_import(module_name)
     if module is None:
         return
     path = catalog.from_string(name)

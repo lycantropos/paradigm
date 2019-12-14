@@ -2,7 +2,7 @@ import platform
 import sys
 from itertools import chain
 
-from paradigm.catalog import _safe_import
+from paradigm import modules
 from .utils import (_add,
                     _to_callables,
                     _update)
@@ -27,7 +27,7 @@ stdlib_modules = set()
 
 if platform.python_implementation() != 'PyPy':
     # not supported by ``typeshed`` package
-    stdlib_modules.update(map(_safe_import,
+    stdlib_modules.update(map(modules.safe_import,
                               ['_collections',
                                '_codecs_hk',
                                '_codecs_iso2022',
@@ -44,14 +44,14 @@ if platform.python_implementation() != 'PyPy':
                                'xxsubtype']))
 
     if sys.version_info >= (3, 6):
-        stdlib_modules.add(_safe_import('_sha3'))
+        stdlib_modules.add(modules.safe_import('_sha3'))
 
     if ((3, 6) <= sys.version_info < (3, 6, 7)
             or (3, 7) <= sys.version_info < (3, 7, 1)):
-        stdlib_modules.add(_safe_import('_blake2'))
+        stdlib_modules.add(modules.safe_import('_blake2'))
 
     if sys.platform == 'win32':
-        stdlib_modules.add(_safe_import('_msi'))
+        stdlib_modules.add(modules.safe_import('_msi'))
 
 stdlib_modules_callables = list(chain.from_iterable(map(_to_callables,
                                                         stdlib_modules)))
