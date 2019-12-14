@@ -20,6 +20,8 @@ if platform.python_implementation() == 'PyPy':
     stdlib_modules_names.update({'msilib',
                                  'symtable',
                                  'tracemalloc'})
+    if sys.platform == 'darwin':
+        stdlib_modules_names.add('crypt')
 
 stdlib_modules = set()
 
@@ -82,7 +84,6 @@ if platform.python_implementation() != 'PyPy':
                                             'get_coroutine_wrapper',
                                             'set_coroutine_wrapper'])
     else:
-        _add(built_in_functions, '_thread', 'get_native_id')
         _update(built_in_functions, '_xxsubinterpreters', ['channel_send',
                                                            'get_current',
                                                            'channel_recv',
@@ -106,9 +107,6 @@ if platform.python_implementation() != 'PyPy':
 
     if sys.version_info >= (3, 7):
         _add(built_in_functions, 'socket', 'close')
-
-    if sys.version_info >= (3, 8):
-        _add(built_in_functions, 'sys', 'audit')
 
     if sys.platform == 'linux':
         _update(built_in_functions, '_locale', ['bind_textdomain_codeset',
