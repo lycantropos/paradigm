@@ -1,9 +1,11 @@
 import ast
 import importlib
 import keyword
+import os
 from pathlib import Path
 from string import ascii_letters
-from typing import (Optional,
+from typing import (List,
+                    Optional,
                     Tuple)
 
 from hypothesis import strategies
@@ -34,7 +36,24 @@ identifiers = (strategies.text(identifiers_characters,
                .filter(str.isidentifier)
                .filter(negate(keyword.iskeyword)))
 
-paths = strategies.lists(identifiers).map(pack(Path))
+
+def to_valid_length(parts: List[str],
+                    *,
+                    limit: int = 255) -> List[str]:
+    result = []
+    parts = iter(parts)
+    while limit > 0:
+        try:
+            part = next(parts)
+        except StopIteration:
+            break
+        part = part[:limit]
+        result.append(part)
+        limit -= len(part) + len(os.sep)
+    return result
+
+
+paths = strategies.lists(identifiers).map(to_valid_length).map(pack(Path))
 
 
 def is_valid_source(string: str) -> bool:
