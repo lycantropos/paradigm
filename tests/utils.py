@@ -5,7 +5,7 @@ from typing import (Any,
                     Tuple)
 
 from hypothesis import settings
-from hypothesis.searchstrategy import SearchStrategy
+from hypothesis.strategies import SearchStrategy
 
 from paradigm.hints import (Domain,
                             Map,
