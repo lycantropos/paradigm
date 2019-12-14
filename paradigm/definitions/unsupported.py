@@ -195,6 +195,8 @@ if platform.python_implementation() != 'PyPy':
     if sys.platform == 'win32':
         _add(methods_descriptors, 'socket', 'socket.share')
     elif sys.version_info >= (3, 8):
+        _update(methods_descriptors, 'asyncio', ['Future.add_done_callback',
+                                                 'Task.add_done_callback'])
         _update(methods_descriptors, 'curses', ['window.addch',
                                                 'window.addnstr',
                                                 'window.addstr',
@@ -269,3 +271,6 @@ if platform.python_implementation() != 'PyPy':
         _add(wrappers_descriptors, '_collections_abc',
              'async_generator.__del__')
         _add(wrappers_descriptors, '_socket', 'socket.__del__')
+    elif sys.version_info >= (3, 8):
+        _update(wrappers_descriptors, 'asyncio', ['Future.__del__',
+                                                  'Task.__del__'])
