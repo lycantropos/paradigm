@@ -1,11 +1,9 @@
-import importlib
 import warnings
 from types import ModuleType
 from typing import (Any,
                     Callable,
                     Iterable,
                     List,
-                    Optional,
                     Set,
                     Union)
 
@@ -19,7 +17,7 @@ def _update(set_: Set[Any], module_name: str, names: Iterable[str]) -> None:
 
 
 def _add(set_: Set[Any], module_name: str, name: str) -> None:
-    module = _safe_import(module_name)
+    module = catalog._safe_import(module_name)
     if module is None:
         return
     path = catalog.from_string(name)
@@ -35,15 +33,6 @@ def _add(set_: Set[Any], module_name: str, name: str) -> None:
                               path=path))
     else:
         set_.add(object_)
-
-
-def _safe_import(module_name: str) -> Optional[ModuleType]:
-    try:
-        return importlib.import_module(module_name)
-    except ImportError:
-        warnings.warn('Module "{module}" is not found.'
-                      .format(module=module_name))
-        return None
 
 
 def _search_by_path(module: ModuleType, path: catalog.Path) -> Any:

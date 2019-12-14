@@ -2,8 +2,8 @@ import platform
 import sys
 from itertools import chain
 
+from paradigm.catalog import _safe_import
 from .utils import (_add,
-                    _safe_import,
                     _to_callables,
                     _update)
 
