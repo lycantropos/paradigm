@@ -50,9 +50,6 @@ if platform.python_implementation() != 'PyPy':
             or (3, 7) <= sys.version_info < (3, 7, 1)):
         stdlib_modules.add(modules.safe_import('_blake2'))
 
-    if sys.platform == 'win32':
-        stdlib_modules.add(modules.safe_import('_msi'))
-
 stdlib_modules_callables = list(chain.from_iterable(map(_to_callables,
                                                         stdlib_modules)))
 
@@ -110,10 +107,8 @@ if platform.python_implementation() != 'PyPy':
 
         if sys.version_info >= (3, 7):
             _add(built_in_functions, 'time', 'pthread_getcpuclockid')
-    if sys.platform != 'win32':
-        if sys.version_info >= (3, 8):
-            _update(built_in_functions, 'posix', ['posix_spawn',
-                                                  'posix_spawnp'])
+    if sys.platform != 'win32' and sys.version_info >= (3, 8):
+        _update(built_in_functions, 'posix', ['posix_spawn', 'posix_spawnp'])
 
 classes = set()
 
@@ -140,14 +135,8 @@ if platform.python_implementation() != 'PyPy':
         _add(classes, '_xxsubinterpreters', 'InterpreterID')
         _update(classes, 'types', ['CellType', 'MethodType'])
 
-    if sys.platform == 'win32':
-        _update(classes, 'msilib', ['UuidCreate',
-                                    'FCICreate',
-                                    'OpenDatabase',
-                                    'CreateRecord'])
-
-        if sys.version_info < (3, 7):
-            _update(classes, 'os', ['uname_result', 'statvfs_result'])
+    if sys.platform == 'win32' and sys.version_info < (3, 7):
+        _update(classes, 'os', ['uname_result', 'statvfs_result'])
 
 methods_descriptors = set()
 
@@ -177,9 +166,7 @@ if platform.python_implementation() != 'PyPy':
     if sys.version_info < (3, 7):
         _add(methods_descriptors, 'collections', 'OrderedDict.setdefault')
 
-    if sys.platform == 'win32':
-        _add(methods_descriptors, 'socket', 'socket.share')
-    elif sys.version_info >= (3, 8):
+    if sys.platform != 'win32' and sys.version_info >= (3, 8):
         _update(methods_descriptors, 'curses', ['window.addch',
                                                 'window.addnstr',
                                                 'window.addstr',
