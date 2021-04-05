@@ -356,11 +356,10 @@ class Overloaded(Base):
         self.signatures = tuple(chain.from_iterable(map(flatten, signatures)))
 
     def __eq__(self, other: Base) -> bool:
-        if not isinstance(other, Base):
-            return NotImplemented
-        if not isinstance(other, Overloaded):
-            return False
-        return self.signatures == other.signatures
+        return (isinstance(other, Overloaded)
+                and self.signatures == other.signatures
+                if isinstance(other, Base)
+                else NotImplemented)
 
     def __hash__(self) -> int:
         return hash(self.signatures)
