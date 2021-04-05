@@ -83,16 +83,23 @@ else:
             try:
                 return function(object_)
             except ValueError as error:
-                object_paths = catalog.paths_factory(object_)
-                module_path = catalog.from_string(
+                base_module_path = catalog.from_string(
                         catalog.module_name_factory(object_))
-                signature_factory = partial(to_signature,
-                                            module_path=module_path)
-                try:
-                    return next(filter(None, map(signature_factory,
-                                                 object_paths)))
-                except StopIteration:
-                    raise error
+                module_paths = [base_module_path]
+                root_module_name = base_module_path.parts[0]
+                if root_module_name.startswith('_'):
+                    module_paths.append(base_module_path.with_parent(
+                            catalog.Path(root_module_name.lstrip('_'))))
+                object_paths = list(catalog.paths_factory(object_))
+                for module_path in module_paths:
+                    signature_factory = partial(to_signature,
+                                                module_path=module_path)
+                    try:
+                        return next(filter(None, map(signature_factory,
+                                                     object_paths)))
+                    except StopIteration:
+                        continue
+                raise error
 
         return wrapped
 
