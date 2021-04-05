@@ -6,8 +6,7 @@ from functools import (partial,
 from itertools import (chain,
                        starmap,
                        zip_longest)
-from operator import (attrgetter,
-                      methodcaller)
+from operator import itemgetter
 from types import (BuiltinFunctionType,
                    BuiltinMethodType,
                    FunctionType,
@@ -15,7 +14,8 @@ from types import (BuiltinFunctionType,
 from typing import (Any,
                     Callable,
                     Iterable,
-                    Optional)
+                    Optional,
+                    Tuple)
 from weakref import WeakKeyDictionary
 
 from memoir import cached
@@ -90,16 +90,17 @@ else:
                 if root_module_name.startswith('_'):
                     module_paths.append(base_module_path.with_parent(
                             catalog.Path(root_module_name.lstrip('_'))))
-                object_paths = list(catalog.paths_factory(object_))
-                for module_path in module_paths:
-                    signature_factory = partial(to_signature,
-                                                module_path=module_path)
-                    try:
-                        return next(filter(None, map(signature_factory,
-                                                     object_paths)))
-                    except StopIteration:
-                        continue
-                raise error
+                object_paths = set(catalog.paths_factory(object_))
+                try:
+                    return min(chain.from_iterable(
+                            filter(itemgetter(1),
+                                   map(partial(to_signature,
+                                               module_path=module_path),
+                                       object_paths))
+                            for module_path in module_paths),
+                            key=itemgetter(0))[1]
+                except ValueError:
+                    raise error
 
         return wrapped
 
@@ -122,17 +123,21 @@ else:
         try:
             return from_callable(object_)
         except ValueError as error:
-            class_paths = list(catalog.paths_factory(object_))
-            candidates_paths = chain(map(to_constructor_path, class_paths),
-                                     map(to_initializer_path, class_paths))
+            class_paths = set(catalog.paths_factory(object_))
+            candidates_paths = ([path.join(catalog.Path('__new__'))
+                                 for path in class_paths]
+                                + [path.join(catalog.Path('__init__'))
+                                   for path in class_paths])
             module_path = catalog.from_string(
                     catalog.module_name_factory(object_))
-            signature_factory = partial(to_signature,
-                                        module_path=module_path)
             try:
-                method_signature = next(filter(None, map(signature_factory,
-                                                         candidates_paths)))
-            except StopIteration:
+                method_signature = min(
+                        filter(itemgetter(1),
+                               map(partial(to_signature,
+                                           module_path=module_path),
+                                   candidates_paths)),
+                        key=itemgetter(0))[1]
+            except ValueError:
                 try:
                     base, = object_.__bases__
                 except ValueError:
@@ -154,22 +159,17 @@ else:
                 return slice_parameters(method_signature, slice(1, None))
 
 
-    to_constructor_path = methodcaller(catalog.Path.join.__name__,
-                                       catalog.from_string('__new__'))
-    to_initializer_path = methodcaller(catalog.Path.join.__name__,
-                                       catalog.from_string('__init__'))
-
-
     def to_signature(object_path: catalog.Path,
-                     module_path: catalog.Path) -> Optional[Base]:
+                     module_path: catalog.Path) -> Tuple[int, Optional[Base]]:
         try:
-            nodes = arboretum.to_functions_defs(object_path, module_path)
+            depth, nodes = arboretum.to_functions_defs(object_path,
+                                                       module_path)
         except KeyError:
-            return None
+            return -1, None
         else:
             if not nodes:
-                return None
-            return Overloaded(*map(from_ast, map(attrgetter('args'), nodes)))
+                return -1, None
+            return depth, Overloaded(*[from_ast(node.args) for node in nodes])
 
 
     def from_ast(signature_ast: ast3.arguments) -> Base:
