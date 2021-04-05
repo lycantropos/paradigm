@@ -162,7 +162,7 @@ class Plain(Base):
                 visited_kinds.add(kind)
         return super().__new__(cls)
 
-    __slots__ = 'parameters',
+    __slots__ = 'parameters', '__weakref__'
 
     def __init__(self, *parameters: Parameter) -> None:
         self.parameters = parameters
