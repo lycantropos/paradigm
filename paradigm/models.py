@@ -173,7 +173,7 @@ class Plain(Base):
                 else NotImplemented)
 
     def __hash__(self) -> int:
-        return hash(self._parameters)
+        return hash(self.parameters)
 
     __repr__ = generate_repr(__init__)
 
@@ -199,7 +199,7 @@ class Plain(Base):
 
     @cached.property_
     def parameters_by_kind(self) -> Dict[Parameter.Kind, List[Parameter]]:
-        return to_parameters_by_kind(self._parameters)
+        return to_parameters_by_kind(self.parameters)
 
     def all_set(self, *args: Domain, **kwargs: Domain) -> bool:
         positionals = (self.parameters_by_kind[Parameter.Kind.POSITIONAL_ONLY]
