@@ -91,6 +91,8 @@ def all_parameters_has_defaults(parameters: Iterable[Parameter]) -> bool:
 
 
 class Base(ABC):
+    __slots__ = ()
+
     @abstractmethod
     def all_set(self, *args: Domain, **kwargs: Domain) -> bool:
         """
