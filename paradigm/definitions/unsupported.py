@@ -99,14 +99,6 @@ if platform.python_implementation() != 'PyPy':
                                                            'create',
                                                            'channel_list_all',
                                                            'run_string'])
-    if sys.version_info >= (3, 6):
-        _add(built_in_functions, 'sys', 'set_asyncgen_hooks')
-        if sys.version_info < (3, 8):
-            _update(built_in_functions, 'sys', ['get_asyncgen_hooks',
-                                                'getfilesystemencodeerrors'])
-
-    if sys.version_info >= (3, 7):
-        _add(built_in_functions, 'socket', 'close')
 
     if sys.platform == 'linux':
         _update(built_in_functions, '_locale', ['bind_textdomain_codeset',
@@ -146,7 +138,6 @@ if platform.python_implementation() != 'PyPy':
         _add(classes, 'random', '_MethodType')
     else:
         _add(classes, '_xxsubinterpreters', 'InterpreterID')
-        _add(classes, 'pickle', 'PickleBuffer')
         _update(classes, 'types', ['CellType', 'MethodType'])
 
     if sys.platform == 'win32':
@@ -170,7 +161,6 @@ if platform.python_implementation() != 'PyPy':
                                                       'coroutine.close',
                                                       'coroutine.send',
                                                       'coroutine.throw'])
-    _add(methods_descriptors, '_io', 'BufferedRWPair.peek')
     _update(methods_descriptors, '_thread', ['LockType.acquire_lock',
                                              'LockType.locked_lock',
                                              'LockType.release_lock'])
@@ -183,14 +173,9 @@ if platform.python_implementation() != 'PyPy':
                 ['async_generator.aclose',
                  'async_generator.asend',
                  'async_generator.athrow'])
-        if sys.platform == 'linux':
-            _add(methods_descriptors, 'socket', 'socket.sendmsg_afalg')
 
-    if sys.version_info >= (3, 7):
-        _add(methods_descriptors, 'socket', 'socket.getblocking')
-    else:
+    if sys.version_info < (3, 7):
         _add(methods_descriptors, 'collections', 'OrderedDict.setdefault')
-        _add(methods_descriptors, 'zipimport', 'zipimporter.find_loader')
 
     if sys.platform == 'win32':
         _add(methods_descriptors, 'socket', 'socket.share')
