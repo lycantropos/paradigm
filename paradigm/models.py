@@ -1,4 +1,5 @@
 import enum
+import sys
 from abc import (ABC,
                  abstractmethod)
 from collections import defaultdict
@@ -162,7 +163,9 @@ class Plain(Base):
                 visited_kinds.add(kind)
         return super().__new__(cls)
 
-    __slots__ = 'parameters', '__weakref__'
+    __slots__ = 'parameters',
+    if sys.version_info >= (3, 7):
+        __slots__ += '__weakref__',
 
     def __init__(self, *parameters: Parameter) -> None:
         self.parameters = parameters
