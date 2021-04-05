@@ -167,11 +167,10 @@ class Plain(Base):
         return self._parameters
 
     def __eq__(self, other: Base) -> bool:
-        if not isinstance(other, Base):
-            return NotImplemented
-        if not isinstance(other, Plain):
-            return False
-        return self._parameters == other._parameters
+        return (isinstance(other, Plain)
+                and self.parameters == other.parameters
+                if isinstance(other, Base)
+                else NotImplemented)
 
     def __hash__(self) -> int:
         return hash(self._parameters)
