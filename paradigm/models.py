@@ -330,6 +330,8 @@ class Overloaded(Base):
                 if len(signatures) == 1
                 else super().__new__(cls))
 
+    __slots__ = 'signatures',
+
     def __init__(self, *signatures: Base) -> None:
         def flatten(signature: Base) -> Sequence[Base]:
             return (signature.signatures
