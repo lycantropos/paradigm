@@ -115,14 +115,16 @@ else:
         try:
             return from_callable(object_)
         except ValueError as error:
-            method_paths = map(to_method_path, catalog.paths_factory(object_))
+            class_paths = list(catalog.paths_factory(object_))
+            candidates_paths = chain(map(to_constructor_path, class_paths),
+                                     map(to_initializer_path, class_paths))
             module_path = catalog.from_string(
                     catalog.module_name_factory(object_))
             signature_factory = partial(to_signature,
                                         module_path=module_path)
             try:
                 method_signature = next(filter(None, map(signature_factory,
-                                                         method_paths)))
+                                                         candidates_paths)))
             except StopIteration:
                 try:
                     base, = object_.__bases__
@@ -145,8 +147,10 @@ else:
                 return slice_parameters(method_signature, slice(1, None))
 
 
-    to_method_path = methodcaller(catalog.Path.join.__name__,
-                                  catalog.from_string('__init__'))
+    to_constructor_path = methodcaller(catalog.Path.join.__name__,
+                                       catalog.from_string('__new__'))
+    to_initializer_path = methodcaller(catalog.Path.join.__name__,
+                                       catalog.from_string('__init__'))
 
 
     def to_signature(object_path: catalog.Path,
