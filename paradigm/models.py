@@ -160,12 +160,10 @@ class Plain(Base):
                 visited_kinds.add(kind)
         return super().__new__(cls)
 
-    def __init__(self, *parameters: Parameter) -> None:
-        self._parameters = parameters
+    __slots__ = 'parameters',
 
-    @property
-    def parameters(self) -> Tuple[Parameter, ...]:
-        return self._parameters
+    def __init__(self, *parameters: Parameter) -> None:
+        self.parameters = parameters
 
     def __eq__(self, other: Base) -> bool:
         return (isinstance(other, Plain)
