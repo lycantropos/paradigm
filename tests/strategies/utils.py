@@ -14,6 +14,7 @@ from paradigm.definitions import (is_supported,
                                   stdlib_modules_names,
                                   unsupported)
 from paradigm.hints import Domain
+from paradigm.modules import safe_import
 from tests.utils import (Strategy,
                          negate,
                          pack)
@@ -72,7 +73,8 @@ invalid_source_lines = ((keywords_lists.map(' '.join)
 invalid_sources = strategies.lists(invalid_source_lines,
                                    min_size=1).map('\n'.join)
 modules_list = list(filter(is_supported,
-                           map(importlib.import_module,
-                               stdlib_modules_names
-                               - unsupported.stdlib_modules_names)))
+                           filter(None,
+                                  map(safe_import,
+                                      stdlib_modules_names
+                                      - unsupported.stdlib_modules_names))))
 modules = strategies.sampled_from(modules_list)
