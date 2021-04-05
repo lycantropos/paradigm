@@ -91,28 +91,19 @@ def all_parameters_has_defaults(parameters: Iterable[Parameter]) -> bool:
 
 class Base(ABC):
     @abstractmethod
-    def __repr__(self) -> str:
-        pass
-
-    @abstractmethod
-    def __eq__(self, other: 'Base') -> bool:
-        pass
-
-    @abstractmethod
-    def __hash__(self) -> int:
-        pass
-
-    @abstractmethod
     def all_set(self, *args: Domain, **kwargs: Domain) -> bool:
-        pass
+        """
+        Checks if the signature has no unspecified parameters left
+        with given arguments.
+        """
 
     @abstractmethod
     def expects(self, *args: Domain, **kwargs: Domain) -> bool:
-        pass
+        """Checks if the signature accepts given arguments."""
 
     @abstractmethod
     def bind(self, *args: Domain, **kwargs: Domain) -> 'Base':
-        pass
+        """Binds given arguments to the signature."""
 
 
 class Plain(Base):
