@@ -327,9 +327,9 @@ def _bind_keywords(parameters: Tuple[Parameter, ...],
 
 class Overloaded(Base):
     def __new__(cls, *signatures: Base) -> Base:
-        if len(signatures) == 1:
-            return signatures[0]
-        return super().__new__(cls)
+        return (signatures[0]
+                if len(signatures) == 1
+                else super().__new__(cls))
 
     def __init__(self, *signatures: Base) -> None:
         def flatten(signature: Base) -> Iterable[Base]:
