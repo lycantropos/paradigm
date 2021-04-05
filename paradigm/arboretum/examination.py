@@ -20,20 +20,20 @@ class Registry(ast3.NodeVisitor):
         self.scope = scope
         self.module_path = module_path
 
-    def visit_Import(self, node: ast3.Import):
+    def visit_Import(self, node: ast3.Import) -> None:
         for name_alias in node.names:
             self.register(to_alias_path(name_alias), node)
 
-    def visit_ImportFrom(self, node: ast3.ImportFrom):
+    def visit_ImportFrom(self, node: ast3.ImportFrom) -> None:
         for name_alias in node.names:
             self.register(to_alias_path(name_alias), node)
 
-    def visit_FunctionDef(self, node: ast3.FunctionDef):
+    def visit_FunctionDef(self, node: ast3.FunctionDef) -> None:
         self.generic_visit(node)
         path = catalog.from_string(node.name)
         self.register(path, node)
 
-    def visit_ClassDef(self, node: ast3.ClassDef):
+    def visit_ClassDef(self, node: ast3.ClassDef) -> None:
         path = catalog.from_string(node.name)
         self.register(path, node)
         children_scope = {}
@@ -44,14 +44,14 @@ class Registry(ast3.NodeVisitor):
         for child_path, child_nodes in children_scope.items():
             self.batch_register(path.join(child_path), child_nodes)
 
-    def visit_Assign(self, node: ast3.Assign):
+    def visit_Assign(self, node: ast3.Assign) -> None:
         value_node = self.evaluator(node.value)
         for path in map(self.evaluator, node.targets):
             self.register(path, value_node)
         if not is_link(value_node):
             self.visit(value_node)
 
-    def visit_AnnAssign(self, node: ast3.AnnAssign):
+    def visit_AnnAssign(self, node: ast3.AnnAssign) -> None:
         self.register(self.evaluator(node.target), node)
 
     def batch_register(self, path, nodes: List[Node]) -> None:
