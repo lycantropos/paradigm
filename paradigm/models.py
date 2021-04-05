@@ -10,6 +10,7 @@ from typing import (Any,
                     Dict,
                     Iterable,
                     List,
+                    Sequence,
                     Tuple)
 
 from memoir import cached
@@ -332,11 +333,10 @@ class Overloaded(Base):
                 else super().__new__(cls))
 
     def __init__(self, *signatures: Base) -> None:
-        def flatten(signature: Base) -> Iterable[Base]:
-            if isinstance(signature, type(self)):
-                yield from signature.signatures
-            else:
-                yield signature
+        def flatten(signature: Base) -> Sequence[Base]:
+            return (signature.signatures
+                    if isinstance(signature, Overloaded)
+                    else [signature])
 
         self.signatures = tuple(chain.from_iterable(map(flatten, signatures)))
 
