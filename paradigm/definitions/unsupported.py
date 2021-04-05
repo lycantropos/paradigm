@@ -8,11 +8,10 @@ from .utils import (_add,
                     _update)
 
 # importing will cause unwanted side effects such as raising error
-stdlib_modules_names = {'antigravity', 'this'}
+stdlib_modules_names = {'antigravity', 'crypt', 'this'}
 
 if sys.platform == 'win32':
-    stdlib_modules_names.update({'crypt',
-                                 'curses',
+    stdlib_modules_names.update({'curses',
                                  'pty',
                                  'tty'})
 
@@ -20,8 +19,6 @@ if platform.python_implementation() == 'PyPy':
     stdlib_modules_names.update({'msilib',
                                  'symtable',
                                  'tracemalloc'})
-    if sys.platform == 'darwin':
-        stdlib_modules_names.add('crypt')
 
 stdlib_modules = set()
 
