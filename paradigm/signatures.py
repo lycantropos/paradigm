@@ -100,7 +100,7 @@ else:
                             for module_path in module_paths),
                             key=itemgetter(0))[1]
                 except ValueError:
-                    raise error
+                    raise error from ValueError(module_paths, object_paths)
 
         return wrapped
 
