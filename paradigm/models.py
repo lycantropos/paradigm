@@ -120,15 +120,12 @@ class Plain(Base):
             visited_kinds = {prior.kind}
             for parameter in rest:
                 name = parameter.name
-
                 if name in visited_names:
                     raise ValueError('Parameters should have unique names, '
                                      'but found duplicate '
                                      'for parameter "{name}".'
                                      .format(name=name))
-
                 kind = parameter.kind
-
                 if kind < prior.kind:
                     raise ValueError('Invalid parameters order: '
                                      'parameter "{prior_name}" '
@@ -139,7 +136,6 @@ class Plain(Base):
                                              prior_kind=prior.kind,
                                              kind=kind,
                                              parameter=name))
-
                 if kind in Parameter.positionals_kinds:
                     if not parameter.has_default:
                         if prior.has_default:
@@ -158,7 +154,6 @@ class Plain(Base):
                                          'but found duplicate '
                                          'for kind "{kind!s}".'
                                          .format(kind=kind))
-
                 prior = parameter
                 visited_names.add(name)
                 visited_kinds.add(kind)
