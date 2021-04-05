@@ -1,3 +1,3 @@
-memoir>=0.0.2
-reprit>=0.1.1
-mypy>=0.750; platform_python_implementation != "PyPy"
+memoir>=0.0.3,<1.0
+reprit>=0.3.1,<1.0
+mypy>=0.750,<1.0; platform_python_implementation != "PyPy"
