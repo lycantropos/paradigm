@@ -148,11 +148,12 @@ def any_path_has_origin(*candidates: catalog.Path,
         except KeyError:
             if catalog.is_attribute(candidate):
                 parent_nodes = searcher(candidate.parent)
-                if isinstance(parent_nodes[-1], ast3.Import):
-                    if any(to_actual_path(name_alias) == origin_module_path
-                           for name_alias in parent_nodes.names):
-                        return (catalog.from_string(candidate.parts[-1])
-                                == origin_object_path)
+                if (isinstance(parent_nodes[-1], ast3.Import)
+                        and
+                        any(to_actual_path(name_alias) == origin_module_path
+                            for name_alias in parent_nodes[-1].names)):
+                    return (catalog.from_string(candidate.parts[-1])
+                            == origin_object_path)
         else:
             origin_node = candidate_nodes[-1]
             if isinstance(origin_node, ast3.ImportFrom):
