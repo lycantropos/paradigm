@@ -97,7 +97,7 @@ if platform.python_implementation() != 'PyPy':
                                                            'channel_list_all',
                                                            'run_string'])
 
-    if sys.platform == 'linux':
+    if sys.platform != 'win32':
         _update(built_in_functions, '_locale', ['bind_textdomain_codeset',
                                                 'bindtextdomain',
                                                 'dcgettext',
@@ -107,8 +107,9 @@ if platform.python_implementation() != 'PyPy':
 
         if sys.version_info >= (3, 7):
             _add(built_in_functions, 'time', 'pthread_getcpuclockid')
-    if sys.platform != 'win32' and sys.version_info >= (3, 8):
-        _update(built_in_functions, 'posix', ['posix_spawn', 'posix_spawnp'])
+        if sys.version_info >= (3, 8):
+            _update(built_in_functions, 'posix', ['posix_spawn',
+                                                  'posix_spawnp'])
 
 classes = set()
 
