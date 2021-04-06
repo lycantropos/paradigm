@@ -51,7 +51,6 @@ def from_raw_signature(object_: inspect.Signature) -> Base:
     return Plain(*parameters)
 
 
-from_class_cache = WeakKeyDictionary()
 if platform.python_implementation() == 'PyPy':
     def from_class(object_: type) -> Base:
         try:
@@ -106,17 +105,6 @@ else:
 
 
     from_callable = with_typeshed(from_callable)
-
-    from_class_cache[int] = Overloaded(
-            Plain(Parameter(name='x',
-                            kind=Parameter.Kind.POSITIONAL_ONLY,
-                            has_default=True)),
-            Plain(Parameter(name='x',
-                            kind=Parameter.Kind.POSITIONAL_ONLY,
-                            has_default=False),
-                  Parameter(name='base',
-                            kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
-                            has_default=False)))
 
 
     def from_class(object_: type) -> Base:
@@ -239,7 +227,8 @@ from_callable = [factory.register(cls, from_callable)
                              MethodType,
                              MethodDescriptorType,
                              WrapperDescriptorType)][-1]
-from_class = factory.register(type)(cached.map_(from_class_cache)(from_class))
+from_class = factory.register(type)(cached.map_(WeakKeyDictionary())
+                                    (from_class))
 
 
 @factory.register(partial)
