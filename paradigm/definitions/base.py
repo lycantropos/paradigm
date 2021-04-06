@@ -136,6 +136,7 @@ def is_method_descriptor_supported(object_: MethodDescriptorType) -> bool:
 @is_supported.register(WrapperDescriptorType)
 def is_wrapper_descriptor_supported(object_: WrapperDescriptorType) -> bool:
     return (is_stdlib_callable_supported(object_)
+            and object_.__objclass__ not in unsupported.classes
             and object_ not in unsupported.wrappers_descriptors)
 
 
