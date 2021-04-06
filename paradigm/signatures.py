@@ -62,12 +62,13 @@ if platform.python_implementation() == 'PyPy':
             return slice_parameters(factory(method), slice(1, None))
 
 
-    def find_initializer_or_constructor(class_: type) -> Callable:
+    def find_initializer_or_constructor(class_: type) -> Optional[Callable]:
         for cls, next_cls in zip(class_.__mro__, class_.__mro__[1:]):
-            if cls.__init__ is not next_cls.__init__:
-                return cls.__init__
-            elif cls.__new__ is not next_cls.__new__:
+            if cls.__new__ is not next_cls.__new__:
                 return cls.__new__
+            elif cls.__init__ is not next_cls.__init__:
+                return cls.__init__
+        return None
 else:
     from typed_ast import ast3
 
