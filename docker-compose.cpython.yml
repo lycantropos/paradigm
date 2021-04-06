@@ -7,7 +7,7 @@ services:
       args:
         - IMAGE_NAME=${CPYTHON_IMAGE_NAME}
         - IMAGE_VERSION=${CPYTHON_IMAGE_VERSION}
-    image: lycantropos/paradigm-cpython:0.6.2-alpha
+    image: lycantropos/paradigm-cpython:0.6.2
     volumes:
       - ./paradigm:/opt/paradigm/paradigm
       - ./pytest.ini:/opt/paradigm/pytest.ini
