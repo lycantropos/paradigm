@@ -120,13 +120,17 @@ def is_class_supported(object_: type) -> bool:
             and is_supported(catalog.from_string(object_.__module__)))
 
 
-@is_supported.register(FunctionType)
-def is_function_supported(object_: FunctionType) -> bool:
-    return (has_module(object_)
-            and is_supported(catalog.from_string(object_.__module__)))
+if platform.python_implementation() == 'PyPy':
+    @is_supported.register(FunctionType)
+    def is_function_supported(object_: FunctionType) -> bool:
+        return True
+else:
+    @is_supported.register(FunctionType)
+    def is_function_supported(object_: FunctionType) -> bool:
+        return (has_module(object_)
+                and is_supported(catalog.from_string(object_.__module__)))
 
 
-if platform.python_implementation() != 'PyPy':
     @is_supported.register(MethodDescriptorType)
     def is_method_descriptor_supported(object_: MethodDescriptorType) -> bool:
         return (is_stdlib_callable_supported(object_)
@@ -169,4 +173,4 @@ def is_not_private(object_: Union[BuiltinFunctionType,
 
 def has_module(object_: Any) -> bool:
     return (hasattr(object_, '__module__')
-            and object_.__module__)
+            and object_.__module__ is not None)
