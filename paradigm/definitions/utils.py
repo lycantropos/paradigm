@@ -12,11 +12,6 @@ from paradigm import (catalog,
                       namespaces)
 
 
-def _update(set_: Set[Any], module_name: str, names: Iterable[str]) -> None:
-    for name in names:
-        _add(set_, module_name, name)
-
-
 def _add(set_: Set[Any], module_name: str, name: str) -> None:
     module = modules.safe_import(module_name)
     if module is None:
@@ -36,6 +31,13 @@ def _add(set_: Set[Any], module_name: str, name: str) -> None:
         set_.add(object_)
 
 
+def _add_module(set_: Set[Any], module_name: str) -> None:
+    module = modules.safe_import(module_name)
+    if module is None:
+        return
+    set_.add(module)
+
+
 def _search_by_path(module: ModuleType, path: catalog.Path) -> Any:
     return namespaces.search(namespaces.from_module(module), path)
 
@@ -46,3 +48,13 @@ def _to_callables(object_: Union[ModuleType, type]) -> Iterable[Callable]:
 
 def _to_contents(object_: Union[ModuleType, type]) -> List[Any]:
     return list(vars(object_).values())
+
+
+def _update(set_: Set[Any], module_name: str, names: Iterable[str]) -> None:
+    for name in names:
+        _add(set_, module_name, name)
+
+
+def _update_modules(set_: Set[Any], modules_names: Iterable[str]) -> None:
+    for module_name in modules_names:
+        _add_module(set_, module_name)

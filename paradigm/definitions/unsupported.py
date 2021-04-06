@@ -2,10 +2,11 @@ import platform
 import sys
 from itertools import chain
 
-from paradigm import modules
 from .utils import (_add,
+                    _add_module,
                     _to_callables,
-                    _update)
+                    _update,
+                    _update_modules)
 
 # importing will cause unwanted side effects such as raising error
 stdlib_modules_names = {'antigravity', 'crypt', 'this'}
@@ -24,28 +25,27 @@ stdlib_modules = set()
 
 if platform.python_implementation() != 'PyPy':
     # not supported by ``typeshed`` package
-    stdlib_modules.update(map(modules.safe_import,
-                              ['_collections',
-                               '_codecs_hk',
-                               '_codecs_iso2022',
-                               '_codecs_jp',
-                               '_codecs_kr',
-                               '_codecs_cn',
-                               '_codecs_tw',
-                               '_lsprof',
-                               '_multibytecodec',
-                               '_multiprocessing',
-                               '_string',
-                               'audioop',
-                               'parser',
-                               'xxsubtype']))
+    _update_modules(stdlib_modules, ['_collections',
+                                     '_codecs_hk',
+                                     '_codecs_iso2022',
+                                     '_codecs_jp',
+                                     '_codecs_kr',
+                                     '_codecs_cn',
+                                     '_codecs_tw',
+                                     '_lsprof',
+                                     '_multibytecodec',
+                                     '_multiprocessing',
+                                     '_string',
+                                     'audioop',
+                                     'parser',
+                                     'xxsubtype'])
 
     if sys.version_info >= (3, 6):
-        stdlib_modules.add(modules.safe_import('_sha3'))
+        _add_module(stdlib_modules, '_sha3')
 
     if ((3, 6) <= sys.version_info < (3, 6, 7)
             or (3, 7) <= sys.version_info < (3, 7, 1)):
-        stdlib_modules.add(modules.safe_import('_blake2'))
+        _add_module(stdlib_modules, '_blake2')
 
 stdlib_modules_callables = list(chain.from_iterable(map(_to_callables,
                                                         stdlib_modules)))
@@ -93,6 +93,9 @@ if platform.python_implementation() != 'PyPy':
                                                            'create',
                                                            'channel_list_all',
                                                            'run_string'])
+
+    if sys.version_info >= (3, 7):
+        _add(built_in_functions, '_uuid', 'generate_time_safe')
 
     if sys.platform != 'win32':
         _update(built_in_functions, '_locale', ['bind_textdomain_codeset',
