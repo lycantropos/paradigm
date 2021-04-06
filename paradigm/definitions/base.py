@@ -2,6 +2,7 @@ import ast
 import importlib.machinery
 import importlib.util
 import os
+import platform
 import sys
 from functools import singledispatch
 from operator import methodcaller
@@ -125,19 +126,20 @@ def is_function_supported(object_: FunctionType) -> bool:
             and is_supported(catalog.from_string(object_.__module__)))
 
 
-@is_supported.register(MethodDescriptorType)
-def is_method_descriptor_supported(object_: MethodDescriptorType) -> bool:
-    return (is_stdlib_callable_supported(object_)
-            and is_not_private(object_)
-            and object_.__objclass__ not in unsupported.classes
-            and object_ not in unsupported.methods_descriptors)
+if platform.python_implementation() != 'PyPy':
+    @is_supported.register(MethodDescriptorType)
+    def is_method_descriptor_supported(object_: MethodDescriptorType) -> bool:
+        return (is_stdlib_callable_supported(object_)
+                and is_not_private(object_)
+                and object_ not in unsupported.methods_descriptors)
 
 
-@is_supported.register(WrapperDescriptorType)
-def is_wrapper_descriptor_supported(object_: WrapperDescriptorType) -> bool:
-    return (is_stdlib_callable_supported(object_)
-            and object_.__objclass__ not in unsupported.classes
-            and object_ not in unsupported.wrappers_descriptors)
+    @is_supported.register(WrapperDescriptorType)
+    def is_wrapper_descriptor_supported(object_: WrapperDescriptorType
+                                        ) -> bool:
+        return (is_stdlib_callable_supported(object_)
+                and object_.__objclass__ not in unsupported.classes
+                and object_ not in unsupported.wrappers_descriptors)
 
 
 def has_supported_python_source_file(module: ModuleType) -> bool:
