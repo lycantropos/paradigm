@@ -129,6 +129,7 @@ def is_function_supported(object_: FunctionType) -> bool:
 def is_method_descriptor_supported(object_: MethodDescriptorType) -> bool:
     return (is_stdlib_callable_supported(object_)
             and is_not_private(object_)
+            and object_.__objclass__ not in unsupported.classes
             and object_ not in unsupported.methods_descriptors)
 
 
