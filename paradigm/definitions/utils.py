@@ -20,13 +20,11 @@ def _add(set_: Set[Any], module_name: str, name: str) -> None:
     try:
         object_ = _search_by_path(module, path)
     except KeyError:
-        warnings.warn('Module "{module}" has no object with name "{name}".'
-                      .format(module=module_name,
-                              name=path.parts[0]))
+        warnings.warn(f'Module "{module_name}" has no object '
+                      f'with name "{path.parts[0]}".')
     except AttributeError:
-        warnings.warn('Module "{module}" has no object with path "{path}".'
-                      .format(module=module_name,
-                              path=path))
+        warnings.warn(f'Module "{module_name}" has no object '
+                      f'with path "{path}".')
     else:
         set_.add(object_)
 

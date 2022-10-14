@@ -1,5 +1,6 @@
 import inspect
 import platform
+import types
 from functools import (partial,
                        singledispatch,
                        wraps)
@@ -76,31 +77,43 @@ else:
                    catalog)
 
 
-    def with_typeshed(function: Map[Callable[..., Any], Base]
-                      ) -> Map[Callable[..., Any], Base]:
+    def with_typeshed(
+            function: Map[Callable[..., Any], Base]
+    ) -> Map[Callable[..., Any], Base]:
         @wraps(function)
         def wrapped(object_: Callable[..., Any]) -> Base:
+            base_module_path = catalog.from_string(
+                    catalog.module_name_factory(object_)
+            )
+            module_paths = [base_module_path]
+            root_module_name = base_module_path.parts[0]
+            if root_module_name.startswith('_'):
+                module_paths.append(
+                        base_module_path.with_parent(
+                                catalog.Path(root_module_name.lstrip('_'))
+                        )
+                )
+            object_path = catalog.from_callable(object_)
             try:
+                _, result = min(filter(itemgetter(1),
+                                       [to_signature(module_path, object_path)
+                                        for module_path in module_paths]),
+                                key=itemgetter(0))
+            except ValueError:
                 return function(object_)
-            except ValueError as error:
-                base_module_path = catalog.from_string(
-                        catalog.module_name_factory(object_))
-                module_paths = [base_module_path]
-                root_module_name = base_module_path.parts[0]
-                if root_module_name.startswith('_'):
-                    module_paths.append(base_module_path.with_parent(
-                            catalog.Path(root_module_name.lstrip('_'))))
-                object_paths = set(catalog.paths_factory(object_))
-                try:
-                    return min(chain.from_iterable(
-                            filter(itemgetter(1),
-                                   map(partial(to_signature,
-                                               module_path=module_path),
-                                       object_paths))
-                            for module_path in module_paths),
-                            key=itemgetter(0))[1]
-                except ValueError:
-                    raise error from ValueError(module_paths, object_paths)
+            else:
+                assert (not hasattr(object_, '__self__')
+                        or isinstance(object_, (types.MethodType,
+                                                types.MethodWrapperType,
+                                                types.BuiltinMethodType))
+                        or object_ is super)
+                return (result.bind(object_.__self__)
+                        if (isinstance(object_, (types.MethodType,
+                                                 types.MethodWrapperType,
+                                                 types.BuiltinMethodType))
+                            and not isinstance(object_.__self__,
+                                               types.ModuleType))
+                        else result)
 
         return wrapped
 
@@ -112,21 +125,12 @@ else:
         try:
             return from_callable(object_)
         except ValueError as error:
-            class_paths = set(catalog.paths_factory(object_))
-            candidates_paths = ([path.join(catalog.Path('__new__'))
-                                 for path in class_paths]
-                                + [path.join(catalog.Path('__init__'))
-                                   for path in class_paths])
             module_path = catalog.from_string(
-                    catalog.module_name_factory(object_))
-            try:
-                method_signature = min(
-                        filter(itemgetter(1),
-                               map(partial(to_signature,
-                                           module_path=module_path),
-                                   candidates_paths)),
-                        key=itemgetter(0))[1]
-            except ValueError:
+                    catalog.module_name_factory(object_)
+            )
+            class_path = catalog.from_type(object_)
+            _, method_signature = to_signature(module_path, class_path)
+            if method_signature is None:
                 try:
                     base, = object_.__bases__
                 except ValueError:
@@ -148,17 +152,19 @@ else:
                 return slice_parameters(method_signature, slice(1, None))
 
 
-    def to_signature(object_path: catalog.Path,
-                     module_path: catalog.Path) -> Tuple[int, Optional[Base]]:
+    def to_signature(module_path: catalog.Path,
+                     object_path: catalog.Path) -> Tuple[int, Optional[Base]]:
         try:
-            depth, nodes = arboretum.to_functions_defs(object_path,
-                                                       module_path)
+            depth, nodes = arboretum.to_functions_defs(module_path,
+                                                       object_path)
         except KeyError:
             return -1, None
         else:
-            if not nodes:
-                return -1, None
-            return depth, Overloaded(*[from_ast(node.args) for node in nodes])
+            assert len(nodes) > 0 or depth == -1
+            return ((depth,
+                     Overloaded(*[from_ast(node.args) for node in nodes]))
+                    if nodes
+                    else (-1, None))
 
 
     def from_ast(signature_ast: ast3.arguments) -> Base:
@@ -240,19 +246,16 @@ def from_partial(object_: partial) -> Base:
 @singledispatch
 def slice_parameters(signature: Base,
                      slice_: slice) -> Base:
-    raise TypeError('Unsupported signature type: {type}.'
-                    .format(type=type(signature)))
+    raise TypeError(f'Unsupported signature type: {type(signature)!r}.')
 
 
 @slice_parameters.register(Plain)
-def slice_plain_parameters(signature: Plain,
-                           slice_: slice) -> Base:
+def _(signature: Plain, slice_: slice) -> Base:
     return Plain(*signature.parameters[slice_])
 
 
 @slice_parameters.register(Overloaded)
-def slice_overloaded_parameters(signature: Overloaded,
-                                slice_: slice) -> Base:
+def _(signature: Overloaded, slice_: slice) -> Base:
     return Overloaded(*map(partial(slice_parameters,
                                    slice_=slice_),
                            signature.signatures))

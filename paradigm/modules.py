@@ -8,6 +8,6 @@ def safe_import(name: str) -> Optional[ModuleType]:
     try:
         return importlib.import_module(name)
     except ImportError:
-        warnings.warn('Module "{module}" is not found.'
+        warnings.warn('Failed to import module "{module}".'
                       .format(module=name))
         return None

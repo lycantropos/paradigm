@@ -1,70 +1,49 @@
-from functools import partial
-from itertools import takewhile
 from typing import (List,
                     Tuple)
 
 from typed_ast import ast3
 
-from paradigm import catalog
-from . import (reduction,
-               scoping)
-from .data_access import search_nodes
-from .evaluation import is_overloaded_function
-from .logical import (are_dicts_similar,
-                      are_lists_similar,
-                      is_function_def,
-                      is_link)
+from paradigm import (catalog,
+                      sources)
+from .leveling import (NameLookupError,
+                       NodeKind,
+                       import_module_node)
 
 
-def to_functions_defs(object_path: catalog.Path,
-                      module_path: catalog.Path) -> Tuple[int, List[ast3.AST]]:
-    depth = 0
-    scope = scoping.factory(module_path)
-    reduce_node = reduction.factory(module_path=module_path,
-                                    scope=scope)
-    while True:
+def to_functions_defs(
+        module_path: catalog.Path,
+        object_path: catalog.Path,
+        *,
+        constructor_name: str = object.__new__.__name__,
+        initializer_name: str = object.__init__.__name__
+) -> Tuple[int, List[ast3.AST]]:
+    try:
+        module_node = import_module_node(module_path)
+    except sources.NotFound:
+        return -1, []
+    object_node = module_node
+    for part in object_path.parts:
+        object_node.resolve()
         try:
-            candidates = search_nodes(object_path,
-                                      scope=scope)
-        except KeyError:
-            parent_path = object_path.parent
-            parent_nodes = []
-            while parent_path.parts:
-                try:
-                    parent_nodes = scope[parent_path]
-                except KeyError:
-                    parent_path = parent_path.parent
-                else:
-                    break
-            if not parent_nodes:
-                raise
-            last_parent_node = parent_nodes[-1]
-            if is_link(last_parent_node):
-                object_path = object_path.with_parent(last_parent_node)
-                continue
-            children_scope_before = scoping.to_children_scope(parent_path,
-                                                              scope=scope)
-            reduce_node(last_parent_node)
-            children_remain_intact = are_dicts_similar(
-                    scoping.to_children_scope(parent_path,
-                                              scope=scope),
-                    children_scope_before)
-            if children_remain_intact:
-                return depth, []
-            depth += 1
+            object_node = object_node.get_attribute(part)
+        except NameLookupError:
+            return -1, []
+    object_node.resolve()
+    if object_node.kind is NodeKind.CLASS:
+        initializer_depth, initializer_node = object_node.locate_name(
+                initializer_name
+        )
+        constructor_depth, constructor_node = object_node.locate_name(
+                constructor_name
+        )
+        if constructor_depth < initializer_depth:
+            return constructor_depth, constructor_node.ast_nodes
         else:
-            if is_function_def(candidates[-1]):
-                last_candidate = candidates[-1]
-                is_overload = partial(is_overloaded_function,
-                                      scope=scope,
-                                      module_path=module_path)
-                return depth, (list(takewhile(is_overload, candidates))
-                               if is_overload(last_candidate)
-                               else [last_candidate])
-            nodes_before = candidates[:]
-            reduce_node(candidates[-1])
-            nodes_remain_intact = are_lists_similar(search_nodes(object_path,
-                                                                 scope=scope),
-                                                    nodes_before)
-            if nodes_remain_intact:
-                return depth, []
+            return initializer_depth, initializer_node.ast_nodes
+    elif object_node.kind is NodeKind.FUNCTION:
+        return 0, object_node.ast_nodes
+    else:
+        assert (
+                object_node.kind is not NodeKind.UNDEFINED
+        ), module_path.join(object_path)
+        return -1, []
