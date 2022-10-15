@@ -238,29 +238,27 @@ def _(
     result = object_.__module__
     if result is None:
         result = object_.__self__.__class__.__module__
-    assert isinstance(result, str)
-    return result
+    return result or builtins.__name__
 
 
+@module_name_factory.register(types.BuiltinFunctionType)
 @module_name_factory.register(types.FunctionType)
 def _(object_: types.FunctionType) -> str:
-    result = object_.__module__
-    return result
+    return object_.__module__ or builtins.__name__
 
 
 @module_name_factory.register(type)
 @cached.map_(types.MappingProxyType(module_name_from_type_cache))
 def _(object_: type) -> str:
-    result = object_.__module__
-    return result
+    return object_.__module__ or builtins.__name__
 
 
-@module_name_factory.register(types.MethodDescriptorType)
-@module_name_factory.register(types.WrapperDescriptorType)
-def _(
-        object_: Union[types.MethodDescriptorType, types.WrapperDescriptorType]
-) -> str:
-    return module_name_factory(object_.__objclass__)
+if types.MethodDescriptorType is not types.FunctionType:
+    @module_name_factory.register(types.MethodDescriptorType)
+    @module_name_factory.register(types.WrapperDescriptorType)
+    def _(object_: Union[types.MethodDescriptorType,
+                         types.WrapperDescriptorType]) -> str:
+        return module_name_factory(object_.__objclass__)
 
 
 def is_package(module_path: Path) -> bool:

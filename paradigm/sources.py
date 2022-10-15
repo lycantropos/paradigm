@@ -6,6 +6,8 @@ from typing import (Any,
                     Iterable,
                     Tuple)
 
+import mypy
+
 from . import catalog
 from .file_system import find_files
 from .hints import Map
@@ -70,10 +72,4 @@ def is_stub(path: Path) -> bool:
     return path.suffixes == [STUB_EXTENSION]
 
 
-try:
-    import mypy
-except ImportError:
-    cache = {}
-else:
-    cache = dict(generate_stubs_cache_items(factory(mypy)
-                                            / 'typeshed' / 'stdlib'))
+cache = dict(generate_stubs_cache_items(factory(mypy) / 'typeshed' / 'stdlib'))
