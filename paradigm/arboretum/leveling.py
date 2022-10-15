@@ -379,9 +379,11 @@ class Node:
     def _(self, ast_node: ast.Attribute) -> Optional['Node']:
         assert isinstance(ast_node.ctx, ast.Load), ast_node
         value_node = self._resolve_assigning_value(ast_node.value)
-        return (value_node
-                if value_node is None
-                else value_node._local_lookup_name_inserting_default(ast_node.attr))
+        return (
+            value_node
+            if value_node is None
+            else value_node._local_lookup_name_inserting_default(ast_node.attr)
+        )
 
     @_resolve_assigning_value.register(ast.Dict)
     @_resolve_assigning_value.register(ast.Tuple)
@@ -538,12 +540,7 @@ class Node:
                         submodule_node._kind in (NodeKind.MODULE_IMPORT,
                                                  NodeKind.MODULE)
                 ), self
-                imported_name = to_alias_string(alias)
-                if imported_name != submodule_name:
-                    assert not self._locals_contain(imported_name), self
-                    self._set_name(imported_name, submodule_node)
-                else:
-                    assert self._locals_contain(imported_name), self
+                self._upsert_name(to_alias_string(alias), submodule_node)
         else:
             module_node = _import_module_node(module_path)
             for alias in ast_node.names:
