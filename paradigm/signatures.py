@@ -8,10 +8,6 @@ from itertools import (chain,
                        starmap,
                        zip_longest)
 from operator import itemgetter
-from types import (BuiltinFunctionType,
-                   BuiltinMethodType,
-                   FunctionType,
-                   MethodType)
 from typing import (Any,
                     Callable,
                     Iterable,
@@ -21,9 +17,7 @@ from weakref import WeakKeyDictionary
 
 from memoir import cached
 
-from .hints import (Map,
-                    MethodDescriptorType,
-                    WrapperDescriptorType)
+from .hints import Map
 from .models import (Base,
                      Overloaded,
                      Parameter,
@@ -71,7 +65,7 @@ if platform.python_implementation() == 'PyPy':
                 return cls.__init__
         return None
 else:
-    from typed_ast import ast3
+    import ast
 
     from . import (arboretum,
                    catalog)
@@ -102,11 +96,6 @@ else:
             except ValueError:
                 return function(object_)
             else:
-                assert (not hasattr(object_, '__self__')
-                        or isinstance(object_, (types.MethodType,
-                                                types.MethodWrapperType,
-                                                types.BuiltinMethodType))
-                        or object_ is super)
                 return (result.bind(object_.__self__)
                         if (isinstance(object_, (types.MethodType,
                                                  types.MethodWrapperType,
@@ -162,35 +151,38 @@ else:
         else:
             assert len(nodes) > 0 or depth == -1
             return ((depth,
-                     Overloaded(*[from_ast(node.args) for node in nodes]))
+                     Overloaded(*[_from_ast(node.args) for node in nodes]))
                     if nodes
                     else (-1, None))
 
 
-    def from_ast(signature_ast: ast3.arguments) -> Base:
+    def _from_ast(signature_ast: ast.arguments) -> Base:
         parameters = filter(
                 None,
-                chain(to_positional_parameters(signature_ast),
-                      (to_variadic_positional_parameter(signature_ast),),
-                      to_keyword_parameters(signature_ast),
-                      (to_variadic_keyword_parameter(signature_ast),)))
+                (*to_positional_parameters(signature_ast),
+                 to_variadic_positional_parameter(signature_ast),
+                 *to_keyword_parameters(signature_ast),
+                 to_variadic_keyword_parameter(signature_ast))
+        )
         return Plain(*parameters)
 
 
-    def to_positional_parameters(signature_ast: ast3.arguments
-                                 ) -> Iterable[Parameter]:
+    def to_positional_parameters(
+            signature_ast: ast.arguments
+    ) -> Iterable[Parameter]:
         # double-reversing since parameters with default arguments go last
-        parameters_with_defaults_ast = zip_longest(
-                reversed(signature_ast.args),
-                signature_ast.defaults)
+        parameters_with_defaults_ast: Iterable[ast.arg] = zip_longest(
+                reversed(signature_ast.args), signature_ast.defaults
+        )
         parameters_with_defaults_ast = reversed(
-                list(parameters_with_defaults_ast))
+                [*parameters_with_defaults_ast]
+        )
         parameter_factory = partial(to_parameter,
                                     kind=Parameter.Kind.POSITIONAL_ONLY)
         yield from starmap(parameter_factory, parameters_with_defaults_ast)
 
 
-    def to_keyword_parameters(signature_ast: ast3.arguments
+    def to_keyword_parameters(signature_ast: ast.arguments
                               ) -> Iterable[Parameter]:
         parameters_with_defaults_ast = zip(signature_ast.kwonlyargs,
                                            signature_ast.kw_defaults)
@@ -199,8 +191,9 @@ else:
         yield from starmap(parameter_factory, parameters_with_defaults_ast)
 
 
-    def to_variadic_positional_parameter(signature_ast: ast3.arguments
-                                         ) -> Optional[Parameter]:
+    def to_variadic_positional_parameter(
+            signature_ast: ast.arguments
+    ) -> Optional[Parameter]:
         parameter_ast = signature_ast.vararg
         if parameter_ast is None:
             return None
@@ -209,7 +202,7 @@ else:
                          has_default=False)
 
 
-    def to_variadic_keyword_parameter(signature_ast: ast3.arguments
+    def to_variadic_keyword_parameter(signature_ast: ast.arguments
                                       ) -> Optional[Parameter]:
         parameter_ast = signature_ast.kwarg
         if parameter_ast is None:
@@ -219,8 +212,8 @@ else:
                          has_default=False)
 
 
-    def to_parameter(parameter_ast: ast3.arg,
-                     default_ast: Optional[ast3.expr],
+    def to_parameter(parameter_ast: ast.arg,
+                     default_ast: Optional[ast.expr],
                      *,
                      kind: Parameter.Kind) -> Parameter:
         return Parameter(name=parameter_ast.arg,
@@ -228,12 +221,12 @@ else:
                          has_default=default_ast is not None)
 
 from_callable = [factory.register(cls, from_callable)
-                 for cls in (BuiltinFunctionType,
-                             BuiltinMethodType,
-                             FunctionType,
-                             MethodType,
-                             MethodDescriptorType,
-                             WrapperDescriptorType)][-1]
+                 for cls in (types.BuiltinFunctionType,
+                             types.BuiltinMethodType,
+                             types.FunctionType,
+                             types.MethodType,
+                             types.MethodDescriptorType,
+                             types.WrapperDescriptorType)][-1]
 from_class = factory.register(type)(cached.map_(WeakKeyDictionary())
                                     (from_class))
 

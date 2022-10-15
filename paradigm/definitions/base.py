@@ -9,7 +9,9 @@ from operator import methodcaller
 from pathlib import Path
 from types import (BuiltinFunctionType,
                    FunctionType,
-                   ModuleType)
+                   MethodDescriptorType,
+                   ModuleType,
+                   WrapperDescriptorType)
 from typing import (Any,
                     Callable,
                     Iterable,
@@ -17,8 +19,6 @@ from typing import (Any,
                     Union)
 
 from paradigm import catalog
-from paradigm.hints import (MethodDescriptorType,
-                            WrapperDescriptorType)
 from . import unsupported
 
 
@@ -54,7 +54,7 @@ stdlib_modules_names = set(find_stdlib_modules_names())
 
 
 @is_supported.register(ModuleType)
-def is_module_supported(object_: ModuleType) -> bool:
+def _(object_: ModuleType) -> bool:
     module_name = object_.__name__
     return (module_name in stdlib_modules_names
             and module_name not in unsupported.stdlib_modules_names
@@ -151,7 +151,8 @@ def has_supported_python_source_file(module: ModuleType) -> bool:
         file_path_string = module.__file__
     except AttributeError:
         return False
-    return is_supported(Path(file_path_string))
+    return (file_path_string is not None
+            and is_supported(Path(file_path_string)))
 
 
 def is_stdlib_object(object_: Any) -> bool:

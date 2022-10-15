@@ -1,7 +1,6 @@
+import ast
 from typing import (List,
                     Tuple)
-
-from typed_ast import ast3
 
 from paradigm import (catalog,
                       sources)
@@ -16,7 +15,7 @@ def to_functions_defs(
         *,
         constructor_name: str = object.__new__.__name__,
         initializer_name: str = object.__init__.__name__
-) -> Tuple[int, List[ast3.AST]]:
+) -> Tuple[int, List[ast.AST]]:
     try:
         module_node = import_module_node(module_path)
     except sources.NotFound:

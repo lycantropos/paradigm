@@ -40,15 +40,6 @@ def from_module_path(object_: catalog.Path) -> Path:
         return cache[object_]
     except KeyError as error:
         raise NotFound(object_) from error
-    try:
-        return cache[object_]
-    except KeyError as original_error:
-        module_name_path = catalog.from_string(object_.parts[-1].lstrip('_'))
-        module_path = object_.parent.join(module_name_path)
-        try:
-            return cache[module_path]
-        except KeyError:
-            raise original_error
 
 
 def generate_stubs_cache_items(root: Path
