@@ -2,7 +2,9 @@ import platform
 from functools import partial
 from types import (BuiltinFunctionType,
                    FunctionType,
-                   MethodType)
+                   MethodDescriptorType,
+                   MethodType,
+                   WrapperDescriptorType)
 from typing import (Any,
                     Callable)
 
@@ -11,8 +13,6 @@ from hypothesis import given
 
 from paradigm import (models,
                       signatures)
-from paradigm.hints import (MethodDescriptorType,
-                            WrapperDescriptorType)
 from tests.utils import slow_data_generation
 from . import strategies
 

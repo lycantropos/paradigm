@@ -3,7 +3,9 @@ import platform
 from functools import (partial,
                        reduce)
 from itertools import chain
-from types import ModuleType
+from types import (MethodDescriptorType,
+                   ModuleType,
+                   WrapperDescriptorType)
 from typing import (Any,
                     List,
                     Union)
@@ -15,8 +17,6 @@ from paradigm.definitions import (is_supported,
 from paradigm.definitions.utils import (_add,
                                         _to_contents,
                                         _update)
-from paradigm.hints import (MethodDescriptorType,
-                            WrapperDescriptorType)
 from tests.strategies import modules_list
 
 
