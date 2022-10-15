@@ -183,7 +183,7 @@ class Node:
                             pass
                 return (self._builtins.lookup_name(name)
                         if self is not self._builtins
-                        else self._get_constant(name))
+                        else self._lookup_constant(name))
 
     def locate_name(self, name: str) -> Tuple[int, 'Node']:
         try:
@@ -223,14 +223,33 @@ class Node:
         for sub_node in self._sub_nodes:
             sub_node.resolve()
 
-    def _contains(self, name: str) -> bool:
+    def _locals_contain(self, name: str) -> bool:
         return name in self._locals
 
-    def _get_constant(self, name: str) -> 'Node':
+    def _lookup_constant(self, name: str) -> 'Node':
         try:
             return self._constants[name]
         except KeyError as error:
             raise NameLookupError(name) from error
+
+    def _global_lookup_name_inserting_default(self, name: str) -> 'Node':
+        try:
+            return self.lookup_name(name)
+        except NameLookupError:
+            result = Node(
+                    self._source_path, self._module_path,
+                    self._object_path.join(catalog.Path(name)),
+                    NodeKind.UNDEFINED, []
+            )
+            _import_module_node(self._module_path)._set_name(name, result)
+            return result
+
+    def _global_lookup_path_inserting_default(self,
+                                              path: catalog.Path) -> 'Node':
+        result = self._global_lookup_name_inserting_default(path.parts[0])
+        for part in path.parts[1:]:
+            result = result._local_lookup_name_inserting_default(part)
+        return result
 
     def _local_lookup_name(self, name: str) -> 'Node':
         try:
@@ -257,35 +276,10 @@ class Node:
             self._set_name(name, result)
             return result
 
-    def _get_path_inserting_default(self, path: catalog.Path) -> 'Node':
-        result = self
-        for part in path.parts:
-            result = result._local_lookup_name_inserting_default(part)
-        return result
-
-    def _global_lookup_name_inserting_default(self, name: str) -> 'Node':
-        try:
-            return self.lookup_name(name)
-        except NameLookupError:
-            result = Node(
-                    self._source_path, self._module_path,
-                    self._object_path.join(catalog.Path(name)),
-                    NodeKind.UNDEFINED, []
-            )
-            _import_module_node(self._module_path)._set_name(name, result)
-            return result
-
-    def _global_lookup_path_inserting_default(self,
-                                              path: catalog.Path) -> 'Node':
-        result = self._global_lookup_name_inserting_default(path.parts[0])
-        for part in path.parts[1:]:
-            result = result._local_lookup_name_inserting_default(part)
-        return result
-
     def _local_lookup_path_inserting_default(self,
                                              path: catalog.Path) -> 'Node':
-        result = self._local_lookup_name_inserting_default(path.parts[0])
-        for part in path.parts[1:]:
+        result = self
+        for part in path.parts:
             result = result._local_lookup_name_inserting_default(part)
         return result
 
@@ -334,12 +328,12 @@ class Node:
 
     def _set_name(self, name: str, value: 'Node') -> None:
         assert catalog.Path.SEPARATOR not in name, name
-        if self._contains(name):
+        if self._locals_contain(name):
             raise NameAlreadyExists(name)
         self._locals[name] = value
 
     def _set_path(self, path: catalog.Path, value: 'Node') -> None:
-        node = (self._get_path_inserting_default(path.parent)
+        node = (self._local_lookup_path_inserting_default(path.parent)
                 if len(path.parts) > 1
                 else self)
         node._set_name(path.parts[-1], value)
@@ -352,7 +346,7 @@ class Node:
 
     def _upsert_name(self, name: str, value: 'Node') -> None:
         assert catalog.Path.SEPARATOR not in name, name
-        if self._contains(name):
+        if self._locals_contain(name):
             candidate = self._locals[name]
             if candidate is not value:
                 candidate._merge_with(value)
@@ -408,7 +402,7 @@ class Node:
     def _(self,
           ast_node: Union[ast.Constant, ast.NameConstant]) -> Optional['Node']:
         try:
-            return self._get_constant(repr(ast_node.value))
+            return self._lookup_constant(repr(ast_node.value))
         except NameLookupError:
             return None
 
@@ -449,7 +443,7 @@ class Node:
     @_resolve_annotation.register(ast.NameConstant)
     @_resolve_annotation.register(ast.Constant)
     def _(self, ast_node: Union[ast.Constant, ast.NameConstant]) -> 'Node':
-        return self._get_constant(repr(ast_node.value))
+        return self._lookup_constant(repr(ast_node.value))
 
     @_resolve_annotation.register(ast.Attribute)
     def _(self, ast_node: ast.Attribute) -> 'Node':
@@ -504,7 +498,7 @@ class Node:
         if value_node is None:
             targets = ast_node.targets
             assert targets, ast_node
-            value_node = self._get_path_inserting_default(
+            value_node = self._local_lookup_path_inserting_default(
                     _resolve_assignment_target(targets[0])
             )
             value_node._set_ast_node(ast_node)
@@ -546,10 +540,10 @@ class Node:
                 ), self
                 imported_name = to_alias_string(alias)
                 if imported_name != submodule_name:
-                    assert not self._contains(imported_name), self
+                    assert not self._locals_contain(imported_name), self
                     self._set_name(imported_name, submodule_node)
                 else:
-                    assert self._contains(imported_name), self
+                    assert self._locals_contain(imported_name), self
         else:
             module_node = _import_module_node(module_path)
             for alias in ast_node.names:
