@@ -556,11 +556,13 @@ class Node:
                                 candidate_module_path
                         )
                     else:
-                        imported_node = module_node._local_lookup_name_inserting(
-                                actual_name,
-                                Node(module_node._source_path,
-                                     module_path, catalog.Path(actual_name),
-                                     NodeKind.IMPORT_FROM, [])
+                        imported_node = (
+                            module_node._local_lookup_name_inserting(
+                                    actual_name,
+                                    Node(module_node._source_path, module_path,
+                                         catalog.Path(actual_name),
+                                         NodeKind.IMPORT_FROM, [])
+                            )
                         )
                     self._upsert_name(to_alias_string(alias), imported_node)
 
