@@ -88,9 +88,10 @@ for built-in functions
 ...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
 ...                     has_default=False))
 ...     if platform.python_implementation() == 'PyPy'
-...     else Plain(Parameter(name='iterable',
+...     else Plain(Parameter(name='__iterable',
 ...                          kind=Parameter.Kind.POSITIONAL_ONLY,
-...                          has_default=False)))
+...                          has_default=False))
+...  )
 True
 
 ```
@@ -105,7 +106,8 @@ for built-in classes
 ...     if platform.python_implementation() == 'PyPy'
 ...     else Plain(Parameter(name='x', 
 ...                          kind=Parameter.Kind.POSITIONAL_ONLY,
-...                          has_default=True)))
+...                          has_default=True))
+... )
 True
 
 ```
