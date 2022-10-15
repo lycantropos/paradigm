@@ -35,12 +35,6 @@ jobs:
           },
         ]
         include:
-          - python_version: 'pypy-3.7'
-            platform: { os: 'macos-latest', python_architecture: 'x64' }
-          - python_version: 'pypy-3.7'
-            platform: { os: 'ubuntu-latest', python_architecture: 'x64' }
-          - python_version: 'pypy-3.7'
-            platform: { os: 'windows-latest', python_architecture: 'x64' }
           - python_version: 'pypy-3.8'
             platform: { os: 'macos-latest', python_architecture: 'x64' }
           - python_version: 'pypy-3.8'
