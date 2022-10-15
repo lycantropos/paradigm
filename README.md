@@ -84,45 +84,32 @@ for built-in functions
 >>> import platform
 >>> from paradigm.models import Parameter, Plain
 >>> signatures.factory(any) == (
-...     Plain(Parameter(name='seq',
-...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
+...     Plain(Parameter(name='__iterable',
+...                     kind=Parameter.Kind.POSITIONAL_ONLY,
 ...                     has_default=False))
-...     if platform.python_implementation() == 'PyPy'
-...     else Plain(Parameter(name='__iterable',
-...                          kind=Parameter.Kind.POSITIONAL_ONLY,
-...                          has_default=False))
 ...  )
 True
 
 ```
 for built-in classes
 ```python
->>> import platform
 >>> from paradigm.models import Parameter, Plain
 >>> signatures.factory(float) == (
 ...     Plain(Parameter(name='x', 
-...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
+...                     kind=Parameter.Kind.POSITIONAL_ONLY,
 ...                     has_default=True))
-...     if platform.python_implementation() == 'PyPy'
-...     else Plain(Parameter(name='x', 
-...                          kind=Parameter.Kind.POSITIONAL_ONLY,
-...                          has_default=True))
 ... )
 True
 
 ```
 for built-in classes methods
 ```python
->>> import platform
 >>> from paradigm.models import Parameter, Plain
 >>> signatures.factory(float.as_integer_ratio) == (
 ...     Plain(Parameter(name='self',
-...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
-...                     has_default=False))
-...     if platform.python_implementation() == 'PyPy'
-...     else Plain(Parameter(name='self',
 ...                          kind=Parameter.Kind.POSITIONAL_ONLY,
-...                          has_default=False)))
+...                          has_default=False))
+... )
 True
 
 ```
