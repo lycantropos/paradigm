@@ -151,7 +151,10 @@ else:
         else:
             assert len(nodes) > 0 or depth == -1
             return ((depth,
-                     Overloaded(*[_from_ast(node.args) for node in nodes]))
+                     Overloaded(*[_from_ast(node.args).bind('cls')
+                                  if node.name == '__new__'
+                                  else _from_ast(node.args)
+                                  for node in nodes]))
                     if nodes
                     else (-1, None))
 
