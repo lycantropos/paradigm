@@ -1,11 +1,8 @@
 import ast
 import importlib.machinery
 import importlib.util
-import os
 import platform
-import sys
 from functools import singledispatch
-from operator import methodcaller
 from pathlib import Path
 from types import (BuiltinFunctionType,
                    FunctionType,
@@ -14,12 +11,12 @@ from types import (BuiltinFunctionType,
                    WrapperDescriptorType)
 from typing import (Any,
                     Callable,
-                    Iterable,
                     Optional,
                     Union)
 
 from paradigm import catalog
 from . import unsupported
+from .utils import stdlib_modules_names
 
 
 @singledispatch
@@ -29,28 +26,6 @@ def is_supported(object_: Any) -> bool:
     """
     raise TypeError('Unsupported object type: {type}.'
                     .format(type=type(object_)))
-
-
-def find_stdlib_modules_names(directory_path: Path = Path(os.__file__).parent,
-                              ) -> Iterable[str]:
-    yield from sys.builtin_module_names
-
-    def is_stdlib_module_path(path: Path) -> bool:
-        base_name = path.stem
-        # skips 'LICENSE', '__pycache__', 'site-packages', etc.
-        return not (base_name.isupper()
-                    or base_name.startswith('__')
-                    or '-' in base_name)
-
-    sources_paths = filter(is_stdlib_module_path, directory_path.iterdir())
-    sources_relative_paths = map(methodcaller(Path.relative_to.__name__,
-                                              directory_path),
-                                 sources_paths)
-    yield from map(str, map(methodcaller(Path.with_suffix.__name__, ''),
-                            sources_relative_paths))
-
-
-stdlib_modules_names = set(find_stdlib_modules_names())
 
 
 @is_supported.register(ModuleType)
@@ -158,7 +133,9 @@ def has_supported_python_source_file(module: ModuleType) -> bool:
 def is_stdlib_object(object_: Any) -> bool:
     if not has_module(object_):
         return False
-    top_module_name = catalog.from_string(object_.__module__).parts[0]
+    top_module_name = catalog.from_string(
+            catalog.module_name_factory(object_)
+    ).parts[0]
     return top_module_name in stdlib_modules_names
 
 

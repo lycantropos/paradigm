@@ -1,15 +1,18 @@
 import platform
 import sys
 from itertools import chain
+from types import ModuleType
+from typing import Set
 
 from .utils import (_add,
                     _add_module,
                     _to_callables,
                     _update,
-                    _update_modules)
+                    _update_modules,
+                    stdlib_modules_names as _stdlib_modules_names)
 
 # importing will cause unwanted side effects such as raising error
-stdlib_modules_names = {'antigravity', 'crypt', 'this'}
+stdlib_modules_names = {'antigravity', 'crypt', 'this', 'tkinter', 'turtle'}
 
 if sys.platform == 'win32':
     stdlib_modules_names.update({'curses',
@@ -17,11 +20,26 @@ if sys.platform == 'win32':
                                  'tty'})
 
 if platform.python_implementation() == 'PyPy':
-    stdlib_modules_names.update({'msilib',
-                                 'symtable',
-                                 'tracemalloc'})
+    stdlib_modules_names.update(
+            {
+                '_crypt',
+                'future_builtins',
+                'identity_dict',
+                'msilib',
+                'symtable',
+                'tracemalloc',
+                *[name
+                  for name in _stdlib_modules_names
+                  if name.startswith(('__pypy', '_ctypes', '_pypy', '_test',
+                                      'test'))]
+            }
+    )
+    if sys.platform != 'win32':
+        stdlib_modules_names.update({'_overlapped',
+                                     '_winapi',
+                                     'msvcrt'})
 
-stdlib_modules = set()
+stdlib_modules: Set[ModuleType] = set()
 
 if platform.python_implementation() != 'PyPy':
     # not supported by ``typeshed`` package
@@ -35,22 +53,19 @@ if platform.python_implementation() != 'PyPy':
                                      '_lsprof',
                                      '_multibytecodec',
                                      '_multiprocessing',
+                                     '_sha3',
                                      '_string',
                                      'audioop',
                                      'parser',
                                      'xxsubtype'])
 
-    if sys.version_info >= (3, 6):
-        _add_module(stdlib_modules, '_sha3')
-
-    if ((3, 6) <= sys.version_info < (3, 6, 7)
-            or (3, 7) <= sys.version_info < (3, 7, 1)):
+    if (3, 7) <= sys.version_info < (3, 7, 1):
         _add_module(stdlib_modules, '_blake2')
 
 stdlib_modules_callables = list(chain.from_iterable(map(_to_callables,
                                                         stdlib_modules)))
 
-built_in_functions = set()
+built_in_functions: Set[str] = set()
 
 if platform.python_implementation() != 'PyPy':
     # not supported by ``typeshed`` package
@@ -116,7 +131,7 @@ if platform.python_implementation() != 'PyPy':
             _update(built_in_functions, 'posix', ['posix_spawn',
                                                   'posix_spawnp'])
 
-classes = set()
+classes: Set[str] = set()
 
 if platform.python_implementation() != 'PyPy':
     # not supported by ``typeshed`` package
@@ -144,7 +159,7 @@ if platform.python_implementation() != 'PyPy':
     if sys.platform == 'win32' and sys.version_info < (3, 7):
         _update(classes, 'os', ['uname_result', 'statvfs_result'])
 
-methods_descriptors = set()
+methods_descriptors: Set[str] = set()
 
 if platform.python_implementation() != 'PyPy':
     # not supported by ``typeshed`` package
@@ -172,71 +187,7 @@ if platform.python_implementation() != 'PyPy':
     if sys.version_info < (3, 7):
         _add(methods_descriptors, 'collections', 'OrderedDict.setdefault')
 
-    if sys.platform != 'win32' and sys.version_info >= (3, 8):
-        _update(methods_descriptors, 'curses', ['window.addch',
-                                                'window.addnstr',
-                                                'window.addstr',
-                                                'window.border',
-                                                'window.box',
-                                                'window.chgat',
-                                                'window.clear',
-                                                'window.clearok',
-                                                'window.clrtobot',
-                                                'window.clrtoeol',
-                                                'window.cursyncup',
-                                                'window.delch',
-                                                'window.deleteln',
-                                                'window.derwin',
-                                                'window.erase',
-                                                'window.get_wch',
-                                                'window.getbegyx',
-                                                'window.getch',
-                                                'window.getkey',
-                                                'window.getmaxyx',
-                                                'window.getparyx',
-                                                'window.getstr',
-                                                'window.getyx',
-                                                'window.hline',
-                                                'window.idcok',
-                                                'window.idlok',
-                                                'window.immedok',
-                                                'window.inch',
-                                                'window.insch',
-                                                'window.insdelln',
-                                                'window.insertln',
-                                                'window.insnstr',
-                                                'window.insstr',
-                                                'window.instr',
-                                                'window.is_wintouched',
-                                                'window.keypad',
-                                                'window.leaveok',
-                                                'window.move',
-                                                'window.mvderwin',
-                                                'window.mvwin',
-                                                'window.nodelay',
-                                                'window.notimeout',
-                                                'window.noutrefresh',
-                                                'window.overlay',
-                                                'window.overwrite',
-                                                'window.redrawwin',
-                                                'window.refresh',
-                                                'window.resize',
-                                                'window.scroll',
-                                                'window.scrollok',
-                                                'window.standend',
-                                                'window.standout',
-                                                'window.subpad',
-                                                'window.subwin',
-                                                'window.syncdown',
-                                                'window.syncok',
-                                                'window.syncup',
-                                                'window.timeout',
-                                                'window.touchline',
-                                                'window.touchwin',
-                                                'window.untouchwin',
-                                                'window.vline'])
-
-wrappers_descriptors = set()
+wrappers_descriptors: Set[str] = set()
 
 if platform.python_implementation() != 'PyPy':
     # not supported by ``typeshed`` package
