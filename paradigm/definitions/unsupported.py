@@ -33,8 +33,8 @@ if platform.python_implementation() == 'PyPy':
                 'tracemalloc',
                 *[name
                   for name in _stdlib_modules_names
-                  if name.startswith(('__pypy', '_ctypes', '_pypy', '_test',
-                                      'test'))]
+                  if name.startswith(('__pypy', '_ctypes_', '_pypy', '_test',
+                                      'ctypes_', 'test'))]
             }
     )
     if sys.platform != 'win32':
