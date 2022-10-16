@@ -23,6 +23,9 @@ if platform.python_implementation() == 'PyPy':
     stdlib_modules_names.update(
             {
                 '_crypt',
+                '_curses_build',
+                '_msi',
+                '_scproxy',
                 'future_builtins',
                 'identity_dict',
                 'msilib',
@@ -38,6 +41,8 @@ if platform.python_implementation() == 'PyPy':
         stdlib_modules_names.update({'_overlapped',
                                      '_winapi',
                                      'msvcrt'})
+    if sys.version_info >= (3, 9):
+        stdlib_modules_names.add('_ssl_build')
 
 stdlib_modules: Set[ModuleType] = set()
 
