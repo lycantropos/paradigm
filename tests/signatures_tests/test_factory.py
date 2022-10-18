@@ -1,4 +1,3 @@
-import platform
 from functools import partial
 from types import (BuiltinFunctionType,
                    FunctionType,
@@ -8,7 +7,6 @@ from types import (BuiltinFunctionType,
 from typing import (Any,
                     Callable)
 
-import pytest
 from hypothesis import given
 
 from paradigm import (models,
@@ -47,21 +45,8 @@ def test_basic(built_in_function: BuiltinFunctionType,
         assert isinstance(result, models.Base)
 
 
-@pytest.mark.skipif(platform.python_implementation() == 'PyPy',
-                    reason='requires CPython')
 @given(strategies.overloaded_callables)
 def test_overloaded(callable_: Callable[..., Any]) -> None:
     result = signatures.factory(callable_)
 
     assert isinstance(result, models.Overloaded)
-
-
-@pytest.mark.skipif(platform.python_implementation() == 'PyPy',
-                    reason='requires CPython')
-@given(strategies.unsupported_callables)
-@slow_data_generation
-def test_fail(callable_: Callable[..., Any]) -> None:
-    # e.g. `AttributeError` is raised
-    # by `curses.window.border` method on Python3.8
-    with pytest.raises((AttributeError, ValueError)):
-        signatures.factory(callable_)

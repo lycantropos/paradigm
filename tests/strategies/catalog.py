@@ -8,4 +8,4 @@ objects_paths = to_homogeneous_tuples(identifiers).map(pack(catalog.Path))
 non_empty_objects_paths = (to_homogeneous_tuples(identifiers,
                                                  min_size=1)
                            .map(pack(catalog.Path)))
-modules_paths = modules.map(catalog.from_module)
+modules_paths = modules.map(catalog.module_path_from_module)

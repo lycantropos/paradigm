@@ -16,11 +16,14 @@ namespaces = modules.map(from_module)
 
 def to_namespaces_with_non_empty_objects_paths(
         namespace: Namespace) -> Strategy[Tuple[Namespace, catalog.Path]]:
-    return strategies.tuples(strategies.just(namespace),
-                             strategies.sampled_from([catalog.from_string(name)
-                                                      for name in namespace])
-                             | non_empty_objects_paths)
+    return strategies.tuples(
+            strategies.just(namespace),
+            strategies.sampled_from([catalog.path_from_string(name)
+                                     for name in namespace])
+            | non_empty_objects_paths
+    )
 
 
 namespaces_with_non_empty_objects_paths = namespaces.flatmap(
-        to_namespaces_with_non_empty_objects_paths)
+        to_namespaces_with_non_empty_objects_paths
+)
