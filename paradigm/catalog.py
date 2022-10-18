@@ -1,12 +1,15 @@
 import builtins
 import importlib.util
 import pathlib
+import platform
 import types
-from functools import singledispatch
+from functools import (singledispatch,
+                       wraps)
 from typing import (Any,
                     Callable,
                     Optional,
                     Tuple,
+                    TypeVar,
                     Union)
 
 from . import file_system
@@ -114,21 +117,58 @@ def _(value: types.FunctionType) -> QualifiedName:
     return value.__module__, value.__qualname__
 
 
-if types.MemberDescriptorType is not types.FunctionType:
-    @qualified_name_from.register(types.MemberDescriptorType)
-    @qualified_name_from.register(types.MethodDescriptorType)
-    @qualified_name_from.register(types.MethodWrapperType)
-    @qualified_name_from.register(types.WrapperDescriptorType)
-    def _(
-            value: Union[types.MemberDescriptorType, types.MethodWrapperType,
-                         types.WrapperDescriptorType]
-    ) -> QualifiedName:
-        return value.__objclass__.__module__, value.__qualname__
+_T1 = TypeVar('_T1')
+_T2 = TypeVar('_T2')
+
+
+def _identity(value: _T1) -> _T1:
+    return value
+
+
+def _decorate_if(decorator: Callable[[_T1], _T2],
+                 condition: bool) -> Callable[[_T1], Union[_T1, _T2]]:
+    @wraps(decorator)
+    def wrapper(wrapped: _T1) -> Union[_T1, _T2]:
+        return decorator(wrapped) if condition else wrapped
+
+    return wrapper
+
+
+@_decorate_if(qualified_name_from.register(types.MethodDescriptorType),
+              platform.python_implementation() != 'PyPy')
+@_decorate_if(qualified_name_from.register(types.WrapperDescriptorType),
+              platform.python_implementation() != 'PyPy')
+def _(
+        value: Union[types.MemberDescriptorType, types.MethodDescriptorType,
+                     types.MethodWrapperType, types.WrapperDescriptorType]
+) -> QualifiedName:
+    return value.__objclass__.__module__, value.__qualname__
+
+
+@_decorate_if(qualified_name_from.register(types.MemberDescriptorType),
+              platform.python_implementation() != 'PyPy')
+@_decorate_if(qualified_name_from.register(types.MethodWrapperType),
+              platform.python_implementation() != 'PyPy')
+def _(
+        value: Union[types.MemberDescriptorType, types.MethodDescriptorType,
+                     types.MethodWrapperType, types.WrapperDescriptorType]
+) -> QualifiedName:
+    return value.__objclass__.__module__, value.__qualname__
+
+
+@_decorate_if(qualified_name_from.register(types.MemberDescriptorType),
+              platform.python_implementation() == 'PyPy')
+def _(
+        value: Union[types.MemberDescriptorType, types.MethodDescriptorType,
+                     types.MethodWrapperType, types.WrapperDescriptorType]
+) -> QualifiedName:
+    return (value.__objclass__.__module__,
+            value.__objclass__.__qualname__ + '.' + value.__name__)
 
 
 @qualified_name_from.register(types.MethodType)
 def _(value: types.MethodType) -> QualifiedName:
-    return value.__self__.__module__, value.__qualname__
+    return type(value.__self__).__module__, value.__qualname__
 
 
 @qualified_name_from.register(type)
