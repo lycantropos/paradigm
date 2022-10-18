@@ -23,7 +23,6 @@ try:
     )
 except Exception:
     if _current_process().name == 'MainProcess':
-        import sys as _sys
         import traceback as _traceback
         import types as _types
         import warnings as _warnings
@@ -99,14 +98,16 @@ except Exception:
         def _load_qualified_names(
                 modules_names: _t.Iterable[str]
         ) -> _QualifiedNames:
-            if getattr(_sys, 'ps1', None) is None:  # pragma: no branch
-                return _qualify_modules_names(modules_names)
-            else:
+            if (getattr(_sys, 'ps1', None) is None
+                    and getattr(_import_module('__main__').__spec__,
+                                'has_location', False)):
                 import concurrent.futures
 
                 with concurrent.futures.ProcessPoolExecutor(1) as pool:
                     return pool.submit(_qualify_modules_names,
                                        modules_names).result()
+            else:
+                return _qualify_modules_names(modules_names)
 
 
         qualified_names = _load_qualified_names(
