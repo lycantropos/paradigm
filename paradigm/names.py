@@ -1,4 +1,6 @@
 import inspect as _inspect
+import platform as _platform
+import sys as _sys
 import typing as _t
 from importlib import import_module as _import_module
 from multiprocessing import current_process as _current_process
@@ -7,7 +9,11 @@ from pathlib import Path as _Path
 _QualifiedNames = _t.Dict[_t.Optional[str],
                           _t.Dict[str, _t.List[_t.Tuple[str, str]]]]
 
-_CACHE_PATH = _Path(__file__).with_name('_' + _Path(__file__).name)
+_CACHE_PATH = _Path(__file__).with_name(
+        '_' + _platform.python_implementation().lower()
+        + '_' + '_'.join(map(str, _sys.version_info))
+        + '_' + _Path(__file__).name
+)
 _QUALIFIED_NAMES_FIELD_NAME = 'qualified_names'
 
 try:
@@ -31,8 +37,8 @@ except Exception:
 
 
         def _format_exception(value: BaseException) -> str:
-            return '\n'.join(_traceback.format_exception(type(value), value,
-                                                         value.__traceback__))
+            return ''.join(_traceback.format_exception(type(value), value,
+                                                       value.__traceback__))
 
 
         def _qualify_names(names: _QualifiedNames,
