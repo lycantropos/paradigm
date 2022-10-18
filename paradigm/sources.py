@@ -52,8 +52,7 @@ def _is_stub(path: Path) -> bool:
 
 
 def _relative_file_path_to_module_path(path: Path) -> catalog.Path:
-    if path.is_absolute():
-        raise ValueError('Path should be relative.')
+    assert not path.is_absolute(), 'Path should be relative.'
     *parts, module_file_name = path.parts
 
     def to_module_name(file_name: str) -> Optional[str]:

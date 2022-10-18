@@ -16,7 +16,8 @@ def find_stdlib_modules_names(
         # skips 'LICENSE', '__pycache__', 'site-packages', etc.
         return not (base_name.isupper()
                     or base_name.startswith('__')
-                    or '-' in base_name)
+                    or '-' in base_name
+                    or '.' in base_name)
 
     sources_paths = filter(is_stdlib_module_path, directory_path.iterdir())
     sources_relative_paths = map(methodcaller(Path.relative_to.__name__,
