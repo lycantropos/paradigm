@@ -184,45 +184,74 @@ if platform.python_implementation() != 'PyPy':
 classes: Set[str] = set()
 
 if platform.python_implementation() == 'PyPy':
+    load_and_add(classes, '_ast', 'RevDBMetaVar')
     load_and_update(classes, '_cffi_backend', ['FFI',
                                                'buffer'])
     load_and_update(classes, '_collections', ['deque_iterator',
                                               'deque_reverse_iterator'])
-    load_and_add(classes, '_continuation', 'continulet')
+    load_and_update(classes, '_continuation', ['continulet',
+                                               'error'])
     load_and_add(classes, '_cppyy', 'CPPInstance')
     load_and_update(classes, '_ffi', ['CDLL',
                                       'Field'])
+    load_and_add(classes, '_gdbm', 'error')
+    load_and_add(classes, '_jitlog', 'JitlogError')
     load_and_add(classes, '_lsprof', 'Profiler')
+    load_and_add(classes, '_md5', 'md5')
+    load_and_add(classes, '_minimal_curses', 'error')
     load_and_update(classes,
                     '_multibytecodec', ['MultibyteIncrementalDecoder',
                                         'MultibyteIncrementalEncoder'])
     load_and_add(classes, '_multiprocessing', 'SemLock')
-    load_and_add(classes, '_random', 'Random')
     load_and_update(classes, '_rawffi', ['Array',
                                          'CDLL',
                                          'CallbackPtr',
                                          'FuncPtr',
+                                         'SegfaultException',
                                          'Structure'])
     load_and_update(classes, '_rawffi.alt', ['CDLL',
-                                             'Field'])
-    load_and_add(classes, '_ssl', 'SSLCertVerificationError')
+                                             'Field',
+                                             '_StructDescr'])
     load_and_add(classes, '_thread', 'RLock')
+    load_and_add(classes, '_vmprof', 'VMProfError')
+    load_and_add(classes, 'ast', 'RevDBMetaVar')
     load_and_add(classes, 'builtins', 'NoneType')
+    load_and_update(classes, 'cffi', ['CDefError',
+                                      'FFIError',
+                                      'PkgConfigError',
+                                      'VerificationError',
+                                      'VerificationMissing'])
+    load_and_add(classes, 'dataclasses', '_InitVarMeta')
     load_and_update(classes, 'datetime', ['dateinterop',
                                           'deltainterop',
                                           'timeinterop'])
-    load_and_add(classes, 'greenlet', '_continulet')
-    load_and_update(classes, 'pickle', ['BytesBuilder',
-                                        'PickleBuffer'])
+    load_and_add(classes, 'doctest', '_SpoofOut')
+    load_and_add(classes, 'functools', 'RLock')
+    load_and_update(classes, 'greenlet', ['GreenletExit',
+                                          '_continulet',
+                                          'error'])
+    load_and_update(classes, 'itertools', ['_groupby',
+                                           '_tee',
+                                           '_tee_dataobject'])
+    load_and_add(classes, 'macpath', 'norm_error')
+    load_and_add(classes, 'pickle', 'BytesBuilder')
     load_and_update(classes, 'pypyjit', ['DebugMergePoint',
                                          'GuardOp',
                                          'JitLoopInfo',
                                          'ResOperation',
                                          'not_from_assembler'])
-    load_and_update(classes, 'ssl', ['CertificateError',
-                                     'SSLCertVerificationError'])
-    load_and_update(classes, 'zlib', ['compressobj',
-                                      'decompressobj'])
+    load_and_add(classes, 'runpy', '_Error')
+    load_and_add(classes, 'shutil', '_GiveupOnFastCopy')
+    load_and_add(classes, 'socket', '_GiveupOnSendfile')
+    load_and_add(classes, 'socketserver', '_Threads')
+    load_and_update(classes, 'stackless', ['CoroutineExit',
+                                           'TaskletExit'])
+    load_and_update(classes, 'tarfile', ['EOFHeaderError',
+                                         'EmptyHeaderError',
+                                         'InvalidHeaderError',
+                                         'SubsequentHeaderError',
+                                         'TruncatedHeaderError'])
+    load_and_add(classes, 'threading', '_CRLock')
 else:
     load_and_update(classes, '_io', ['_BufferedIOBase',
                                      '_IOBase',
