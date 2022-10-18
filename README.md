@@ -114,14 +114,6 @@ True
 
 ```
 
-Checking if object is supported by `paradigm` can be done with
-```python
->>> from paradigm import definitions
->>> definitions.is_supported(int.bit_length)
-True
-
-```
-
 Development
 -----------
 
