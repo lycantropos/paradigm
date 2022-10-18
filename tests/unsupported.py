@@ -128,9 +128,7 @@ if platform.python_implementation() != 'PyPy':
     load_and_add(built_in_functions, 'socket', 'dup')
     load_and_update(built_in_functions, 'sys', ['__breakpointhook__',
                                                 '__displayhook__',
-                                                '__excepthook__',
-                                                'displayhook',
-                                                'excepthook'])
+                                                'displayhook'])
     load_and_add(built_in_functions, 'threading', '_set_sentinel')
     load_and_update(built_in_functions, 'tty', ['tcdrain',
                                                 'tcflow',
@@ -139,47 +137,17 @@ if platform.python_implementation() != 'PyPy':
                                                 'tcsendbreak',
                                                 'tcsetattr'])
     load_and_add(built_in_functions, 'warnings', '_filters_mutated')
-    if sys.version_info < (3, 8):
-        load_and_update(built_in_functions, '_hashlib', ['openssl_md5',
-                                                         'openssl_sha1',
-                                                         'openssl_sha224',
-                                                         'openssl_sha256',
-                                                         'openssl_sha384',
-                                                         'openssl_sha512'])
-        load_and_update(built_in_functions, 'sys', ['callstats',
-                                                    'getallocatedblocks',
-                                                    'get_coroutine_wrapper',
-                                                    'set_coroutine_wrapper'])
-    else:
-        load_and_update(built_in_functions,
-                        '_xxsubinterpreters', ['channel_send',
-                                               'get_current',
-                                               'channel_recv',
-                                               'is_running',
-                                               'channel_create',
-                                               'list_all',
-                                               'channel_close',
-                                               'channel_release',
-                                               'destroy',
-                                               'is_shareable',
-                                               'get_main',
-                                               'channel_destroy',
-                                               'create',
-                                               'channel_list_all',
-                                               'run_string'])
+    if sys.version_info >= (3, 8):
+        load_and_add(built_in_functions, '_thread', '_excepthook')
+        load_and_add(built_in_functions, 'plistlib', 'ParserCreate')
+        load_and_add(built_in_functions, 'statistics', 'hypot')
 
     if sys.version_info >= (3, 9):
-        load_and_add(built_in_functions,
-                     '_xxsubinterpreters', 'channel_list_interpreters')
+        load_and_add(built_in_functions, 'uuid', '_generate_time_safe')
 
     if sys.platform == 'win32':
-        load_and_add(built_in_functions, '_uuid', 'UuidCreate')
-
-        load_and_add(built_in_functions, '_uuid', 'generate_time_safe')
-        load_and_add(built_in_functions, 'time', 'pthread_getcpuclockid')
-        if sys.version_info >= (3, 8):
-            load_and_update(built_in_functions, 'posix', ['posix_spawn',
-                                                          'posix_spawnp'])
+        load_and_update(built_in_functions, '_uuid', ['UuidCreate',
+                                                      'generate_time_safe'])
 
 classes: Set[str] = set()
 
@@ -259,6 +227,7 @@ else:
                                      '_TextIOBase'])
     load_and_add(classes, '_thread', 'RLock')
     load_and_add(classes, 'asyncio.events', '_RunningLoop')
+    load_and_add(classes, 'csv', '_Dialect')
     load_and_add(classes, 'ctypes', '_CFuncPtr')
     load_and_update(classes, 'itertools', ['_grouper',
                                            '_tee',
@@ -273,10 +242,13 @@ else:
                                          'InvalidHeaderError',
                                          'SubsequentHeaderError',
                                          'TruncatedHeaderError'])
+    load_and_add(classes, 'tty', 'error')
 
     if sys.version_info >= (3, 8):
-        load_and_add(classes, '_xxsubinterpreters', 'InterpreterID')
-        load_and_update(classes, 'types', 'CellType')
+        load_and_add(classes, 'collections', '_tuplegetter')
+        load_and_add(classes, 'shutil', '_GiveupOnFastCopy')
+    if sys.version_info >= (3, 10):
+        load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
 
 methods_descriptors: Set[str] = set()
 
@@ -371,6 +343,25 @@ if platform.python_implementation() != 'PyPy':
     load_and_add(methods_descriptors, 'weakref', 'ProxyType.__bytes__')
     load_and_update(methods_descriptors, 'xdrlib', ['BytesIO.__getstate__',
                                                     'BytesIO.__setstate__'])
+
+    if sys.version_info >= (3, 8):
+        load_and_add(methods_descriptors, 'itertools', 'chain.__setstate__')
+    if sys.version_info >= (3, 9):
+        methods_descriptors.add(type(Ellipsis).__reduce__)
+        load_and_add(methods_descriptors,
+                     '_thread', 'LockType._at_fork_reinit')
+        load_and_update(methods_descriptors, 'typing',
+                        ['GenericAlias.__instancecheck__',
+                         'GenericAlias.__mro_entries__',
+                         'GenericAlias.__subclasscheck__'])
+        load_and_add(methods_descriptors, 'weakref', 'ProxyType.__reversed__')
+    if sys.version_info >= (3, 10):
+        load_and_update(methods_descriptors,
+                        'builtins', ['property.__set_name__',
+                                     'zip.__setstate__'])
+        load_and_update(methods_descriptors,
+                        'types', ['UnionType.__instancecheck__',
+                                  'UnionType.__subclasscheck__'])
 
 wrappers_descriptors: Set[str] = set()
 
