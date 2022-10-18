@@ -2,8 +2,7 @@ import ast
 import inspect
 import types
 from functools import (partial,
-                       singledispatch,
-                       wraps)
+                       singledispatch)
 from itertools import (starmap,
                        zip_longest)
 from operator import itemgetter
@@ -12,17 +11,14 @@ from typing import (Any,
                     Iterable,
                     Optional,
                     Tuple)
-from weakref import WeakKeyDictionary
-
-from memoir import cached
 
 from . import (arboretum,
                catalog)
-from .hints import Map
 from .models import (Base,
                      Overloaded,
                      Parameter,
                      Plain)
+from .names import qualified_names
 
 
 @singledispatch
@@ -43,81 +39,58 @@ def from_raw_signature(object_: inspect.Signature) -> Base:
     return Plain(*parameters)
 
 
-def from_callable(object_: Callable[..., Any]) -> Base:
-    base_module_path = catalog.from_string(
-            catalog.module_name_factory(object_)
-    )
-    module_paths = [base_module_path]
-    root_module_name = base_module_path.parts[0]
-    if root_module_name.startswith('_'):
-        module_paths.append(
-                base_module_path.with_parent(
-                        catalog.Path(root_module_name.lstrip('_'))
-                )
-        )
-    object_path = catalog.from_callable(object_)
+@factory.register(types.BuiltinFunctionType)
+@factory.register(types.BuiltinMethodType)
+@factory.register(types.FunctionType)
+@factory.register(types.MethodType)
+@factory.register(types.MethodDescriptorType)
+@factory.register(types.WrapperDescriptorType)
+@factory.register(type)
+def from_callable(value: Callable[..., Any]) -> Base:
+    module_name, object_name = catalog.qualified_name_from(value)
     try:
-        _, result = min(filter(itemgetter(1),
-                               [to_signature(module_path, object_path)
-                                for module_path in module_paths]),
-                        key=itemgetter(0))
-    except ValueError:
-        return from_raw_signature(inspect.signature(object_))
-    else:
-        return (result.bind(object_.__self__)
-                if (isinstance(object_, (types.MethodType,
-                                         types.MethodWrapperType,
-                                         types.BuiltinMethodType))
-                    and not isinstance(object_.__self__,
-                                       types.ModuleType))
-                else result)
-
-
-def from_class(object_: type) -> Base:
-    try:
-        return from_callable(object_)
-    except ValueError as error:
-        module_path = catalog.from_string(
-                catalog.module_name_factory(object_)
-        )
-        class_path = catalog.from_type(object_)
-        _, method_signature = to_signature(module_path, class_path)
-        if method_signature is None:
-            try:
-                base, = object_.__bases__
-            except ValueError:
-                pass
-            else:
-                if (object_.__init__ is base.__init__
-                        and object_.__new__ is base.__new__):
-                    result = from_class(base)
-                    is_metaclass = base is type and object_ is not type
-                    if is_metaclass:
-                        if isinstance(result, Overloaded):
-                            # metaclasses do not inherit
-                            # single-argument constructor of `type`
-                            result = max(result.signatures,
-                                         key=to_max_parameters_count)
-                    return result
-            raise error
+        candidates_names = qualified_names[module_name][object_name]
+    except KeyError:
+        if module_name is not None:
+            assert object_name, value
+            qualified_paths = [(catalog.path_from_string(module_name),
+                                catalog.path_from_string(object_name))]
         else:
-            return slice_parameters(method_signature, slice(1, None))
-
-
-def to_signature(module_path: catalog.Path,
-                 object_path: catalog.Path) -> Tuple[int, Optional[Base]]:
+            qualified_paths = []
+    else:
+        qualified_paths = [(catalog.path_from_string(module_name),
+                            catalog.path_from_string(object_name))
+                           for module_name, object_name in candidates_names]
     try:
-        depth, nodes = arboretum.to_functions_defs(module_path,
-                                                   object_path)
+        _, result = min(
+                filter(itemgetter(1),
+                       [_from_path(module_path, object_path)
+                        for module_path, object_path in qualified_paths]),
+                key=itemgetter(0)
+        )
+    except ValueError:
+        return from_raw_signature(inspect.signature(value))
+    else:
+        return (result.bind(value.__self__)
+                if (isinstance(value, (types.MethodType,
+                                       types.MethodWrapperType,
+                                       types.BuiltinMethodType))
+                    and not isinstance(value.__self__,
+                                       types.ModuleType))
+                else (result.bind(value)
+                      if isinstance(value, type)
+                      else result))
+
+
+def _from_path(module_path: catalog.Path,
+               object_path: catalog.Path) -> Tuple[int, Optional[Base]]:
+    try:
+        depth, nodes = arboretum.to_functions_defs(module_path, object_path)
     except KeyError:
         return -1, None
     else:
         assert len(nodes) > 0 or depth == -1
-        return ((depth,
-                 Overloaded(*[_from_ast(node.args).bind('cls')
-                              if node.name == '__new__'
-                              else _from_ast(node.args)
-                              for node in nodes]))
+        return ((depth, Overloaded(*[_from_ast(node.args) for node in nodes]))
                 if nodes
                 else (-1, None))
 
@@ -125,15 +98,15 @@ def to_signature(module_path: catalog.Path,
 def _from_ast(signature_ast: ast.arguments) -> Base:
     parameters = filter(
             None,
-            (*to_positional_parameters(signature_ast),
+            (*_to_positional_parameters(signature_ast),
              to_variadic_positional_parameter(signature_ast),
-             *to_keyword_parameters(signature_ast),
-             to_variadic_keyword_parameter(signature_ast))
+             *_to_keyword_parameters(signature_ast),
+             _to_variadic_keyword_parameter(signature_ast))
     )
     return Plain(*parameters)
 
 
-def to_positional_parameters(
+def _to_positional_parameters(
         signature_ast: ast.arguments
 ) -> Iterable[Parameter]:
     # double-reversing since parameters with default arguments go last
@@ -143,18 +116,18 @@ def to_positional_parameters(
     parameters_with_defaults_ast = reversed(
             [*parameters_with_defaults_ast]
     )
-    parameter_factory = partial(to_parameter,
+    parameter_factory = partial(_to_parameter,
                                 kind=Parameter.Kind.POSITIONAL_ONLY)
     yield from starmap(parameter_factory, parameters_with_defaults_ast)
 
 
-def to_keyword_parameters(signature_ast: ast.arguments
-                          ) -> Iterable[Parameter]:
-    parameters_with_defaults_ast = zip(signature_ast.kwonlyargs,
-                                       signature_ast.kw_defaults)
-    parameter_factory = partial(to_parameter,
+def _to_keyword_parameters(
+        signature_ast: ast.arguments
+) -> Iterable[Parameter]:
+    parameter_factory = partial(_to_parameter,
                                 kind=Parameter.Kind.KEYWORD_ONLY)
-    yield from starmap(parameter_factory, parameters_with_defaults_ast)
+    yield from map(parameter_factory, signature_ast.kwonlyargs,
+                   signature_ast.kw_defaults)
 
 
 def to_variadic_positional_parameter(
@@ -168,8 +141,9 @@ def to_variadic_positional_parameter(
                      has_default=False)
 
 
-def to_variadic_keyword_parameter(signature_ast: ast.arguments
-                                  ) -> Optional[Parameter]:
+def _to_variadic_keyword_parameter(
+        signature_ast: ast.arguments
+) -> Optional[Parameter]:
     parameter_ast = signature_ast.kwarg
     if parameter_ast is None:
         return None
@@ -178,24 +152,13 @@ def to_variadic_keyword_parameter(signature_ast: ast.arguments
                      has_default=False)
 
 
-def to_parameter(parameter_ast: ast.arg,
-                 default_ast: Optional[ast.expr],
-                 *,
-                 kind: Parameter.Kind) -> Parameter:
+def _to_parameter(parameter_ast: ast.arg,
+                  default_ast: Optional[ast.expr],
+                  *,
+                  kind: Parameter.Kind) -> Parameter:
     return Parameter(name=parameter_ast.arg,
                      kind=kind,
                      has_default=default_ast is not None)
-
-
-from_callable = [factory.register(cls, from_callable)
-                 for cls in (types.BuiltinFunctionType,
-                             types.BuiltinMethodType,
-                             types.FunctionType,
-                             types.MethodType,
-                             types.MethodDescriptorType,
-                             types.WrapperDescriptorType)][-1]
-from_class = factory.register(type)(cached.map_(WeakKeyDictionary())
-                                    (from_class))
 
 
 @factory.register(partial)
@@ -204,34 +167,18 @@ def from_partial(object_: partial) -> Base:
 
 
 @singledispatch
-def slice_parameters(signature: Base,
-                     slice_: slice) -> Base:
+def _slice_parameters(signature: Base,
+                      slice_: slice) -> Base:
     raise TypeError(f'Unsupported signature type: {type(signature)!r}.')
 
 
-@slice_parameters.register(Plain)
+@_slice_parameters.register(Plain)
 def _(signature: Plain, slice_: slice) -> Base:
     return Plain(*signature.parameters[slice_])
 
 
-@slice_parameters.register(Overloaded)
+@_slice_parameters.register(Overloaded)
 def _(signature: Overloaded, slice_: slice) -> Base:
-    return Overloaded(*map(partial(slice_parameters,
+    return Overloaded(*map(partial(_slice_parameters,
                                    slice_=slice_),
                            signature.signatures))
-
-
-@singledispatch
-def to_max_parameters_count(signature: Base) -> int:
-    raise TypeError('Unsupported signature type: {type}.'
-                    .format(type=type(signature)))
-
-
-@to_max_parameters_count.register(Plain)
-def to_max_plain_parameters_count(signature: Plain) -> int:
-    return len(signature.parameters)
-
-
-@to_max_parameters_count.register(Overloaded)
-def to_max_overloaded_parameters_count(signature: Overloaded) -> int:
-    return max(map(to_max_parameters_count, signature.signatures))

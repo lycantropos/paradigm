@@ -1,75 +1,74 @@
 import inspect
-from functools import singledispatch
 from pathlib import Path
 from types import ModuleType
-from typing import (Any,
-                    Iterable,
+from typing import (Iterable,
+                    Optional,
                     Tuple)
 
 import mypy
 
-from . import catalog
-from .file_system import find_files
-from .hints import Map
+from . import (catalog,
+               file_system)
 
-STUB_EXTENSION = '.pyi'
+_STUB_EXTENSION = '.pyi'
 
 
 class NotFound(Exception):
     pass
 
 
-@singledispatch
-def factory(object_: Any) -> Path:
-    raise TypeError('Unsupported object type: {type}.'
-                    .format(type=type(object_)))
-
-
-@factory.register(ModuleType)
-def from_module(object_: ModuleType) -> Path:
+def from_module(module: ModuleType) -> Path:
     try:
-        return Path(object_.__path__[0])
+        return Path(module.__path__[0])
     except AttributeError:
         try:
-            return Path(inspect.getfile(object_))
+            return Path(inspect.getfile(module))
         except Exception as error:
-            raise NotFound(object_) from error
+            raise NotFound(module) from error
 
 
-@factory.register(catalog.Path)
-def from_module_path(object_: catalog.Path) -> Path:
+def from_module_path(module_path: catalog.Path) -> Path:
     try:
-        return cache[object_]
+        return _stubs_cache[module_path]
     except KeyError as error:
-        raise NotFound(object_) from error
+        raise NotFound(module_path) from error
 
 
-def generate_stubs_cache_items(root: Path
-                               ) -> Iterable[Tuple[catalog.Path, Path]]:
-    def module_full_name_factory(directory: Path) -> Map[Path, catalog.Path]:
-        def to_module_path(stub: Path) -> catalog.Path:
-            relative_stub_path = stub.relative_to(directory)
-            return catalog.from_relative_file_path(relative_stub_path
-                                                   .with_suffix('.py'))
+def _generate_stubs_cache_items(
+        root: Path
+) -> Iterable[Tuple[catalog.Path, Path]]:
+    def to_module_path(stub: Path) -> catalog.Path:
+        return _relative_file_path_to_module_path(
+                stub.relative_to(root).with_suffix('.py')
+        )
 
-        return to_module_path
-
-    def to_directory_items(
-            directory: Path
-    ) -> Iterable[Tuple[catalog.Path, Path]]:
-        to_module_full_name = module_full_name_factory(directory)
-        stubs = filter(is_stub, find_files(directory))
-
-        def to_directory_item(stub: Path) -> Tuple[catalog.Path, Path]:
-            return to_module_full_name(stub), stub
-
-        yield from map(to_directory_item, stubs)
-
-    return to_directory_items(root)
+    return [(to_module_path(file), file)
+            for file in file_system.find_files(root)
+            if _is_stub(file)]
 
 
-def is_stub(path: Path) -> bool:
-    return path.suffixes == [STUB_EXTENSION]
+def _is_stub(path: Path) -> bool:
+    return path.suffixes == [_STUB_EXTENSION]
 
 
-cache = dict(generate_stubs_cache_items(factory(mypy) / 'typeshed' / 'stdlib'))
+def _relative_file_path_to_module_path(path: Path) -> catalog.Path:
+    if path.is_absolute():
+        raise ValueError('Path should be relative.')
+    *parts, module_file_name = path.parts
+
+    def to_module_name(file_name: str) -> Optional[str]:
+        if file_name == '.':
+            return None
+        result = inspect.getmodulename(file_name)
+        if result == file_system.INIT_MODULE_NAME:
+            return None
+        return result
+
+    module_name = to_module_name(module_file_name)
+    return (catalog.Path(*parts)
+            if module_name is None
+            else catalog.Path(*parts, module_name))
+
+
+_stubs_cache = dict(_generate_stubs_cache_items(from_module(mypy) / 'typeshed'
+                                                / 'stdlib'))

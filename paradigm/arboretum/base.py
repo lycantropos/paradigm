@@ -24,7 +24,7 @@ def to_functions_defs(
     for part in object_path.parts:
         object_node.resolve()
         try:
-            object_node = object_node.get_attribute(part)
+            object_node = object_node.get_attribute_by_name(part)
         except NameLookupError:
             return -1, []
     object_node.resolve()
