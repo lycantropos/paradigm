@@ -46,8 +46,8 @@ def round_trip_pickle(object_: Any) -> Any:
     return pickle.loads(pickle.dumps(object_))
 
 
+slow_data_generation = settings(max_examples=30)
+
+
 def to_contents(object_: Union[types.ModuleType, type]) -> List[Any]:
     return list(vars(object_).values())
-
-
-slow_data_generation = settings(max_examples=30)
