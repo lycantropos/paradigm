@@ -1,8 +1,9 @@
 import pickle
+from _importlib_modulespec import ModuleType
 from typing import (Any,
                     Callable,
                     Dict,
-                    Tuple)
+                    Tuple, Union, List)
 
 from hypothesis import settings
 from hypothesis.strategies import SearchStrategy
@@ -44,3 +45,7 @@ def round_trip_pickle(object_: Any) -> Any:
 
 
 slow_data_generation = settings(max_examples=30)
+
+
+def to_contents(object_: Union[ModuleType, type]) -> List[Any]:
+    return list(vars(object_).values())
