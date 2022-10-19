@@ -18,94 +18,111 @@ _QUALIFIED_NAMES_FIELD_NAME = 'qualified_names'
 
 try:
     qualified_names = getattr(
-            _import_module(_inspect.getmodulename(_CACHE_PATH)),
+            _import_module((''
+                            if __name__ == '__main__'
+                            else __name__.rsplit('.', maxsplit=1)[0] + '.')
+                           + _inspect.getmodulename(_CACHE_PATH)),
             _QUALIFIED_NAMES_FIELD_NAME
     )
 except Exception:
-    if _current_process().name == 'MainProcess':
-        import traceback as _traceback
-        import types as _types
-        import warnings as _warnings
+    import traceback as _traceback
+    import types as _types
+    import warnings as _warnings
+    from multiprocessing.queues import Queue as _Queue
 
-        from paradigm.catalog import (
-            qualified_name_from as _qualified_name_from
-        )
-        from paradigm.discovery import (
-            supported_stdlib_modules_names as _supported_stdlib_modules_names
-        )
+    from paradigm import qualified as _qualified
+    from paradigm.discovery import (
+        supported_stdlib_modules_names as _supported_stdlib_modules_names
+    )
 
 
-        def _format_exception(value: BaseException) -> str:
-            return ''.join(_traceback.format_exception(type(value), value,
-                                                       value.__traceback__))
+    def _format_exception(value: BaseException) -> str:
+        return ''.join(_traceback.format_exception(type(value), value,
+                                                   value.__traceback__))
 
 
-        def _qualify_names(names: _QualifiedNames,
-                           object_: _t.Union[_types.ModuleType, type],
-                           *,
-                           module_name: str,
-                           prefix: str,
-                           visited_classes: _t.Set[type]) -> None:
-            for name, value in vars(object_).items():
-                if isinstance(value, type):
-                    if value not in visited_classes:
-                        qualified_module_name, qualified_object_name = (
-                            _qualified_name_from(value)
-                        )
-                        (names.setdefault(qualified_module_name, {})
-                         .setdefault(qualified_object_name, [])
-                         .append((module_name, prefix + name)))
-                        _qualify_names(names, value,
-                                       module_name=module_name,
-                                       prefix=prefix + name + '.',
-                                       visited_classes={*visited_classes,
-                                                        value})
-                else:
+    def _qualify_names(names: _QualifiedNames,
+                       object_: _t.Union[_types.ModuleType, type],
+                       *,
+                       module_name: str,
+                       prefix: str,
+                       visited_classes: _t.Set[type]) -> None:
+        for name, value in vars(object_).items():
+            if isinstance(value, type):
+                if value not in visited_classes:
                     qualified_module_name, qualified_object_name = (
-                        _qualified_name_from(value)
+                        _qualified.name_from(value)
                     )
-                    if (qualified_module_name is not None
-                            or qualified_object_name):
-                        (names.setdefault(qualified_module_name, {})
-                         .setdefault(qualified_object_name, [])
-                         .append((module_name, prefix + name)))
-
-
-        def _qualify_module_names(names: _QualifiedNames,
-                                  module_name: str) -> None:
-            try:
-                module = _import_module(module_name)
-            except Exception as error:
-                _warnings.warn(f'Failed importing module "{module_name}". '
-                               f'Reason:\n{_format_exception(error)}',
-                               ImportWarning)
+                    (names.setdefault(qualified_module_name, {})
+                     .setdefault(qualified_object_name, [])
+                     .append((module_name, prefix + name)))
+                    _qualify_names(names, value,
+                                   module_name=module_name,
+                                   prefix=prefix + name + '.',
+                                   visited_classes={*visited_classes, value})
             else:
-                _qualify_names(names, module,
-                               module_name=module_name,
-                               prefix='',
-                               visited_classes=set())
+                qualified_module_name, qualified_object_name = (
+                    _qualified.name_from(value)
+                )
+                if (qualified_module_name is not None
+                        or qualified_object_name):
+                    (names.setdefault(qualified_module_name, {})
+                     .setdefault(qualified_object_name, [])
+                     .append((module_name, prefix + name)))
 
 
-        def _qualify_modules_names(
-                modules_names: _t.Iterable[str]
-        ) -> _QualifiedNames:
-            names = {}
-            for module_name in modules_names:
-                _qualify_module_names(names, module_name)
-            return names
+    def _qualify_module_names(names: _QualifiedNames,
+                              module_name: str) -> None:
+        try:
+            module = _import_module(module_name)
+        except Exception as error:
+            _warnings.warn(f'Failed importing module "{module_name}". '
+                           f'Reason:\n{_format_exception(error)}',
+                           ImportWarning)
+        else:
+            _qualify_names(names, module,
+                           module_name=module_name,
+                           prefix='',
+                           visited_classes=set())
 
 
+    def _qualify_modules_names(
+            modules_names: _t.Iterable[str]
+    ) -> _QualifiedNames:
+        result = {}
+        for module_name in modules_names:
+            _qualify_module_names(result, module_name)
+        return result
+
+
+    def _put_result_in_queue(queue: _Queue,
+                             function: _t.Callable[..., _t.Any],
+                             *args: _t.Any,
+                             **kwargs: _t.Any) -> None:
+        result = function(*args, **kwargs)
+        queue.put(result)
+
+
+    if _current_process().name == 'MainProcess':
         def _load_qualified_names(
                 modules_names: _t.Iterable[str]
         ) -> _QualifiedNames:
             if (getattr(_sys, 'ps1', None) is None
-                    and getattr(_import_module('__main__').__spec__,
-                                'has_location', False)):
-                import concurrent.futures
+                    and _Path(getattr(_sys.modules.get('__main__'), '__file__',
+                                      __file__)).exists()):
+                from multiprocessing import Process, get_context
 
-                with concurrent.futures.ProcessPoolExecutor(1) as pool:
-                    return pool.submit(_qualify_modules_names,
-                                       modules_names).result()
+                context = get_context()
+                queue = context.Queue(1)
+                process = context.Process(
+                        target=_put_result_in_queue,
+                        name=_qualify_modules_names.__qualname__,
+                        args=(queue, _qualify_modules_names, modules_names)
+                )
+                process.start()
+                result = queue.get()
+                process.join()
+                return result
             else:
                 return _qualify_modules_names(modules_names)
 
@@ -164,3 +181,5 @@ except Exception:
 
 
         _save_qualified_names(qualified_names)
+    else:
+        qualified_names = {}

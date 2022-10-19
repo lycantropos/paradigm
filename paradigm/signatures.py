@@ -13,7 +13,8 @@ from typing import (Any,
                     Tuple)
 
 from . import (arboretum,
-               catalog)
+               catalog,
+               qualified)
 from .models import (Base,
                      Overloaded,
                      Parameter,
@@ -47,7 +48,7 @@ def from_raw_signature(object_: inspect.Signature) -> Base:
 @factory.register(types.WrapperDescriptorType)
 @factory.register(type)
 def from_callable(value: Callable[..., Any]) -> Base:
-    module_name, object_name = catalog.qualified_name_from(value)
+    module_name, object_name = qualified.name_from(value)
     try:
         candidates_names = qualified_names[module_name][object_name]
     except KeyError:
