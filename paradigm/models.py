@@ -14,7 +14,6 @@ from typing import (Any,
                     Sequence,
                     Tuple)
 
-from memoir import cached
 from reprit.base import generate_repr
 
 from .hints import Domain
@@ -201,7 +200,7 @@ class Plain(Base):
             Parameter.Kind.VARIADIC_KEYWORD]))
         return '(' + ', '.join(parts) + ')'
 
-    @cached.property_
+    @property
     def parameters_by_kind(self) -> Dict[Parameter.Kind, List[Parameter]]:
         return to_parameters_by_kind(self.parameters)
 
