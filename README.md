@@ -48,14 +48,21 @@ Usage
 `paradigm` can be used to obtain signature
 ```python
 >>> from paradigm import signatures
+>>> from paradigm.models import Parameter, Plain
 
 ```
 for user-defined functions
 ```python
 >>> def func(foo, bar=None, **kwargs):
 ...     pass
->>> signatures.factory(func)
-Plain(Parameter(name='foo', kind=Parameter.Kind.POSITIONAL_OR_KEYWORD, has_default=False), Parameter(name='bar', kind=Parameter.Kind.POSITIONAL_OR_KEYWORD, has_default=True), Parameter(name='kwargs', kind=Parameter.Kind.VARIADIC_KEYWORD, has_default=False))
+>>> (signatures.factory(func)
+...  == Plain(Parameter(name='foo',
+...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
+...                     has_default=False),
+...           Parameter(name='bar',
+...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD, has_default=True), Parameter(name='kwargs', kind=Parameter.Kind.VARIADIC_KEYWORD,
+...                     has_default=False)))
+True
 
 ```
 for user-defined classes
@@ -69,14 +76,23 @@ for user-defined classes
 ... 
 ...     def __getattr__(self, name):
 ...         return getattr(self._outfile, name)
->>> signatures.factory(UpperOut)
-Plain(Parameter(name='outfile', kind=Parameter.Kind.POSITIONAL_OR_KEYWORD, has_default=False))
+>>> (signatures.factory(UpperOut)
+...  == Plain(Parameter(name='outfile',
+...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
+...                     has_default=False)))
+True
 
 ```
 for user-defined classes methods
 ```python
->>> signatures.factory(UpperOut.write)
-Plain(Parameter(name='self', kind=Parameter.Kind.POSITIONAL_OR_KEYWORD, has_default=False), Parameter(name='s', kind=Parameter.Kind.POSITIONAL_OR_KEYWORD, has_default=False))
+>>> (signatures.factory(UpperOut.write)
+...  == Plain(Parameter(name='self',
+...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
+...                     has_default=False),
+...           Parameter(name='s',
+...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
+...                     has_default=False)))
+True
 
 ```
 for built-in functions
@@ -93,7 +109,6 @@ True
 ```
 for built-in classes
 ```python
->>> from paradigm.models import Parameter, Plain
 >>> signatures.factory(float) == (
 ...     Plain(Parameter(name='x', 
 ...                     kind=Parameter.Kind.POSITIONAL_ONLY,
@@ -107,8 +122,8 @@ for built-in classes methods
 >>> from paradigm.models import Parameter, Plain
 >>> signatures.factory(float.as_integer_ratio) == (
 ...     Plain(Parameter(name='self',
-...                          kind=Parameter.Kind.POSITIONAL_ONLY,
-...                          has_default=False))
+...                     kind=Parameter.Kind.POSITIONAL_ONLY,
+...                     has_default=False))
 ... )
 True
 
