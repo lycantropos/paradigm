@@ -175,7 +175,8 @@ except Exception:
                     file.write(f'{_QUALIFIED_NAMES_FIELD_NAME} = '
                                + pretty_format(names, 4, 0)
                                + '\n')
-                compile_file(_CACHE_PATH)
+                compile_file(_CACHE_PATH,
+                             quiet=2)
             except Exception as error:
                 _warnings.warn('Failed saving qualified names. '
                                f'Reason:\n{_format_exception(error)}',
