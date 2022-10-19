@@ -220,6 +220,12 @@ if platform.python_implementation() == 'PyPy':
                                          'SubsequentHeaderError',
                                          'TruncatedHeaderError'])
     load_and_add(classes, 'threading', '_CRLock')
+
+    if sys.platform == 'win32':
+        load_and_add(classes, '_ffi', 'WinDLL')
+        load_and_add(classes, 'io', '_WindowsConsoleIO')
+        load_and_add(classes, 'signal', 'ItimerError')
+        load_and_add(classes, 'subprocess', 'Handle')
 else:
     load_and_update(classes, '_io', ['_BufferedIOBase',
                                      '_IOBase',
