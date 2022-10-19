@@ -55,7 +55,10 @@ if platform.python_implementation() == 'PyPy':
                                       'ctypes_', 'test'))]
             }
     )
-    if sys.platform != 'win32':
+    if sys.platform == 'win32':
+        unsupported_stdlib_modules_names.update({'_pwdgrp_cffi',
+                                                 'grp'})
+    else:
         unsupported_stdlib_modules_names.update({'_overlapped',
                                                  '_winapi',
                                                  'msvcrt'})
