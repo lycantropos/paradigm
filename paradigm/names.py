@@ -133,6 +133,7 @@ except Exception:
 
 
         def _save_qualified_names(names: _QualifiedNames) -> None:
+            from compileall import compile_file
             from functools import singledispatch
 
             @singledispatch
@@ -174,6 +175,7 @@ except Exception:
                     file.write(f'{_QUALIFIED_NAMES_FIELD_NAME} = '
                                + pretty_format(names, 4, 0)
                                + '\n')
+                compile_file(_CACHE_PATH)
             except Exception as error:
                 _warnings.warn('Failed saving qualified names. '
                                f'Reason:\n{_format_exception(error)}',
