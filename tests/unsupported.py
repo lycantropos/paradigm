@@ -1,5 +1,7 @@
 import importlib
 import platform
+import types
+
 import sys
 import warnings
 from types import ModuleType
@@ -96,7 +98,7 @@ if platform.python_implementation() != 'PyPy':
     if (3, 7) <= sys.version_info < (3, 7, 1):
         _load_and_add_module(stdlib_modules, '_blake2')
 
-built_in_functions: Set[str] = set()
+built_in_functions: Set[types.BuiltinFunctionType] = set()
 
 if platform.python_implementation() != 'PyPy':
     load_and_add(built_in_functions, '_json', 'encode_basestring')
@@ -149,7 +151,16 @@ if platform.python_implementation() != 'PyPy':
         load_and_update(built_in_functions, '_uuid', ['UuidCreate',
                                                       'generate_time_safe'])
 
-classes: Set[str] = set()
+classes: Set[type] = set()
+load_and_update(classes, 'itertools', ['_groupby',
+                                       '_tee',
+                                       '_tee_dataobject'])
+load_and_add(classes, 'socket', '_GiveupOnSendfile')
+load_and_update(classes, 'tarfile', ['EOFHeaderError',
+                                     'EmptyHeaderError',
+                                     'InvalidHeaderError',
+                                     'SubsequentHeaderError',
+                                     'TruncatedHeaderError'])
 
 if platform.python_implementation() == 'PyPy':
     load_and_add(classes, '_ast', 'RevDBMetaVar')
@@ -198,9 +209,6 @@ if platform.python_implementation() == 'PyPy':
     load_and_update(classes, 'greenlet', ['GreenletExit',
                                           '_continulet',
                                           'error'])
-    load_and_update(classes, 'itertools', ['_groupby',
-                                           '_tee',
-                                           '_tee_dataobject'])
     load_and_add(classes, 'macpath', 'norm_error')
     load_and_add(classes, 'pickle', 'BytesBuilder')
     load_and_update(classes, 'pypyjit', ['DebugMergePoint',
@@ -210,15 +218,9 @@ if platform.python_implementation() == 'PyPy':
                                          'not_from_assembler'])
     load_and_add(classes, 'runpy', '_Error')
     load_and_add(classes, 'shutil', '_GiveupOnFastCopy')
-    load_and_add(classes, 'socket', '_GiveupOnSendfile')
     load_and_add(classes, 'socketserver', '_Threads')
     load_and_update(classes, 'stackless', ['CoroutineExit',
                                            'TaskletExit'])
-    load_and_update(classes, 'tarfile', ['EOFHeaderError',
-                                         'EmptyHeaderError',
-                                         'InvalidHeaderError',
-                                         'SubsequentHeaderError',
-                                         'TruncatedHeaderError'])
     load_and_add(classes, 'threading', '_CRLock')
 
     if sys.platform == 'win32':
@@ -235,19 +237,10 @@ else:
     load_and_add(classes, 'asyncio.events', '_RunningLoop')
     load_and_add(classes, 'csv', '_Dialect')
     load_and_add(classes, 'ctypes', '_CFuncPtr')
-    load_and_update(classes, 'itertools', ['_grouper',
-                                           '_tee',
-                                           '_tee_dataobject'])
     load_and_add(classes, 'dataclasses', '_InitVarMeta')
     load_and_add(classes, 'macpath', 'norm_error')
     load_and_add(classes, 'runpy', '_Error')
-    load_and_add(classes, 'socket', '_GiveupOnSendfile')
     load_and_add(classes, 'ssl', '_SSLContext')
-    load_and_update(classes, 'tarfile', ['EOFHeaderError',
-                                         'EmptyHeaderError',
-                                         'InvalidHeaderError',
-                                         'SubsequentHeaderError',
-                                         'TruncatedHeaderError'])
     load_and_add(classes, 'tty', 'error')
 
     if sys.version_info >= (3, 8):
