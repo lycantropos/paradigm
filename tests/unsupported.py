@@ -350,28 +350,29 @@ if platform.python_implementation() != 'PyPy':
                                                  'FileIO.__getstate__',
                                                  'FileIO._dealloc_warn'])
     _load_and_update(methods_descriptors,
-                     'itertools', ['_grouper.__reduce__',
-                                   '_tee.__copy__',
-                                   '_tee.__reduce__',
-                                   '_tee.__setstate__',
-                                   'accumulate.__setstate__',
-                                   'combinations.__setstate__',
-                                   'combinations_with_replacement.__setstate__',
-                                   'cycle.__setstate__',
-                                   'dropwhile.__setstate__',
-                                   'groupby.__setstate__',
-                                   'islice.__setstate__',
-                                   'permutations.__setstate__',
-                                   'product.__setstate__',
-                                   'takewhile.__setstate__',
-                                   'zip_longest.__setstate__'])
-    _load_and_update(methods_descriptors, 'lzma',
-                     ['LZMACompressor.__getstate__',
-                      'LZMADecompressor.__getstate__'])
+                     'itertools',
+                     ['_grouper.__reduce__',
+                      '_tee.__copy__',
+                      '_tee.__reduce__',
+                      '_tee.__setstate__',
+                      'accumulate.__setstate__',
+                      'combinations.__setstate__',
+                      'combinations_with_replacement.__setstate__',
+                      'cycle.__setstate__',
+                      'dropwhile.__setstate__',
+                      'groupby.__setstate__',
+                      'islice.__setstate__',
+                      'permutations.__setstate__',
+                      'product.__setstate__',
+                      'takewhile.__setstate__',
+                      'zip_longest.__setstate__'])
+    _load_and_update(methods_descriptors,
+                     'lzma', ['LZMACompressor.__getstate__',
+                              'LZMADecompressor.__getstate__'])
     _load_and_add(methods_descriptors, 'socket', 'SocketType._accept')
-    _load_and_update(methods_descriptors, 'tokenize',
-                     ['TextIOWrapper.__getstate__',
-                      'chain.__setstate__'])
+    _load_and_update(methods_descriptors,
+                     'tokenize', ['TextIOWrapper.__getstate__',
+                                  'chain.__setstate__'])
     _load_and_update(methods_descriptors, 'types', ['CoroutineType.close',
                                                     'CoroutineType.send',
                                                     'CoroutineType.throw'])
@@ -403,8 +404,13 @@ if platform.python_implementation() != 'PyPy':
         if sys.version_info >= (3, 10):
             _load_and_update(methods_descriptors, '_csv', ['Writer.writerow',
                                                            'Writer.writerows'])
+        if sys.maxsize > 0x100000000:
+            _load_and_update(methods_descriptors,
+                             'decimal', ['Context._unsafe_setemax',
+                                         'Context._unsafe_setemin',
+                                         'Context._unsafe_setprec'])
 
-wrappers_descriptors: Set[str] = set()
+wrappers_descriptors: Set[types.WrapperDescriptorType] = set()
 
 if platform.python_implementation() != 'PyPy':
     _load_and_update(wrappers_descriptors,
