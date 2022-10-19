@@ -144,8 +144,33 @@ if platform.python_implementation() != 'PyPy':
         _load_and_add(built_in_functions, 'uuid', '_generate_time_safe')
 
     if sys.platform == 'win32':
+        _load_and_add(built_in_functions, '_locale', '_getdefaultlocale')
         _load_and_update(built_in_functions, '_uuid', ['UuidCreate',
                                                        'generate_time_safe'])
+        _load_and_add(built_in_functions, 'ctypes', '_check_HRESULT')
+        _load_and_add(built_in_functions, 'faulthandler', '_raise_exception')
+
+        if sys.version_info >= (3, 8):
+            _load_and_update(built_in_functions,
+                             '_xxsubinterpreters', ['_channel_id',
+                                                    'channel_close',
+                                                    'channel_create',
+                                                    'channel_destroy',
+                                                    'channel_list_all',
+                                                    'channel_recv',
+                                                    'channel_release',
+                                                    'channel_send',
+                                                    'create',
+                                                    'destroy',
+                                                    'get_current',
+                                                    'get_main',
+                                                    'is_running',
+                                                    'is_shareable',
+                                                    'list_all',
+                                                    'run_string'])
+        if sys.version_info >= (3, 9):
+            _load_and_add(built_in_functions,
+                          '_xxsubinterpreters', 'channel_list_interpreters')
 
 classes: Set[type] = set()
 _load_and_update(classes, 'itertools', ['_groupby',
@@ -245,7 +270,22 @@ else:
     if sys.version_info >= (3, 10):
         _load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
 
-methods_descriptors: Set[str] = set()
+    if sys.platform == 'win32':
+        _load_and_add(classes, 'itertools', '_grouper')
+        _load_and_add(classes, 'msilib', 'MSIError')
+        _load_and_add(classes, 'subprocess', 'Handle')
+
+        if sys.version_info >= (3, 8):
+            _load_and_update(classes,
+                             '_xxsubinterpreters', ['ChannelClosedError',
+                                                    'ChannelEmptyError',
+                                                    'ChannelError',
+                                                    'ChannelNotEmptyError',
+                                                    'ChannelNotFoundError',
+                                                    'InterpreterID',
+                                                    'RunFailedError'])
+
+methods_descriptors: Set[types.MethodDescriptorType] = set()
 
 if platform.python_implementation() != 'PyPy':
     _load_and_update(methods_descriptors,
@@ -357,6 +397,12 @@ if platform.python_implementation() != 'PyPy':
         _load_and_update(methods_descriptors,
                          'types', ['UnionType.__instancecheck__',
                                    'UnionType.__subclasscheck__'])
+    if sys.platform == 'win32':
+        _load_and_add(methods_descriptors,
+                      'io', '_WindowsConsoleIO.__getstate__')
+        if sys.version_info >= (3, 10):
+            _load_and_update(methods_descriptors, '_csv', ['Writer.writerow',
+                                                           'Writer.writerows'])
 
 wrappers_descriptors: Set[str] = set()
 
