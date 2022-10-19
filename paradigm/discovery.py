@@ -56,8 +56,20 @@ if platform.python_implementation() == 'PyPy':
             }
     )
     if sys.platform == 'win32':
-        unsupported_stdlib_modules_names.update({'_pwdgrp_cffi',
-                                                 'grp'})
+        unsupported_stdlib_modules_names.update({'_curses',
+                                                 '_curses_panel',
+                                                 '_dbm',
+                                                 '_gdbm',
+                                                 '_gdbm_cffi',
+                                                 '_posixshmem',
+                                                 '_pwdgrp_cffi',
+                                                 '_resource_build',
+                                                 '_sqlite3_build',
+                                                 '_sysconfigdata',
+                                                 'resource',
+                                                 'grp',
+                                                 'readline',
+                                                 'syslog'})
     else:
         unsupported_stdlib_modules_names.update({'_overlapped',
                                                  '_winapi',
