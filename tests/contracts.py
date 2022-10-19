@@ -9,7 +9,8 @@ from typing import (Any,
                     Optional,
                     Union)
 
-from paradigm import catalog
+from paradigm import (catalog,
+                      qualified)
 from paradigm.discovery import (stdlib_modules_names,
                                 unsupported_stdlib_modules_names)
 from tests import unsupported
@@ -133,5 +134,5 @@ def has_supported_python_source_file(module: types.ModuleType) -> bool:
 
 
 def is_stdlib_object(object_: Any) -> bool:
-    module_name, _ = catalog.qualified_name_from(object_)
+    module_name, _ = qualified.name_from(object_)
     return module_name is not None and module_name in stdlib_modules_names
