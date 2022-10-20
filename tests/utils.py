@@ -3,11 +3,10 @@ import types
 from typing import (Any,
                     Callable,
                     Dict,
+                    List,
                     Tuple,
-                    Union,
-                    List)
+                    Union)
 
-from hypothesis import settings
 from hypothesis.strategies import SearchStrategy
 
 from paradigm.hints import (Domain,
@@ -44,9 +43,6 @@ def pack(function: Callable[..., Range]) -> Map[Tuple[Domain, ...], Range]:
 
 def round_trip_pickle(object_: Any) -> Any:
     return pickle.loads(pickle.dumps(object_))
-
-
-slow_data_generation = settings(max_examples=30)
 
 
 def to_contents(object_: Union[types.ModuleType, type]) -> List[Any]:

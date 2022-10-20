@@ -21,8 +21,7 @@ def is_supported(object_: Any) -> bool:
     """
     Checks if object metadata extraction is supported.
     """
-    raise TypeError('Unsupported object type: {type}.'
-                    .format(type=type(object_)))
+    return False
 
 
 @is_supported.register(types.ModuleType)
@@ -44,7 +43,8 @@ def is_source_path_supported(source_path: Path) -> bool:
                   filename=str(source_path))
     except SyntaxError:
         return False
-    return True
+    else:
+        return True
 
 
 def is_module_path_supported(module_path: catalog.Path) -> bool:
@@ -100,18 +100,13 @@ def _(object_: type) -> bool:
                     )))
 
 
-if platform.python_implementation() == 'PyPy':
-    @is_supported.register(types.FunctionType)
-    def _(object_: types.FunctionType) -> bool:
-        return True
-else:
-    @is_supported.register(types.FunctionType)
-    def _(object_: types.FunctionType) -> bool:
-        return is_module_path_supported(
-                catalog.path_from_string(object_.__module__)
-        )
+@is_supported.register(types.FunctionType)
+def _(object_: types.FunctionType) -> bool:
+    module_path = catalog.module_path_from_callable(object_)
+    return module_path is not None and is_module_path_supported(module_path)
 
 
+if platform.python_implementation() != 'PyPy':
     @is_supported.register(types.MethodDescriptorType)
     def _(object_: types.MethodDescriptorType) -> bool:
         return (object_.__objclass__ not in unsupported.classes
