@@ -1,7 +1,7 @@
 import inspect
-import platform
 from functools import (partial,
                        reduce)
+from itertools import chain
 from types import (MethodDescriptorType,
                    ModuleType,
                    WrapperDescriptorType)
@@ -10,7 +10,6 @@ from typing import (Any,
                     Union)
 
 from hypothesis import strategies
-from itertools import chain
 
 from tests import unsupported
 from tests.contracts import is_supported
@@ -58,10 +57,7 @@ callables = (built_in_functions
              | methods_descriptors
              | wrappers_descriptors)
 partial_callables = callables.map(partial)
-if platform.python_implementation() == 'PyPy':
-    overloaded_callables = strategies.nothing()
-else:
-    overloaded_callables = strategies.sampled_from([int, reduce, super, type])
+overloaded_callables = strategies.sampled_from([int, reduce, super, type])
 unsupported_callables = strategies.sampled_from(
         list(unsupported.built_in_functions
              | unsupported.classes
