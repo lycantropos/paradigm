@@ -8,7 +8,7 @@ from typing import (Any,
 
 from hypothesis import strategies
 
-from tests import is_supported
+from tests.contracts import is_supported
 from tests.strategies import modules_list
 from tests.utils import to_contents
 
