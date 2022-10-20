@@ -404,7 +404,7 @@ if platform.python_implementation() != 'PyPy':
         if sys.version_info >= (3, 10):
             _load_and_update(methods_descriptors, '_csv', ['Writer.writerow',
                                                            'Writer.writerows'])
-        if sys.maxsize > 0x100000000:
+        if sys.maxsize < 0x100000000:
             _load_and_update(methods_descriptors,
                              'decimal', ['Context._unsafe_setemax',
                                          'Context._unsafe_setemin',
