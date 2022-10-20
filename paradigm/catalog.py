@@ -4,6 +4,7 @@ import pathlib
 import types
 from typing import (Any,
                     Callable,
+                    Optional,
                     Tuple)
 
 from . import file_system, qualified
@@ -63,9 +64,9 @@ WILDCARD_IMPORT_NAME = '*'
 WILDCARD_IMPORT_PATH = Path(WILDCARD_IMPORT_NAME)
 
 
-def module_path_from_callable(value: Any) -> Path:
-    result, _ = qualified.name_from(value)
-    return path_from_string(result)
+def module_path_from_callable(value: Any) -> Optional[Path]:
+    module_name, _ = qualified.name_from(value)
+    return None if module_name is None else path_from_string(module_name)
 
 
 def module_path_from_module(object_: types.ModuleType) -> Path:
