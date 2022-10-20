@@ -25,4 +25,7 @@ def contains(namespace: Namespace, path: catalog.Path) -> bool:
 
 
 def search(namespace: Namespace, path: catalog.Path) -> Any:
-    return reduce(getattr, path.parts[1:], namespace[path.parts[0]])
+    root_object = namespace[path.parts[0]]
+    return (reduce(getattr, path.parts[1:], root_object)
+            if len(path.parts) > 1
+            else root_object)
