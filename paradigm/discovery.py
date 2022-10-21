@@ -1,9 +1,13 @@
+import importlib.machinery
 import os
 import platform
 import sys
-from operator import methodcaller
+from collections import deque
 from pathlib import Path
-from typing import Iterable
+from typing import (Container,
+                    Iterable,
+                    Sequence,
+                    Set)
 
 
 def find_stdlib_modules_names(
@@ -11,20 +15,31 @@ def find_stdlib_modules_names(
 ) -> Iterable[str]:
     yield from sys.builtin_module_names
 
-    def is_stdlib_module_path(path: Path) -> bool:
-        base_name = path.stem
-        # skips 'LICENSE', '__pycache__', 'site-packages', etc.
-        return not (base_name.isupper()
-                    or base_name.startswith('__')
-                    or '-' in base_name
-                    or '.' in base_name)
+    def is_stdlib_module_path(path: Path,
+                              suffixes: Container[str] = tuple(
+                                      importlib.machinery.all_suffixes()
+                              )) -> bool:
+        return (path.name.endswith(suffixes)
+                and is_stdlib_module_path_parts(path.parts))
 
-    sources_paths = filter(is_stdlib_module_path, directory_path.iterdir())
-    sources_relative_paths = map(methodcaller(Path.relative_to.__name__,
-                                              directory_path),
-                                 sources_paths)
-    yield from map(str, map(methodcaller(Path.with_suffix.__name__, ''),
-                            sources_relative_paths))
+    def is_stdlib_module_path_parts(parts: Sequence[str]) -> bool:
+        return not any((component.startswith('test')
+                        or component.startswith('__')
+                        or '-' in component)
+                       for component in parts)
+
+    queue = deque(directory_path.iterdir())
+    while queue:
+        candidate = queue.pop()
+        candidate_module_path = candidate.relative_to(directory_path)
+        if candidate.is_dir():
+            if is_stdlib_module_path_parts(candidate_module_path.parts):
+                yield '.'.join(candidate_module_path.parts)
+            queue.extendleft(candidate.iterdir())
+        elif is_stdlib_module_path(candidate_module_path):
+            yield '.'.join(candidate_module_path.with_name(
+                    candidate_module_path.name.split('.', 1)[0]
+            ).parts)
 
 
 stdlib_modules_names = set(find_stdlib_modules_names())
