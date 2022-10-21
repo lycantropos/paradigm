@@ -82,11 +82,6 @@ def _(
             value.__objclass__.__qualname__ + '.' + value.__name__)
 
 
-@name_from.register(types.MethodType)
-def _(value: types.MethodType) -> Name:
-    return type(value.__self__).__module__, value.__qualname__
-
-
 @name_from.register(type)
 def _(value: type) -> Name:
     return value.__module__, value.__qualname__
