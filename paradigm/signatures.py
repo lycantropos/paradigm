@@ -40,14 +40,7 @@ def from_raw_signature(object_: inspect.Signature) -> Base:
     return Plain(*parameters)
 
 
-@factory.register(types.BuiltinFunctionType)
-@factory.register(types.BuiltinMethodType)
-@factory.register(types.FunctionType)
-@factory.register(types.MethodType)
-@factory.register(types.MethodDescriptorType)
-@factory.register(types.WrapperDescriptorType)
-@factory.register(type)
-def from_callable(value: Callable[..., Any]) -> Base:
+def _from_callable(value: Callable[..., Any]) -> Base:
     module_name, object_name = qualified.name_from(value)
     try:
         candidates_names = qualified_names[module_name][object_name]
@@ -62,25 +55,40 @@ def from_callable(value: Callable[..., Any]) -> Base:
         qualified_paths = [(catalog.path_from_string(module_name),
                             catalog.path_from_string(object_name))
                            for module_name, object_name in candidates_names]
+    _, result = min(
+            filter(itemgetter(1),
+                   [_from_path(module_path, object_path)
+                    for module_path, object_path in qualified_paths]),
+            key=itemgetter(0)
+    )
+    return result
+
+
+@factory.register(types.BuiltinFunctionType)
+@factory.register(types.BuiltinMethodType)
+@factory.register(types.FunctionType)
+@factory.register(types.MethodType)
+@factory.register(types.MethodDescriptorType)
+@factory.register(types.MethodWrapperType)
+@factory.register(types.WrapperDescriptorType)
+@factory.register(type)
+def from_callable(value: Callable[..., Any]) -> Base:
     try:
-        _, result = min(
-                filter(itemgetter(1),
-                       [_from_path(module_path, object_path)
-                        for module_path, object_path in qualified_paths]),
-                key=itemgetter(0)
-        )
+        return ((_from_callable(value)
+                 if isinstance(value.__self__, type)
+                 else (_from_callable(getattr(type(value.__self__),
+                                              value.__name__))
+                       .bind(value.__self__)))
+                if (isinstance(value, types.BuiltinMethodType)
+                    and value.__self__ is not None
+                    and not isinstance(value.__self__, types.ModuleType)
+                    or isinstance(value, (types.MethodType,
+                                          types.MethodWrapperType)))
+                else (_from_callable(value).bind(value)
+                      if isinstance(value, type)
+                      else _from_callable(value)))
     except ValueError:
         return from_raw_signature(inspect.signature(value))
-    else:
-        return (result.bind(value.__self__)
-                if (isinstance(value, (types.MethodType,
-                                       types.MethodWrapperType,
-                                       types.BuiltinMethodType))
-                    and not isinstance(value.__self__,
-                                       types.ModuleType))
-                else (result.bind(value)
-                      if isinstance(value, type)
-                      else result))
 
 
 def _from_path(module_path: catalog.Path,
