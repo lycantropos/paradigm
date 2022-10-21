@@ -10,7 +10,8 @@ _QualifiedNames = _t.Dict[_t.Optional[str],
                           _t.Dict[str, _t.List[_t.Tuple[str, str]]]]
 
 _CACHE_PATH = _Path(__file__).with_name(
-        '_' + _platform.python_implementation().lower()
+        '_' + _platform.system().lower()
+        + '_' + _platform.python_implementation().lower()
         + '_' + '_'.join(map(str, _sys.version_info))
         + '_' + _Path(__file__).name
 )
@@ -53,6 +54,10 @@ except Exception:
                     qualified_module_name, qualified_object_name = (
                         _qualified.name_from(value)
                     )
+                    assert (
+                            qualified_module_name is not None
+                            or qualified_object_name
+                    ), module_name + '.' + prefix + name
                     (names.setdefault(qualified_module_name, {})
                      .setdefault(qualified_object_name, [])
                      .append((module_name, prefix + name)))
