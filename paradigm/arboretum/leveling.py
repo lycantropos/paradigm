@@ -752,13 +752,15 @@ def to_parent_module_path(object_: ast.ImportFrom,
     level = object_.level
     import_is_relative = level > 0
     if not import_is_relative:
+        assert object_.module is not None, object_
         return catalog.path_from_string(object_.module)
     depth = (len(parent_module_path.parts)
              + catalog.is_package(parent_module_path)
              - level) or None
-    module_path_parts = filter(None,
-                               chain(parent_module_path.parts[:depth],
-                                     (object_.module,)))
+    module_path_parts = (list(parent_module_path.parts[:depth])
+                         + ([]
+                            if object_.module is None
+                            else object_.module.split('.')))
     return catalog.Path(*module_path_parts)
 
 
