@@ -3,12 +3,12 @@ import inspect
 import types
 from functools import (partial,
                        singledispatch)
-from itertools import (starmap,
-                       zip_longest)
+from itertools import zip_longest
 from operator import itemgetter
 from typing import (Any,
                     Callable,
                     Iterable,
+                    List,
                     Optional,
                     Tuple)
 
@@ -100,7 +100,7 @@ def _from_ast(signature_ast: ast.arguments) -> Base:
     parameters = filter(
             None,
             (*_to_positional_parameters(signature_ast),
-             to_variadic_positional_parameter(signature_ast),
+             _to_variadic_positional_parameter(signature_ast),
              *_to_keyword_parameters(signature_ast),
              _to_variadic_keyword_parameter(signature_ast))
     )
@@ -111,46 +111,45 @@ def _to_positional_parameters(
         signature_ast: ast.arguments
 ) -> Iterable[Parameter]:
     # double-reversing since parameters with default arguments go last
-    parameters_with_defaults_ast: Iterable[ast.arg] = zip_longest(
+    parameters_with_defaults_ast: List[ast.arg] = list(zip_longest(
             reversed(signature_ast.args), signature_ast.defaults
-    )
-    parameters_with_defaults_ast = reversed(
-            [*parameters_with_defaults_ast]
-    )
-    parameter_factory = partial(_to_parameter,
-                                kind=Parameter.Kind.POSITIONAL_ONLY)
-    yield from starmap(parameter_factory, parameters_with_defaults_ast)
+    ))[::-1]
+    kind = Parameter.Kind.POSITIONAL_ONLY
+    return [_to_parameter(parameter_ast, default_ast,
+                          kind=kind)
+            for parameter_ast, default_ast in parameters_with_defaults_ast]
 
 
 def _to_keyword_parameters(
         signature_ast: ast.arguments
 ) -> Iterable[Parameter]:
-    parameter_factory = partial(_to_parameter,
-                                kind=Parameter.Kind.KEYWORD_ONLY)
-    yield from map(parameter_factory, signature_ast.kwonlyargs,
-                   signature_ast.kw_defaults)
+    kind = Parameter.Kind.KEYWORD_ONLY
+    return [_to_parameter(parameter_ast, default_ast,
+                          kind=kind)
+            for parameter_ast, default_ast in zip(signature_ast.kwonlyargs,
+                                                  signature_ast.kw_defaults)]
 
 
-def to_variadic_positional_parameter(
+def _to_variadic_positional_parameter(
         signature_ast: ast.arguments
 ) -> Optional[Parameter]:
     parameter_ast = signature_ast.vararg
-    if parameter_ast is None:
-        return None
-    return Parameter(name=parameter_ast.arg,
-                     kind=Parameter.Kind.VARIADIC_POSITIONAL,
-                     has_default=False)
+    return (None
+            if parameter_ast is None
+            else Parameter(name=parameter_ast.arg,
+                           kind=Parameter.Kind.VARIADIC_POSITIONAL,
+                           has_default=False))
 
 
 def _to_variadic_keyword_parameter(
         signature_ast: ast.arguments
 ) -> Optional[Parameter]:
     parameter_ast = signature_ast.kwarg
-    if parameter_ast is None:
-        return None
-    return Parameter(name=parameter_ast.arg,
-                     kind=Parameter.Kind.VARIADIC_KEYWORD,
-                     has_default=False)
+    return (None
+            if parameter_ast is None
+            else Parameter(name=parameter_ast.arg,
+                           kind=Parameter.Kind.VARIADIC_KEYWORD,
+                           has_default=False))
 
 
 def _to_parameter(parameter_ast: ast.arg,
