@@ -1,8 +1,10 @@
 import importlib.machinery
+import math
 import os
 import platform
 import sys
 from collections import deque
+from itertools import chain
 from pathlib import Path
 from typing import (Container,
                     Iterable,
@@ -10,11 +12,7 @@ from typing import (Container,
                     Set)
 
 
-def find_stdlib_modules_names(
-        directory_path: Path = Path(os.__file__).parent,
-) -> Iterable[str]:
-    yield from sys.builtin_module_names
-
+def find_stdlib_modules_names(directory_path: Path) -> Iterable[str]:
     def is_stdlib_module_path(path: Path,
                               suffixes: Container[str] = tuple(
                                       importlib.machinery.all_suffixes()
@@ -42,55 +40,109 @@ def find_stdlib_modules_names(
             ).parts)
 
 
-stdlib_modules_names = set(find_stdlib_modules_names())
-# importing will cause unwanted side effects such as raising error
-unsupported_stdlib_modules_names = {'antigravity', 'crypt', 'this', 'tkinter',
-                                    'turtle'}
+stdlib_modules_names = set(chain(
+        sys.builtin_module_names,
+        find_stdlib_modules_names(Path(os.__file__).parent),
+        find_stdlib_modules_names(Path(math.__file__).parent)
+))
 
-if sys.platform == 'win32':
-    unsupported_stdlib_modules_names.update({'curses',
-                                             'pty',
-                                             'tty'})
+
+def _recursively_update_modules_names(
+        set_: Set[str],
+        *names: str,
+        _stdlib_modules_names: Iterable[str] = stdlib_modules_names
+) -> None:
+    set_.update({*names,
+                 *[name
+                   for name in _stdlib_modules_names
+                   if name.startswith(tuple(name + '.' for name in names))]})
+
+
+# importing will cause unwanted side effects such as raising error
+unsupported_stdlib_modules_names = set()
+_recursively_update_modules_names(unsupported_stdlib_modules_names,
+                                  'antigravity',
+                                  'crypt',
+                                  'idlelib',
+                                  'lib2to3.pgen2.conv',
+                                  'this',
+                                  'tkinter',
+                                  'turtle',
+                                  'turtledemo')
 
 if platform.python_implementation() == 'PyPy':
+    _recursively_update_modules_names(unsupported_stdlib_modules_names,
+                                      '_crypt',
+                                      '_curses_build',
+                                      '_msi',
+                                      '_scproxy',
+                                      'future_builtins',
+                                      'identity_dict',
+                                      'msilib',
+                                      'symtable',
+                                      'tracemalloc')
     unsupported_stdlib_modules_names.update(
-            {
-                '_crypt',
-                '_curses_build',
-                '_msi',
-                '_scproxy',
-                'future_builtins',
-                'identity_dict',
-                'msilib',
-                'symtable',
-                'tracemalloc',
-                *[name
-                  for name in stdlib_modules_names
-                  if name.startswith(('__pypy', '_ctypes_', '_pypy', '_test',
-                                      'ctypes_', 'test'))]
-            }
+            [name
+             for name in stdlib_modules_names
+             if name.startswith(('__pypy', '_ctypes_', '_pypy', '_test',
+                                 'ctypes_'))]
     )
     if sys.platform == 'win32':
-        unsupported_stdlib_modules_names.update({'_curses',
-                                                 '_curses_panel',
-                                                 '_dbm',
-                                                 '_gdbm',
-                                                 '_gdbm_cffi',
-                                                 '_posixshmem',
-                                                 '_pwdgrp_cffi',
-                                                 '_resource_build',
-                                                 '_sqlite3_build',
-                                                 '_sysconfigdata',
-                                                 'resource',
-                                                 'grp',
-                                                 'readline',
-                                                 'syslog'})
+        _recursively_update_modules_names(unsupported_stdlib_modules_names,
+                                          '_curses',
+                                          '_curses_panel',
+                                          '_dbm',
+                                          '_gdbm',
+                                          '_gdbm_cffi',
+                                          '_posixshmem',
+                                          '_pwdgrp_cffi',
+                                          '_resource_build',
+                                          '_sqlite3_build',
+                                          '_sysconfigdata',
+                                          'resource',
+                                          'grp',
+                                          'readline',
+                                          'syslog')
     else:
-        unsupported_stdlib_modules_names.update({'_overlapped',
-                                                 '_winapi',
-                                                 'msvcrt'})
+        _recursively_update_modules_names(unsupported_stdlib_modules_names,
+                                          '_overlapped',
+                                          '_winapi',
+                                          'msvcrt')
     if sys.version_info >= (3, 9):
-        unsupported_stdlib_modules_names.add('_ssl_build')
+        _recursively_update_modules_names(unsupported_stdlib_modules_names,
+                                          '_ssl_build')
+else:
+    if sys.platform == 'win32':
+        _recursively_update_modules_names(unsupported_stdlib_modules_names,
+                                          'curses',
+                                          'pty',
+                                          'tty')
+    else:
+        _recursively_update_modules_names(unsupported_stdlib_modules_names,
+                                          'asyncio.windows_events',
+                                          'asyncio.windows_utils',
+                                          'ctypes.wintypes',
+                                          'distutils.command.bdist_msi',
+                                          'distutils.msvc9compiler',
+                                          'encodings.mbcs',
+                                          'encodings.oem',
+                                          'multiprocessing.popen_spawn_win32')
+        if sys.version_info < (3, 8):
+            _recursively_update_modules_names(unsupported_stdlib_modules_names,
+                                              'distutils._msvccompiler',
+                                              'encodings.cp65001')
+        if sys.version_info < (3, 10):
+            _recursively_update_modules_names(
+                    unsupported_stdlib_modules_names,
+                    'distutils.command.bdist_wininst'
+            )
+        if sys.platform == 'darwin':
+            if sys.version_info >= (3, 8):
+                _recursively_update_modules_names(
+                        unsupported_stdlib_modules_names,
+                        'dbm.gnu',
+                        'distutils._msvccompiler',
+                )
 
 supported_stdlib_modules_names = (stdlib_modules_names
                                   - unsupported_stdlib_modules_names)
