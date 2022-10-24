@@ -114,17 +114,34 @@ if platform.python_implementation() == 'PyPy':
         _recursively_update_modules_names(unsupported_stdlib_modules_names,
                                           '_ssl_build')
 else:
+    _recursively_update_modules_names(unsupported_stdlib_modules_names,
+                                      'distutils.command.bdist_msi')
+
+    if sys.version_info < (3, 10):
+        _recursively_update_modules_names(
+                unsupported_stdlib_modules_names,
+                'distutils.command.bdist_wininst'
+        )
+
     if sys.platform == 'win32':
         _recursively_update_modules_names(unsupported_stdlib_modules_names,
                                           'curses',
                                           'pty',
                                           'tty')
+        _recursively_update_modules_names(
+                unsupported_stdlib_modules_names,
+                'asyncio.unix_events',
+                'dbm.gnu',
+                'dbm.ndbm',
+                'multiprocessing.popen_fork',
+                'multiprocessing.popen_forkserver',
+                'multiprocessing.popen_spawn_posix'
+        )
     else:
         _recursively_update_modules_names(unsupported_stdlib_modules_names,
                                           'asyncio.windows_events',
                                           'asyncio.windows_utils',
                                           'ctypes.wintypes',
-                                          'distutils.command.bdist_msi',
                                           'distutils.msvc9compiler',
                                           'encodings.mbcs',
                                           'encodings.oem',
@@ -133,11 +150,6 @@ else:
             _recursively_update_modules_names(unsupported_stdlib_modules_names,
                                               'distutils._msvccompiler',
                                               'encodings.cp65001')
-        if sys.version_info < (3, 10):
-            _recursively_update_modules_names(
-                    unsupported_stdlib_modules_names,
-                    'distutils.command.bdist_wininst'
-            )
         if sys.platform == 'darwin':
             if sys.version_info >= (3, 8):
                 _recursively_update_modules_names(
