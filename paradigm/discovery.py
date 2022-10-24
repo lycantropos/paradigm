@@ -43,9 +43,9 @@ def find_stdlib_modules_names(directory_path: Path) -> Iterable[str]:
 stdlib_modules_names = set(chain(
         sys.builtin_module_names,
         find_stdlib_modules_names(Path(os.__file__).parent),
-        []
-        if math.__file__ is None
-        else find_stdlib_modules_names(Path(math.__file__).parent)
+        find_stdlib_modules_names(Path(math.__file__).parent)
+        if math.__spec__.has_location
+        else []
 ))
 
 
