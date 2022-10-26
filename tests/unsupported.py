@@ -531,6 +531,10 @@ elif sys.platform == 'darwin':
         _load_and_add(classes, 'threading', '_CRLock')
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
+
+        if sys.version_info >= (3, 9):
+            _load_and_add(classes, '_collections_abc', 'EllipsisType')
+            _load_and_add(classes, 'unittest.mock', '_AnyComparer')
     else:
         _load_and_update(built_in_functions,
                          'urllib.request', ['_get_proxies',
