@@ -105,6 +105,14 @@ if platform.python_implementation() == 'PyPy':
                                           'readline',
                                           'syslog')
     else:
+        if sys.platform == 'linux':
+            _recursively_update_modules_names(
+                    unsupported_stdlib_modules_names,
+                    '_tkinter.tklib_build',
+                    'distutils.command.bdist_wininst',
+                    'distutils.sysconfig_cpython',
+                    'distutils.sysconfig_pypy',
+            )
         _recursively_update_modules_names(unsupported_stdlib_modules_names,
                                           '_overlapped',
                                           '_winapi',
