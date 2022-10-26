@@ -226,9 +226,22 @@ class Node:
         if self._kind is NodeKind.UNDEFINED:
             parent = module_node._local_lookup_path(self._object_path.parent)
             if parent._kind is NodeKind.CLASS:
-                node = parent.get_attribute_by_name(
-                        self._object_path.parts[-1]
-                )
+                final_name = self._object_path.parts[-1]
+                try:
+                    node = parent._local_lookup_name(final_name)
+                except NameLookupError:
+                    for parent_sub_node in parent._sub_nodes:
+                        parent_sub_node.resolve()
+                        try:
+                            node = parent_sub_node.get_attribute_by_name(
+                                    final_name
+                            )
+                        except NameLookupError:
+                            pass
+                        else:
+                            break
+                    else:
+                        raise
                 node.resolve()
                 self._merge_with(node)
         assert self._kind is not NodeKind.MODULE or not self._object_path.parts
