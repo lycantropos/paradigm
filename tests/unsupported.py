@@ -178,6 +178,10 @@ if sys.platform == 'linux':
         _load_and_add(classes, 'threading', '_CRLock')
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
+
+        if sys.version_info >= (3, 9):
+            _load_and_add(classes, '_collections_abc', 'EllipsisType')
+            _load_and_add(classes, 'unittest.mock', '_AnyComparer')
     else:
         _load_and_add(built_in_functions, '_collections', '_count_elements')
         _load_and_update(built_in_functions,
