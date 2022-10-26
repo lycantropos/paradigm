@@ -76,7 +76,6 @@ if platform.python_implementation() == 'PyPy':
     _recursively_update_modules_names(unsupported_stdlib_modules_names,
                                       '_crypt',
                                       '_curses_build',
-                                      '_msi',
                                       '_scproxy',
                                       'future_builtins',
                                       'identity_dict',
@@ -109,7 +108,19 @@ if platform.python_implementation() == 'PyPy':
         _recursively_update_modules_names(unsupported_stdlib_modules_names,
                                           '_overlapped',
                                           '_winapi',
-                                          'msvcrt')
+                                          'asyncio.windows_events',
+                                          'asyncio.windows_utils',
+                                          'cffi._pycparser._build_tables',
+                                          'distutils._msvccompiler',
+                                          'distutils.command.bdist_msi',
+                                          'distutils.msvc9compiler',
+                                          'encodings.mbcs',
+                                          'encodings.oem',
+                                          'msvcrt',
+                                          'multiprocessing.popen_spawn_win32',
+                                          'pyrepl.keymaps',
+                                          'pyrepl.pygame_console',
+                                          'pyrepl.pygame_keymap')
     if sys.version_info >= (3, 9):
         _recursively_update_modules_names(unsupported_stdlib_modules_names,
                                           '_ssl_build')
