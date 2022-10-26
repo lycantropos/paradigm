@@ -105,23 +105,19 @@ if platform.python_implementation() == 'PyPy':
                                           'readline',
                                           'syslog')
     else:
-        if sys.platform == 'linux':
-            _recursively_update_modules_names(
-                    unsupported_stdlib_modules_names,
-                    '_tkinter.tklib_build',
-                    'distutils.command.bdist_wininst',
-                    'distutils.sysconfig_cpython',
-                    'distutils.sysconfig_pypy',
-            )
         _recursively_update_modules_names(unsupported_stdlib_modules_names,
                                           '_overlapped',
+                                          '_tkinter.tklib_build',
                                           '_winapi',
                                           'asyncio.windows_events',
                                           'asyncio.windows_utils',
                                           'cffi._pycparser._build_tables',
                                           'distutils._msvccompiler',
+                                          'distutils.command.bdist_wininst',
                                           'distutils.command.bdist_msi',
                                           'distutils.msvc9compiler',
+                                          'distutils.sysconfig_cpython',
+                                          'distutils.sysconfig_pypy',
                                           'encodings.mbcs',
                                           'encodings.oem',
                                           'msvcrt',
