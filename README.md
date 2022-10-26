@@ -62,7 +62,7 @@ for user-defined functions
 ...           Parameter(name='bar',
 ...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
 ...                     has_default=True),
-....          Parameter(name='kwargs',
+...           Parameter(name='kwargs',
 ...                     kind=Parameter.Kind.VARIADIC_KEYWORD,
 ...                     has_default=False)))
 True
