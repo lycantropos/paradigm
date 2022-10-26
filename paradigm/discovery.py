@@ -123,6 +123,8 @@ if platform.python_implementation() == 'PyPy':
                                           'pyrepl.pygame_keymap')
     if sys.version_info >= (3, 9):
         _recursively_update_modules_names(unsupported_stdlib_modules_names,
+                                          '_cffi_ssl._cffi_src.build_openssl')
+        _recursively_update_modules_names(unsupported_stdlib_modules_names,
                                           '_ssl_build')
 else:
     _recursively_update_modules_names(unsupported_stdlib_modules_names,
