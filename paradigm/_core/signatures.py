@@ -101,8 +101,8 @@ def _from_path(
     else:
         assert len(nodes) > 0 or depth == -1
         return ((depth,
-                 _OverloadedSignature(
-                         *[_from_ast(node.args) for node in nodes]))
+                 _OverloadedSignature(*[_from_ast(node.args)
+                                        for node in nodes]))
                 if nodes
                 else (-1, None))
 
