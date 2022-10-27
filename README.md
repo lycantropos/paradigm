@@ -47,24 +47,26 @@ Usage
 
 `paradigm` can be used to obtain signature
 ```python
->>> from paradigm import signatures
->>> from paradigm.models import Parameter, Plain
+>>> from paradigm.base import (PlainSignature,
+...                            SignatureParameter,
+...                            signature_from_callable)
 
 ```
 for user-defined functions
 ```python
 >>> def func(foo, bar=None, **kwargs):
 ...     pass
->>> (signatures.factory(func)
-...  == Plain(Parameter(name='foo',
-...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
-...                     has_default=False),
-...           Parameter(name='bar',
-...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
-...                     has_default=True),
-...           Parameter(name='kwargs',
-...                     kind=Parameter.Kind.VARIADIC_KEYWORD,
-...                     has_default=False)))
+>>> signature_from_callable(func) == PlainSignature(
+...     SignatureParameter(name='foo',
+...                        kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
+...                        has_default=False),
+...     SignatureParameter(name='bar',
+...                        kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
+...                        has_default=True),
+...     SignatureParameter(name='kwargs',
+...                        kind=SignatureParameter.Kind.VARIADIC_KEYWORD,
+...                        has_default=False)
+... )
 True
 
 ```
@@ -79,54 +81,54 @@ for user-defined classes
 ... 
 ...     def __getattr__(self, name):
 ...         return getattr(self._outfile, name)
->>> (signatures.factory(UpperOut)
-...  == Plain(Parameter(name='outfile',
-...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
-...                     has_default=False)))
+>>> signature_from_callable(UpperOut) == PlainSignature(
+...     SignatureParameter(name='outfile',
+...                        kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
+...                        has_default=False)
+... )
 True
 
 ```
 for user-defined classes methods
 ```python
->>> (signatures.factory(UpperOut.write)
-...  == Plain(Parameter(name='self',
-...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
-...                     has_default=False),
-...           Parameter(name='s',
-...                     kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
-...                     has_default=False)))
+>>> signature_from_callable(UpperOut.write) == PlainSignature(
+...     SignatureParameter(name='self',
+...                        kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
+...                        has_default=False),
+...     SignatureParameter(name='s',
+...               kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
+...               has_default=False)
+... )
 True
 
 ```
 for built-in functions
 ```python
 >>> import platform
->>> from paradigm.models import Parameter, Plain
->>> signatures.factory(any) == (
-...     Plain(Parameter(name='__iterable',
-...                     kind=Parameter.Kind.POSITIONAL_ONLY,
-...                     has_default=False))
-...  )
+>>> signature_from_callable(any) == PlainSignature(
+...     SignatureParameter(name='__iterable',
+...                        kind=SignatureParameter.Kind.POSITIONAL_ONLY,
+...                        has_default=False)
+... )
 True
 
 ```
 for built-in classes
 ```python
->>> signatures.factory(float) == (
-...     Plain(Parameter(name='x', 
-...                     kind=Parameter.Kind.POSITIONAL_ONLY,
-...                     has_default=True))
+>>> signature_from_callable(float) == PlainSignature(
+...     SignatureParameter(name='x', 
+...                        kind=SignatureParameter.Kind.POSITIONAL_ONLY,
+...                        has_default=True)
 ... )
 True
 
 ```
 for built-in classes methods
 ```python
->>> from paradigm.models import Parameter, Plain
->>> signatures.factory(float.as_integer_ratio) == (
-...     Plain(Parameter(name='self',
-...                     kind=Parameter.Kind.POSITIONAL_ONLY,
-...                     has_default=False))
+>>> signature_from_callable(float.as_integer_ratio) == PlainSignature(
+...     SignatureParameter(name='self',
+...                        kind=SignatureParameter.Kind.POSITIONAL_ONLY,
+...                        has_default=False)
 ... )
 True
 
@@ -183,7 +185,7 @@ Install dependencies
 python -m pip install -r requirements-tests.txt
 ```
 
-Plain
+PlainSignature
 ```bash
 pytest
 ```
