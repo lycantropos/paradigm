@@ -11,7 +11,7 @@ from . import (arboreal as _arboreal,
                catalog as _catalog,
                qualified as _qualified)
 from .models import (OverloadedSignature as _OverloadedSignature,
-                     SignatureParameter as _SignatureParameter,
+                     Parameter as _Parameter,
                      PlainSignature as _PlainSignature)
 from .names import qualified_names as _qualified_names
 
@@ -109,17 +109,17 @@ def _from_path(
 
 def _from_raw_signature(object_: _inspect.Signature) -> _Signature:
     return _PlainSignature(*[
-        _SignatureParameter(name=raw.name,
-                            kind=_SignatureParameter.Kind(raw.kind),
-                            has_default=raw.default is not _inspect._empty)
+        _Parameter(name=raw.name,
+                   kind=_Parameter.Kind(raw.kind),
+                   has_default=raw.default is not _inspect._empty)
         for raw in object_.parameters.values()
     ])
 
 
 def _to_keyword_parameters(
         signature_ast: _ast.arguments
-) -> _t.Iterable[_SignatureParameter]:
-    kind = _SignatureParameter.Kind.KEYWORD_ONLY
+) -> _t.Iterable[_Parameter]:
+    kind = _Parameter.Kind.KEYWORD_ONLY
     return [_to_parameter(parameter_ast, default_ast,
                           kind=kind)
             for parameter_ast, default_ast in zip(signature_ast.kwonlyargs,
@@ -129,20 +129,20 @@ def _to_keyword_parameters(
 def _to_parameter(parameter_ast: _ast.arg,
                   default_ast: _t.Optional[_ast.expr],
                   *,
-                  kind: _SignatureParameter.Kind) -> _SignatureParameter:
-    return _SignatureParameter(name=parameter_ast.arg,
-                               kind=kind,
-                               has_default=default_ast is not None)
+                  kind: _Parameter.Kind) -> _Parameter:
+    return _Parameter(name=parameter_ast.arg,
+                      kind=kind,
+                      has_default=default_ast is not None)
 
 
 def _to_positional_parameters(
         signature_ast: _ast.arguments
-) -> _t.Iterable[_SignatureParameter]:
+) -> _t.Iterable[_Parameter]:
     # double-reversing since parameters with default arguments go last
     parameters_with_defaults_ast: _t.List[_ast.arg] = list(_zip_longest(
             reversed(signature_ast.args), signature_ast.defaults
     ))[::-1]
-    kind = _SignatureParameter.Kind.POSITIONAL_ONLY
+    kind = _Parameter.Kind.POSITIONAL_ONLY
     return [_to_parameter(parameter_ast, default_ast,
                           kind=kind)
             for parameter_ast, default_ast in parameters_with_defaults_ast]
@@ -150,27 +150,21 @@ def _to_positional_parameters(
 
 def _to_variadic_keyword_parameter(
         signature_ast: _ast.arguments
-) -> _t.Optional[_SignatureParameter]:
+) -> _t.Optional[_Parameter]:
     parameter_ast = signature_ast.kwarg
-    return (
-        None
-        if parameter_ast is None
-        else
-        _SignatureParameter(name=parameter_ast.arg,
-                            kind=_SignatureParameter.Kind.VARIADIC_KEYWORD,
-                            has_default=False)
-    )
+    return (None
+            if parameter_ast is None
+            else _Parameter(name=parameter_ast.arg,
+                            kind=_Parameter.Kind.VARIADIC_KEYWORD,
+                            has_default=False))
 
 
 def _to_variadic_positional_parameter(
         signature_ast: _ast.arguments
-) -> _t.Optional[_SignatureParameter]:
+) -> _t.Optional[_Parameter]:
     parameter_ast = signature_ast.vararg
-    return (
-        None
-        if parameter_ast is None
-        else
-        _SignatureParameter(name=parameter_ast.arg,
-                            kind=_SignatureParameter.Kind.VARIADIC_POSITIONAL,
-                            has_default=False)
-    )
+    return (None
+            if parameter_ast is None
+            else _Parameter(name=parameter_ast.arg,
+                            kind=_Parameter.Kind.VARIADIC_POSITIONAL,
+                            has_default=False))
