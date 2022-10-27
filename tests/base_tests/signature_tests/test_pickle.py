@@ -1,8 +1,8 @@
 from hypothesis import given
 
 from paradigm.base import (OverloadedSignature,
-                           PlainSignature,
-                           SignatureParameter)
+                           Parameter,
+                           PlainSignature)
 from tests.utils import round_trip_pickle
 from . import strategies
 
@@ -10,7 +10,7 @@ from . import strategies
 @given(strategies.parameters,
        strategies.plain_signatures,
        strategies.overloaded_signatures)
-def test_models(parameter: SignatureParameter,
+def test_models(parameter: Parameter,
                 plain_signature: PlainSignature,
                 overloaded_signature: OverloadedSignature) -> None:
     for object_ in (parameter, plain_signature, overloaded_signature):

@@ -14,8 +14,8 @@ from hypothesis import strategies
 from paradigm._core.models import (to_parameters_by_kind,
                                    to_parameters_by_name)
 from paradigm.base import (OverloadedSignature,
-                           PlainSignature,
-                           SignatureParameter)
+                           Parameter,
+                           PlainSignature)
 from tests.strategies import (identifiers,
                               to_homogeneous_tuples)
 from tests.utils import (AnySignature,
@@ -31,26 +31,26 @@ _T2 = TypeVar('_T2')
 
 def to_parameters(*,
                   names: Strategy[str] = identifiers,
-                  kinds: Strategy[SignatureParameter.Kind],
+                  kinds: Strategy[Parameter.Kind],
                   has_default_flags: Strategy[bool] =
-                  strategies.booleans()) -> Strategy[SignatureParameter]:
+                  strategies.booleans()) -> Strategy[Parameter]:
     def normalize_mapping(mapping: Dict[str, Any]) -> Dict[str, Any]:
         kind = mapping['kind']
         return ({**mapping, 'has_default': False}
-                if (kind is SignatureParameter.Kind.VARIADIC_KEYWORD
-                    or kind is SignatureParameter.Kind.VARIADIC_POSITIONAL)
+                if (kind is Parameter.Kind.VARIADIC_KEYWORD
+                    or kind is Parameter.Kind.VARIADIC_POSITIONAL)
                 else mapping)
 
     return (strategies.fixed_dictionaries(dict(name=names,
                                                kind=kinds,
                                                has_default=has_default_flags))
             .map(normalize_mapping)
-            .map(lambda mapping: SignatureParameter(**mapping)))
+            .map(lambda mapping: Parameter(**mapping)))
 
 
 def to_plain_signatures(*,
                         parameters_names: Strategy[str] = identifiers,
-                        parameters_kinds: Strategy[SignatureParameter.Kind],
+                        parameters_kinds: Strategy[Parameter.Kind],
                         parameters_has_default_flags: Strategy[bool] =
                         strategies.booleans(),
                         min_size: int = 0,
@@ -72,28 +72,28 @@ def to_plain_signatures(*,
     @strategies.composite
     def extend(
             draw: Callable[[Strategy[_T1]], _T1],
-            base: Strategy[Tuple[SignatureParameter, ...]]
-    ) -> Strategy[Tuple[SignatureParameter, ...]]:
+            base: Strategy[Tuple[Parameter, ...]]
+    ) -> Strategy[Tuple[Parameter, ...]]:
         precursors = draw(base)
         precursors_names = set(map(attrgetter('name'), precursors))
         precursors_kinds = to_parameters_by_kind(precursors)
         last_precursor = precursors[-1]
 
-        def is_kind_valid(parameter: SignatureParameter) -> bool:
+        def is_kind_valid(parameter: Parameter) -> bool:
             kind = parameter.kind
             return (not precursors_kinds[kind]
-                    if (kind is SignatureParameter.Kind.VARIADIC_KEYWORD
-                        or kind is SignatureParameter.Kind.VARIADIC_POSITIONAL)
+                    if (kind is Parameter.Kind.VARIADIC_KEYWORD
+                        or kind is Parameter.Kind.VARIADIC_POSITIONAL)
                     else True)
 
-        def normalize(parameter: SignatureParameter) -> SignatureParameter:
+        def normalize(parameter: Parameter) -> Parameter:
             kind = parameter.kind
-            if (kind is SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
-                    or kind is SignatureParameter.Kind.POSITIONAL_ONLY):
+            if (kind is Parameter.Kind.POSITIONAL_OR_KEYWORD
+                    or kind is Parameter.Kind.POSITIONAL_ONLY):
                 if last_precursor.has_default and not parameter.has_default:
-                    return SignatureParameter(name=parameter.name,
-                                              kind=kind,
-                                              has_default=True)
+                    return Parameter(name=parameter.name,
+                                     kind=kind,
+                                     has_default=True)
             return parameter
 
         follower = draw(
@@ -218,10 +218,8 @@ def signature_to_min_positionals_count(signature: AnySignature) -> int:
 @signature_to_min_positionals_count.register(PlainSignature)
 def _(signature: PlainSignature) -> int:
     parameters_by_kind = to_parameters_by_kind(signature.parameters)
-    positionals = (parameters_by_kind[SignatureParameter.Kind.POSITIONAL_ONLY]
-                   + parameters_by_kind[
-                       SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
-                   ])
+    positionals = (parameters_by_kind[Parameter.Kind.POSITIONAL_ONLY]
+                   + parameters_by_kind[Parameter.Kind.POSITIONAL_OR_KEYWORD])
     return len(positionals)
 
 
@@ -240,30 +238,28 @@ def _(signature: OverloadedSignature) -> int:
 @singledispatch
 def signature_to_keywords_intersection(
         signature: AnySignature
-) -> Dict[str, SignatureParameter]:
+) -> Dict[str, Parameter]:
     raise TypeError(f'Unsupported signature type: {type(signature)}.')
 
 
 @singledispatch
 def signature_to_keywords_union(
         signature: AnySignature
-) -> Dict[str, SignatureParameter]:
+) -> Dict[str, Parameter]:
     raise TypeError(f'Unsupported signature type: {type(signature)}.')
 
 
 @signature_to_keywords_union.register(PlainSignature)
 @signature_to_keywords_intersection.register(PlainSignature)
-def _(signature: PlainSignature) -> Dict[str, SignatureParameter]:
+def _(signature: PlainSignature) -> Dict[str, Parameter]:
     parameters_by_kind = to_parameters_by_kind(signature.parameters)
-    keywords = (parameters_by_kind[
-                    SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
-                ]
-                + parameters_by_kind[SignatureParameter.Kind.KEYWORD_ONLY])
+    keywords = (parameters_by_kind[Parameter.Kind.POSITIONAL_OR_KEYWORD]
+                + parameters_by_kind[Parameter.Kind.KEYWORD_ONLY])
     return to_parameters_by_name(keywords)
 
 
 @signature_to_keywords_intersection.register(OverloadedSignature)
-def _(signature: OverloadedSignature) -> Dict[str, SignatureParameter]:
+def _(signature: OverloadedSignature) -> Dict[str, Parameter]:
     if not signature.signatures:
         return {}
 
@@ -278,7 +274,7 @@ def _(signature: OverloadedSignature) -> Dict[str, SignatureParameter]:
 
 
 @signature_to_keywords_union.register(OverloadedSignature)
-def _(signature: OverloadedSignature) -> Dict[str, SignatureParameter]:
+def _(signature: OverloadedSignature) -> Dict[str, Parameter]:
     if not signature.signatures:
         return {}
 

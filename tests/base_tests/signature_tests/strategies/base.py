@@ -3,8 +3,8 @@ from functools import singledispatch
 from hypothesis import strategies
 
 from paradigm.base import (OverloadedSignature,
-                           PlainSignature,
-                           SignatureParameter)
+                           Parameter,
+                           PlainSignature)
 from tests.configs import MAX_ARGUMENTS_COUNT
 from tests.utils import (AnySignature,
                          negate)
@@ -17,18 +17,14 @@ from .factories import (to_overloaded_signatures,
                         to_signature_with_unexpected_kwargs)
 
 positionable_kinds = strategies.sampled_from(
-        [SignatureParameter.Kind.POSITIONAL_ONLY,
-         SignatureParameter.Kind.POSITIONAL_OR_KEYWORD]
+        [Parameter.Kind.POSITIONAL_ONLY, Parameter.Kind.POSITIONAL_OR_KEYWORD]
 )
 keywordable_kinds = strategies.sampled_from(
-        [SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
-         SignatureParameter.Kind.KEYWORD_ONLY]
+        [Parameter.Kind.POSITIONAL_OR_KEYWORD, Parameter.Kind.KEYWORD_ONLY]
 )
 non_variadic_kinds = positionable_kinds | keywordable_kinds
-variadic_kinds = strategies.sampled_from(
-        [SignatureParameter.Kind.VARIADIC_KEYWORD,
-         SignatureParameter.Kind.VARIADIC_POSITIONAL]
-)
+variadic_kinds = strategies.sampled_from([Parameter.Kind.VARIADIC_KEYWORD,
+                                          Parameter.Kind.VARIADIC_POSITIONAL])
 kinds = non_variadic_kinds | variadic_kinds
 parameters = to_parameters(kinds=kinds)
 plain_signatures = to_plain_signatures(parameters_kinds=kinds,
