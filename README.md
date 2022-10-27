@@ -45,94 +45,94 @@ python setup.py install
 Usage
 -----
 
-`paradigm` can be used to obtain signature
+With setup
 ```python
 >>> from paradigm.base import (PlainSignature,
 ...                            SignatureParameter,
 ...                            signature_from_callable)
 
 ```
-for user-defined functions
-```python
->>> def func(foo, bar=None, **kwargs):
-...     pass
->>> signature_from_callable(func) == PlainSignature(
-...     SignatureParameter(name='foo',
-...                        kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
-...                        has_default=False),
-...     SignatureParameter(name='bar',
-...                        kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
-...                        has_default=True),
-...     SignatureParameter(name='kwargs',
-...                        kind=SignatureParameter.Kind.VARIADIC_KEYWORD,
-...                        has_default=False)
-... )
-True
-
-```
-for user-defined classes
-```python
->>> class UpperOut:
-...     def __init__(self, outfile):
-...         self._outfile = outfile
-... 
-...     def write(self, s):
-...         self._outfile.write(s.upper())
-... 
-...     def __getattr__(self, name):
-...         return getattr(self._outfile, name)
->>> signature_from_callable(UpperOut) == PlainSignature(
-...     SignatureParameter(name='outfile',
-...                        kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
-...                        has_default=False)
-... )
-True
-
-```
-for user-defined classes methods
-```python
->>> signature_from_callable(UpperOut.write) == PlainSignature(
-...     SignatureParameter(name='self',
-...                        kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
-...                        has_default=False),
-...     SignatureParameter(name='s',
-...               kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
-...               has_default=False)
-... )
-True
-
-```
-for built-in functions
-```python
->>> import platform
->>> signature_from_callable(any) == PlainSignature(
-...     SignatureParameter(name='__iterable',
-...                        kind=SignatureParameter.Kind.POSITIONAL_ONLY,
-...                        has_default=False)
-... )
-True
-
-```
-for built-in classes
-```python
->>> signature_from_callable(float) == PlainSignature(
-...     SignatureParameter(name='x', 
-...                        kind=SignatureParameter.Kind.POSITIONAL_ONLY,
-...                        has_default=True)
-... )
-True
-
-```
-for built-in classes methods
-```python
->>> signature_from_callable(float.as_integer_ratio) == PlainSignature(
-...     SignatureParameter(name='self',
-...                        kind=SignatureParameter.Kind.POSITIONAL_ONLY,
-...                        has_default=False)
-... )
-True
-
-```
+we can obtain a signature of
+- user-defined functions
+  ```python
+  >>> def func(foo, bar=None, **kwargs):
+  ...     pass
+  >>> signature_from_callable(func) == PlainSignature(
+  ...     SignatureParameter(name='foo',
+  ...                        kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
+  ...                        has_default=False),
+  ...     SignatureParameter(name='bar',
+  ...                        kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
+  ...                        has_default=True),
+  ...     SignatureParameter(name='kwargs',
+  ...                        kind=SignatureParameter.Kind.VARIADIC_KEYWORD,
+  ...                        has_default=False)
+  ... )
+  True
+  
+  ```
+- user-defined classes
+  ```python
+  >>> class UpperOut:
+  ...     def __init__(self, outfile):
+  ...         self._outfile = outfile
+  ... 
+  ...     def write(self, s):
+  ...         self._outfile.write(s.upper())
+  ... 
+  ...     def __getattr__(self, name):
+  ...         return getattr(self._outfile, name)
+  >>> signature_from_callable(UpperOut) == PlainSignature(
+  ...     SignatureParameter(name='outfile',
+  ...                        kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
+  ...                        has_default=False)
+  ... )
+  True
+  
+  ```
+- user-defined classes methods
+  ```python
+  >>> signature_from_callable(UpperOut.write) == PlainSignature(
+  ...     SignatureParameter(name='self',
+  ...                        kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
+  ...                        has_default=False),
+  ...     SignatureParameter(name='s',
+  ...               kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
+  ...               has_default=False)
+  ... )
+  True
+  
+  ```
+- built-in functions
+  ```python
+  >>> signature_from_callable(any) == PlainSignature(
+  ...     SignatureParameter(name='__iterable',
+  ...                        kind=SignatureParameter.Kind.POSITIONAL_ONLY,
+  ...                        has_default=False)
+  ... )
+  True
+  
+  ```
+- built-in classes
+  ```python
+  >>> signature_from_callable(float) == PlainSignature(
+  ...     SignatureParameter(name='x', 
+  ...                        kind=SignatureParameter.Kind.POSITIONAL_ONLY,
+  ...                        has_default=True)
+  ... )
+  True
+  
+  ```
+- built-in classes methods
+  ```python
+  >>> signature_from_callable(float.as_integer_ratio) == PlainSignature(
+  ...     SignatureParameter(name='self',
+  ...                        kind=SignatureParameter.Kind.POSITIONAL_ONLY,
+  ...                        has_default=False)
+  ... )
+  True
+  
+  ```
 
 Development
 -----------
