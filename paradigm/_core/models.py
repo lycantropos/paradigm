@@ -4,7 +4,6 @@ from abc import (ABC,
 from collections import defaultdict
 from itertools import (chain,
                        takewhile)
-from operator import attrgetter
 from typing import (Any,
                     Dict,
                     Iterable,
@@ -119,6 +118,106 @@ class PlainSignature(_Signature):
     POSITIONAL_ONLY_SEPARATOR = '/'
     KEYWORD_ONLY_SEPARATOR = '*'
 
+    @property
+    def parameters(self) -> Sequence[SignatureParameter]:
+        return self._parameters
+
+    def all_set(self, *args: _Arg, **kwargs: _T) -> bool:
+        parameters_by_kind = to_parameters_by_kind(self._parameters)
+        positionals = (
+                parameters_by_kind[SignatureParameter.Kind.POSITIONAL_ONLY]
+                + parameters_by_kind[
+                    SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
+                ]
+        )
+        unexpected_positional_arguments_found = (
+                not parameters_by_kind[
+                    SignatureParameter.Kind.VARIADIC_POSITIONAL
+                ]
+                and len(args) > len(positionals)
+        )
+        if unexpected_positional_arguments_found:
+            return False
+        rest_positionals = positionals[len(args):]
+        rest_positionals_by_kind = to_parameters_by_kind(rest_positionals)
+        rest_keywords = (
+                rest_positionals_by_kind[
+                    SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
+                ]
+                + parameters_by_kind[SignatureParameter.Kind.KEYWORD_ONLY]
+        )
+        rest_keywords_by_name = to_parameters_by_name(rest_keywords)
+        unexpected_keyword_arguments_found = (
+                not parameters_by_kind[
+                    SignatureParameter.Kind.VARIADIC_KEYWORD
+                ]
+                and kwargs.keys() - rest_keywords_by_name.keys()
+        )
+        if unexpected_keyword_arguments_found:
+            return False
+        rest_keywords_by_name = {
+            name: parameter
+            for name, parameter in rest_keywords_by_name.items()
+            if name not in kwargs}
+        rest_positionals_only = rest_positionals_by_kind[
+            SignatureParameter.Kind.POSITIONAL_ONLY
+        ]
+        rest_keywords = rest_keywords_by_name.values()
+        return (all_parameters_has_defaults(rest_positionals_only)
+                and all_parameters_has_defaults(rest_keywords))
+
+    def expects(self, *args: _Arg, **kwargs: _T) -> bool:
+        parameters_by_kind = to_parameters_by_kind(self._parameters)
+        positionals = (parameters_by_kind[
+                           SignatureParameter.Kind.POSITIONAL_ONLY
+                       ]
+                       + parameters_by_kind[
+                           SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
+                       ])
+        unexpected_positional_arguments_found = (
+                not parameters_by_kind[
+                    SignatureParameter.Kind.VARIADIC_POSITIONAL
+                ]
+                and len(args) > len(positionals)
+        )
+        if unexpected_positional_arguments_found:
+            return False
+        rest_positionals = positionals[len(args):]
+        rest_positionals_by_kind = to_parameters_by_kind(rest_positionals)
+        rest_keywords = (
+                rest_positionals_by_kind[
+                    SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
+                ]
+                + parameters_by_kind[SignatureParameter.Kind.KEYWORD_ONLY]
+        )
+        rest_keywords_by_name = to_parameters_by_name(rest_keywords)
+        unexpected_keyword_arguments_found = (
+                not parameters_by_kind[
+                    SignatureParameter.Kind.VARIADIC_KEYWORD
+                ]
+                and kwargs.keys() - rest_keywords_by_name.keys()
+        )
+        return not unexpected_keyword_arguments_found
+
+    def bind(self, *args: _Arg, **kwargs: _T) -> 'PlainSignature':
+        parameters_by_kind = to_parameters_by_kind(self._parameters)
+        return PlainSignature(*_bind_keywords(
+                _bind_positionals(
+                        self._parameters, args, kwargs,
+                        has_variadic=bool(
+                                parameters_by_kind[
+                                    SignatureParameter.Kind.VARIADIC_POSITIONAL
+                                ]
+                        )
+                ),
+                kwargs,
+                has_variadic=bool(parameters_by_kind[
+                                      SignatureParameter.Kind.VARIADIC_KEYWORD
+                                  ])
+        ))
+
+    __slots__ = '_parameters',
+
     def __new__(cls, *parameters: SignatureParameter) -> 'PlainSignature':
         try:
             prior, *rest = parameters
@@ -160,140 +259,96 @@ class PlainSignature(_Signature):
                 visited_kinds.add(kind)
         return super().__new__(cls)
 
-    __slots__ = 'parameters', '__weakref__'
-
     def __init__(self, *parameters: SignatureParameter) -> None:
-        self.parameters = parameters
+        self._parameters = parameters
 
     def __eq__(self, other: _Signature) -> bool:
         return (isinstance(other, PlainSignature)
-                and self.parameters == other.parameters
+                and self._parameters == other._parameters
                 if isinstance(other, _Signature)
                 else NotImplemented)
 
     def __hash__(self) -> int:
-        return hash(self.parameters)
+        return hash(self._parameters)
 
     __repr__ = generate_repr(__init__)
 
     def __str__(self) -> str:
-        positionals_only = self.parameters_by_kind[
+        parameters_by_kind = to_parameters_by_kind(self._parameters)
+        positionals_only = parameters_by_kind[
             SignatureParameter.Kind.POSITIONAL_ONLY
         ]
         parts = list(map(str, positionals_only))
         if positionals_only:
             parts.append(self.POSITIONAL_ONLY_SEPARATOR)
-        parts.extend(map(str, self.parameters_by_kind[
+        parts.extend(map(str, parameters_by_kind[
             SignatureParameter.Kind.POSITIONAL_OR_KEYWORD]))
-        variadic_positionals = self.parameters_by_kind[
+        variadic_positionals = parameters_by_kind[
             SignatureParameter.Kind.VARIADIC_POSITIONAL]
         parts.extend(map(str, variadic_positionals))
-        keywords_only = self.parameters_by_kind[
+        keywords_only = parameters_by_kind[
             SignatureParameter.Kind.KEYWORD_ONLY
         ]
         if keywords_only and not variadic_positionals:
             parts.append(self.KEYWORD_ONLY_SEPARATOR)
         parts.extend(map(str, keywords_only))
         parts.extend(map(str,
-                         self.parameters_by_kind[
+                         parameters_by_kind[
                              SignatureParameter.Kind.VARIADIC_KEYWORD
                          ]))
         return '(' + ', '.join(parts) + ')'
 
+
+class OverloadedSignature(_Signature):
     @property
-    def parameters_by_kind(self) -> Dict[
-        SignatureParameter.Kind, List[SignatureParameter]]:
-        return to_parameters_by_kind(self.parameters)
+    def signatures(self) -> Sequence[_Signature]:
+        return self._signatures
 
     def all_set(self, *args: _Arg, **kwargs: _T) -> bool:
-        positionals = (self.parameters_by_kind[
-                           SignatureParameter.Kind.POSITIONAL_ONLY]
-                       + self.parameters_by_kind[
-                           SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
-                       ])
-        unexpected_positional_arguments_found = (
-                not self.parameters_by_kind[
-                    SignatureParameter.Kind.VARIADIC_POSITIONAL
-                ]
-                and len(args) > len(positionals)
-        )
-        if unexpected_positional_arguments_found:
-            return False
-        rest_positionals = positionals[len(args):]
-        rest_positionals_by_kind = to_parameters_by_kind(rest_positionals)
-        rest_keywords = (
-                rest_positionals_by_kind[
-                    SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
-                ]
-                + self.parameters_by_kind[SignatureParameter.Kind.KEYWORD_ONLY]
-        )
-        rest_keywords_by_name = to_parameters_by_name(rest_keywords)
-        unexpected_keyword_arguments_found = (
-                not self.parameters_by_kind[
-                    SignatureParameter.Kind.VARIADIC_KEYWORD
-                ]
-                and kwargs.keys() - rest_keywords_by_name.keys()
-        )
-        if unexpected_keyword_arguments_found:
-            return False
-        rest_keywords_by_name = {
-            name: parameter
-            for name, parameter in rest_keywords_by_name.items()
-            if name not in kwargs}
-        rest_positionals_only = rest_positionals_by_kind[
-            SignatureParameter.Kind.POSITIONAL_ONLY
-        ]
-        rest_keywords = rest_keywords_by_name.values()
-        return (all_parameters_has_defaults(rest_positionals_only)
-                and all_parameters_has_defaults(rest_keywords))
+        return any(signature.all_set(*args, **kwargs)
+                   for signature in self._signatures)
 
     def expects(self, *args: _Arg, **kwargs: _T) -> bool:
-        positionals = (self.parameters_by_kind[
-                           SignatureParameter.Kind.POSITIONAL_ONLY
-                       ]
-                       + self.parameters_by_kind[
-                           SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
-                       ])
-        unexpected_positional_arguments_found = (
-                not self.parameters_by_kind[
-                    SignatureParameter.Kind.VARIADIC_POSITIONAL
-                ]
-                and len(args) > len(positionals)
-        )
-        if unexpected_positional_arguments_found:
-            return False
-        rest_positionals = positionals[len(args):]
-        rest_positionals_by_kind = to_parameters_by_kind(rest_positionals)
-        rest_keywords = (
-                rest_positionals_by_kind[
-                    SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
-                ]
-                + self.parameters_by_kind[SignatureParameter.Kind.KEYWORD_ONLY]
-        )
-        rest_keywords_by_name = to_parameters_by_name(rest_keywords)
-        unexpected_keyword_arguments_found = (
-                not self.parameters_by_kind[
-                    SignatureParameter.Kind.VARIADIC_KEYWORD
-                ]
-                and kwargs.keys() - rest_keywords_by_name.keys()
-        )
-        return not unexpected_keyword_arguments_found
+        return any(signature.expects(*args, **kwargs)
+                   for signature in self._signatures)
 
-    def bind(self, *args: _Arg, **kwargs: _T) -> 'PlainSignature':
-        return PlainSignature(*_bind_keywords(
-                _bind_positionals(
-                        self.parameters, args, kwargs,
-                        has_variadic=bool(
-                                self.parameters_by_kind[
-                                    SignatureParameter.Kind.VARIADIC_POSITIONAL
-                                ]
-                        )
-                ),
-                kwargs,
-                has_variadic=bool(self.parameters_by_kind[
-                                      SignatureParameter.Kind.VARIADIC_KEYWORD
-                                  ])
-        ))
+    def bind(self, *args: _Arg, **kwargs: _T) -> 'OverloadedSignature':
+        signatures = [signature
+                      for signature in self._signatures
+                      if signature.expects(*args, **kwargs)]
+        if not signatures:
+            raise TypeError('No corresponding signature found.')
+        return OverloadedSignature(*[signature.bind(*args, **kwargs)
+                                     for signature in signatures])
+
+    __slots__ = '_signatures',
+
+    def __new__(cls, *signatures: _Signature) -> _Signature:
+        return (signatures[0]
+                if len(signatures) == 1
+                else super().__new__(cls))
+
+    def __init__(self, *signatures: _Signature) -> None:
+        def flatten(signature: _Signature) -> Sequence[_Signature]:
+            return (signature._signatures
+                    if isinstance(signature, OverloadedSignature)
+                    else [signature])
+
+        self._signatures = tuple(chain.from_iterable(map(flatten, signatures)))
+
+    def __eq__(self, other: Any) -> Any:
+        return ((isinstance(other, OverloadedSignature)
+                 and self._signatures == other._signatures)
+                if isinstance(other, _Signature)
+                else NotImplemented)
+
+    def __hash__(self) -> int:
+        return hash(self._signatures)
+
+    __repr__ = generate_repr(__init__)
+
+    def __str__(self) -> str:
+        return ' or '.join(map(str, self._signatures))
 
 
 def _bind_positionals(parameters: Tuple[SignatureParameter, ...],
@@ -363,51 +418,3 @@ def _bind_keywords(parameters: Tuple[SignatureParameter, ...],
                     if (parameter.kind
                         != SignatureParameter.Kind.VARIADIC_POSITIONAL)
             ))
-
-
-class OverloadedSignature(_Signature):
-    def __new__(cls, *signatures: _Signature) -> _Signature:
-        return (signatures[0]
-                if len(signatures) == 1
-                else super().__new__(cls))
-
-    __slots__ = 'signatures',
-
-    def __init__(self, *signatures: _Signature) -> None:
-        def flatten(signature: _Signature) -> Sequence[_Signature]:
-            return (signature.signatures
-                    if isinstance(signature, OverloadedSignature)
-                    else [signature])
-
-        self.signatures = tuple(chain.from_iterable(map(flatten, signatures)))
-
-    def __eq__(self, other: Any) -> Any:
-        return ((isinstance(other, OverloadedSignature)
-                 and self.signatures == other.signatures)
-                if isinstance(other, _Signature)
-                else NotImplemented)
-
-    def __hash__(self) -> int:
-        return hash(self.signatures)
-
-    __repr__ = generate_repr(__init__)
-
-    def __str__(self) -> str:
-        return ' or '.join(map(str, self.signatures))
-
-    def all_set(self, *args: _Arg, **kwargs: _T) -> bool:
-        return any(signature.all_set(*args, **kwargs)
-                   for signature in self.signatures)
-
-    def expects(self, *args: _Arg, **kwargs: _T) -> bool:
-        return any(signature.expects(*args, **kwargs)
-                   for signature in self.signatures)
-
-    def bind(self, *args: _Arg, **kwargs: _T) -> 'OverloadedSignature':
-        signatures = [signature
-                      for signature in self.signatures
-                      if signature.expects(*args, **kwargs)]
-        if not signatures:
-            raise TypeError('No corresponding signature found.')
-        return OverloadedSignature(*[signature.bind(*args, **kwargs)
-                                     for signature in signatures])
