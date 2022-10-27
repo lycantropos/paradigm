@@ -10,9 +10,10 @@ from typing import (Any,
 
 from hypothesis.strategies import SearchStrategy
 
-from paradigm import signatures
+from paradigm.base import (OverloadedSignature,
+                           PlainSignature)
 
-AnySignature = TypeVar('AnySignature', signatures.Overloaded, signatures.Plain)
+AnySignature = TypeVar('AnySignature', OverloadedSignature, PlainSignature)
 Strategy = SearchStrategy
 Predicate = Callable[..., bool]
 _T1 = TypeVar('_T1')

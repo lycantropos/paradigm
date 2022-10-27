@@ -2,9 +2,9 @@ from functools import singledispatch
 
 from hypothesis import strategies
 
-from paradigm.signatures import (Overloaded,
-                                 Parameter,
-                                 Plain)
+from paradigm.base import (OverloadedSignature,
+                           PlainSignature,
+                           SignatureParameter)
 from tests.configs import MAX_ARGUMENTS_COUNT
 from tests.utils import (AnySignature,
                          negate)
@@ -16,12 +16,16 @@ from .factories import (to_overloaded_signatures,
                         to_signature_with_unexpected_args,
                         to_signature_with_unexpected_kwargs)
 
-positionals_kinds = strategies.sampled_from(list(Parameter.positionals_kinds))
-keywords_kinds = strategies.sampled_from(list(Parameter.keywords_kinds))
+positionals_kinds = strategies.sampled_from(
+        list(SignatureParameter.positionals_kinds))
+keywords_kinds = strategies.sampled_from(
+        list(SignatureParameter.keywords_kinds))
 non_variadic_kinds = positionals_kinds | keywords_kinds
-variadic_kinds = strategies.sampled_from(list(set(Parameter.Kind)
-                                              - Parameter.positionals_kinds
-                                              - Parameter.keywords_kinds))
+variadic_kinds = strategies.sampled_from(
+        list(set(SignatureParameter.Kind)
+             - SignatureParameter.positionals_kinds
+             - SignatureParameter.keywords_kinds)
+)
 kinds = non_variadic_kinds | variadic_kinds
 parameters = to_parameters(kinds=kinds)
 plain_signatures = to_plain_signatures(parameters_kinds=kinds,
@@ -50,13 +54,13 @@ def is_signature_empty(signature: AnySignature) -> bool:
                     .format(type=type(signature)))
 
 
-@is_signature_empty.register(Plain)
-def _(signature: Plain) -> bool:
+@is_signature_empty.register(PlainSignature)
+def _(signature: PlainSignature) -> bool:
     return False
 
 
-@is_signature_empty.register(Overloaded)
-def _(signature: Overloaded) -> bool:
+@is_signature_empty.register(OverloadedSignature)
+def _(signature: OverloadedSignature) -> bool:
     return not signature.signatures
 
 

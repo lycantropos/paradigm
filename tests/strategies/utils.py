@@ -2,7 +2,6 @@ import ast
 import importlib
 import keyword
 import os
-import warnings
 from pathlib import Path
 from string import ascii_letters
 from typing import (List,
@@ -73,14 +72,7 @@ invalid_source_lines = ((keywords_lists.map(' '.join)
                         .filter(negate(is_valid_source)))
 invalid_sources = strategies.lists(invalid_source_lines,
                                    min_size=1).map('\n'.join)
-
-
-def import_module(name):
-    warnings.warn(f'Importing {name}')
-    return importlib.import_module(name)
-
-
 modules_list = list(filter(is_supported,
-                           map(import_module,
+                           map(importlib.import_module,
                                supported_stdlib_modules_names)))
 modules = strategies.sampled_from(modules_list)

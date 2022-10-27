@@ -6,7 +6,8 @@ from typing import (Iterable,
 import pytest
 from hypothesis import given
 
-from paradigm import signatures
+from paradigm.base import (OverloadedSignature,
+                           PlainSignature)
 from paradigm._core.models import to_parameters_by_name
 from tests.utils import (AnySignature,
                          Args,
@@ -56,16 +57,16 @@ def signature_parameters_has_defaults(signature: AnySignature,
                     .format(type=type(signature)))
 
 
-@signature_parameters_has_defaults.register(signatures.Plain)
-def _(signature: signatures.Plain,
+@signature_parameters_has_defaults.register(PlainSignature)
+def _(signature: PlainSignature,
       *,
       names: Iterable[str]) -> bool:
     parameters = to_parameters_by_name(signature.parameters)
     return all(parameters[name].has_default for name in names)
 
 
-@signature_parameters_has_defaults.register(signatures.Overloaded)
-def _(signature: signatures.Overloaded,
+@signature_parameters_has_defaults.register(OverloadedSignature)
+def _(signature: OverloadedSignature,
       *,
       names: Iterable[str]) -> bool:
     return all(map(partial(signature_parameters_has_defaults,

@@ -1,6 +1,7 @@
 from hypothesis import given
 
-from paradigm import signatures
+from paradigm.base import (OverloadedSignature,
+                           PlainSignature)
 from tests.utils import AnySignature
 from . import strategies
 
@@ -13,7 +14,7 @@ def test_type(signature: AnySignature) -> None:
 
 
 @given(strategies.plain_signatures)
-def test_plain(plain_signature: signatures.Plain) -> None:
+def test_plain(plain_signature: PlainSignature) -> None:
     result = repr(plain_signature)
 
     assert all(repr(parameter) in result
@@ -21,7 +22,7 @@ def test_plain(plain_signature: signatures.Plain) -> None:
 
 
 @given(strategies.overloaded_signatures)
-def test_nesting(overloaded_signature: signatures.Overloaded) -> None:
+def test_nesting(overloaded_signature: OverloadedSignature) -> None:
     result = repr(overloaded_signature)
 
     assert all(repr(signature) in result
