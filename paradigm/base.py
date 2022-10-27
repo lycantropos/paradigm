@@ -2,9 +2,9 @@ import typing as _t
 from ._core import (models as _models,
                     signatures as _signatures)
 
-OverloadedSignature = _models.Overloaded
-PlainSignature = _models.Plain
-SignatureParameter = _models.Parameter
+OverloadedSignature = _models.OverloadedSignature
+PlainSignature = _models.PlainSignature
+SignatureParameter = _models.SignatureParameter
 
 
 def signature_from_callable(

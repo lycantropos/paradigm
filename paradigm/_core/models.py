@@ -4,8 +4,7 @@ from abc import (ABC,
 from collections import defaultdict
 from itertools import (chain,
                        takewhile)
-from operator import (attrgetter,
-                      methodcaller)
+from operator import attrgetter
 from typing import (Any,
                     Dict,
                     Iterable,
@@ -17,7 +16,7 @@ from typing import (Any,
 from reprit.base import generate_repr
 
 
-class Parameter:
+class SignatureParameter:
     class Kind(enum.IntEnum):
         POSITIONAL_ONLY = 0
         POSITIONAL_OR_KEYWORD = 1
@@ -52,8 +51,8 @@ class Parameter:
         self.kind = kind
         self.has_default = has_default
 
-    def __eq__(self, other: 'Parameter') -> bool:
-        if not isinstance(other, Parameter):
+    def __eq__(self, other: 'SignatureParameter') -> bool:
+        if not isinstance(other, SignatureParameter):
             return NotImplemented
         return (self.name == other.name
                 and self.kind == other.kind
@@ -70,8 +69,9 @@ class Parameter:
                         '=...' if self.has_default else ''])
 
 
-def to_parameters_by_kind(parameters: Iterable[Parameter]
-                          ) -> Dict[Parameter.Kind, List[Parameter]]:
+def to_parameters_by_kind(
+        parameters: Iterable[SignatureParameter]
+) -> Dict[SignatureParameter.Kind, List[SignatureParameter]]:
     result = defaultdict(list)
     for parameter in parameters:
         result[parameter.kind].append(parameter)
@@ -79,14 +79,15 @@ def to_parameters_by_kind(parameters: Iterable[Parameter]
 
 
 def to_parameters_by_name(
-        parameters: Iterable[Parameter]
-) -> Dict[str, Parameter]:
-    return {parameter.name: parameter
-            for parameter in parameters}
+        parameters: Iterable[SignatureParameter]
+) -> Dict[str, SignatureParameter]:
+    return {parameter.name: parameter for parameter in parameters}
 
 
-def all_parameters_has_defaults(parameters: Iterable[Parameter]) -> bool:
-    return all(map(attrgetter('has_default'), parameters))
+def all_parameters_has_defaults(
+        parameters: Iterable[SignatureParameter]
+) -> bool:
+    return all(parameter.has_default for parameter in parameters)
 
 
 _Self = TypeVar('_Self')
@@ -95,7 +96,7 @@ _KwArg = TypeVar('_KwArg')
 _T = TypeVar('_T')
 
 
-class Base(ABC):
+class _Signature(ABC):
     __slots__ = ()
 
     @abstractmethod
@@ -114,11 +115,11 @@ class Base(ABC):
         """Binds given arguments to the signature."""
 
 
-class Plain(Base):
+class PlainSignature(_Signature):
     POSITIONAL_ONLY_SEPARATOR = '/'
     KEYWORD_ONLY_SEPARATOR = '*'
 
-    def __new__(cls, *parameters: Parameter) -> 'Plain':
+    def __new__(cls, *parameters: SignatureParameter) -> 'PlainSignature':
         try:
             prior, *rest = parameters
         except ValueError:
@@ -139,7 +140,7 @@ class Plain(Base):
                                      f'with kind "{prior.kind!s}" '
                                      f'precedes parameter "{name}" '
                                      f'with kind "{kind!s}".')
-                if kind in Parameter.positionals_kinds:
+                if kind in SignatureParameter.positionals_kinds:
                     if not parameter.has_default:
                         if prior.has_default:
                             raise ValueError('Invalid parameters order: '
@@ -148,7 +149,7 @@ class Plain(Base):
                                              'follows '
                                              f'parameter "{prior.name}" '
                                              'with default argument.')
-                elif kind not in Parameter.keywords_kinds:
+                elif kind not in SignatureParameter.keywords_kinds:
                     if kind in visited_kinds:
                         raise ValueError('Variadic parameters '
                                          'should have unique kinds, '
@@ -161,13 +162,13 @@ class Plain(Base):
 
     __slots__ = 'parameters', '__weakref__'
 
-    def __init__(self, *parameters: Parameter) -> None:
+    def __init__(self, *parameters: SignatureParameter) -> None:
         self.parameters = parameters
 
-    def __eq__(self, other: Base) -> bool:
-        return (isinstance(other, Plain)
+    def __eq__(self, other: _Signature) -> bool:
+        return (isinstance(other, PlainSignature)
                 and self.parameters == other.parameters
-                if isinstance(other, Base)
+                if isinstance(other, _Signature)
                 else NotImplemented)
 
     def __hash__(self) -> int:
@@ -177,39 +178,43 @@ class Plain(Base):
 
     def __str__(self) -> str:
         positionals_only = self.parameters_by_kind[
-            Parameter.Kind.POSITIONAL_ONLY
+            SignatureParameter.Kind.POSITIONAL_ONLY
         ]
         parts = list(map(str, positionals_only))
         if positionals_only:
             parts.append(self.POSITIONAL_ONLY_SEPARATOR)
         parts.extend(map(str, self.parameters_by_kind[
-            Parameter.Kind.POSITIONAL_OR_KEYWORD]))
+            SignatureParameter.Kind.POSITIONAL_OR_KEYWORD]))
         variadic_positionals = self.parameters_by_kind[
-            Parameter.Kind.VARIADIC_POSITIONAL]
+            SignatureParameter.Kind.VARIADIC_POSITIONAL]
         parts.extend(map(str, variadic_positionals))
         keywords_only = self.parameters_by_kind[
-            Parameter.Kind.KEYWORD_ONLY
+            SignatureParameter.Kind.KEYWORD_ONLY
         ]
         if keywords_only and not variadic_positionals:
             parts.append(self.KEYWORD_ONLY_SEPARATOR)
         parts.extend(map(str, keywords_only))
         parts.extend(map(str,
                          self.parameters_by_kind[
-                             Parameter.Kind.VARIADIC_KEYWORD
+                             SignatureParameter.Kind.VARIADIC_KEYWORD
                          ]))
         return '(' + ', '.join(parts) + ')'
 
     @property
-    def parameters_by_kind(self) -> Dict[Parameter.Kind, List[Parameter]]:
+    def parameters_by_kind(self) -> Dict[
+        SignatureParameter.Kind, List[SignatureParameter]]:
         return to_parameters_by_kind(self.parameters)
 
     def all_set(self, *args: _Arg, **kwargs: _T) -> bool:
-        positionals = (self.parameters_by_kind[Parameter.Kind.POSITIONAL_ONLY]
+        positionals = (self.parameters_by_kind[
+                           SignatureParameter.Kind.POSITIONAL_ONLY]
                        + self.parameters_by_kind[
-                           Parameter.Kind.POSITIONAL_OR_KEYWORD
+                           SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
                        ])
         unexpected_positional_arguments_found = (
-                not self.parameters_by_kind[Parameter.Kind.VARIADIC_POSITIONAL]
+                not self.parameters_by_kind[
+                    SignatureParameter.Kind.VARIADIC_POSITIONAL
+                ]
                 and len(args) > len(positionals)
         )
         if unexpected_positional_arguments_found:
@@ -217,12 +222,16 @@ class Plain(Base):
         rest_positionals = positionals[len(args):]
         rest_positionals_by_kind = to_parameters_by_kind(rest_positionals)
         rest_keywords = (
-                rest_positionals_by_kind[Parameter.Kind.POSITIONAL_OR_KEYWORD]
-                + self.parameters_by_kind[Parameter.Kind.KEYWORD_ONLY]
+                rest_positionals_by_kind[
+                    SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
+                ]
+                + self.parameters_by_kind[SignatureParameter.Kind.KEYWORD_ONLY]
         )
         rest_keywords_by_name = to_parameters_by_name(rest_keywords)
         unexpected_keyword_arguments_found = (
-                not self.parameters_by_kind[Parameter.Kind.VARIADIC_KEYWORD]
+                not self.parameters_by_kind[
+                    SignatureParameter.Kind.VARIADIC_KEYWORD
+                ]
                 and kwargs.keys() - rest_keywords_by_name.keys()
         )
         if unexpected_keyword_arguments_found:
@@ -232,19 +241,23 @@ class Plain(Base):
             for name, parameter in rest_keywords_by_name.items()
             if name not in kwargs}
         rest_positionals_only = rest_positionals_by_kind[
-            Parameter.Kind.POSITIONAL_ONLY
+            SignatureParameter.Kind.POSITIONAL_ONLY
         ]
         rest_keywords = rest_keywords_by_name.values()
         return (all_parameters_has_defaults(rest_positionals_only)
                 and all_parameters_has_defaults(rest_keywords))
 
     def expects(self, *args: _Arg, **kwargs: _T) -> bool:
-        positionals = (self.parameters_by_kind[Parameter.Kind.POSITIONAL_ONLY]
+        positionals = (self.parameters_by_kind[
+                           SignatureParameter.Kind.POSITIONAL_ONLY
+                       ]
                        + self.parameters_by_kind[
-                           Parameter.Kind.POSITIONAL_OR_KEYWORD
+                           SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
                        ])
         unexpected_positional_arguments_found = (
-                not self.parameters_by_kind[Parameter.Kind.VARIADIC_POSITIONAL]
+                not self.parameters_by_kind[
+                    SignatureParameter.Kind.VARIADIC_POSITIONAL
+                ]
                 and len(args) > len(positionals)
         )
         if unexpected_positional_arguments_found:
@@ -252,36 +265,44 @@ class Plain(Base):
         rest_positionals = positionals[len(args):]
         rest_positionals_by_kind = to_parameters_by_kind(rest_positionals)
         rest_keywords = (
-                rest_positionals_by_kind[Parameter.Kind.POSITIONAL_OR_KEYWORD]
-                + self.parameters_by_kind[Parameter.Kind.KEYWORD_ONLY]
+                rest_positionals_by_kind[
+                    SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
+                ]
+                + self.parameters_by_kind[SignatureParameter.Kind.KEYWORD_ONLY]
         )
         rest_keywords_by_name = to_parameters_by_name(rest_keywords)
         unexpected_keyword_arguments_found = (
-                not self.parameters_by_kind[Parameter.Kind.VARIADIC_KEYWORD]
+                not self.parameters_by_kind[
+                    SignatureParameter.Kind.VARIADIC_KEYWORD
+                ]
                 and kwargs.keys() - rest_keywords_by_name.keys()
         )
         return not unexpected_keyword_arguments_found
 
-    def bind(self, *args: _Arg, **kwargs: _T) -> 'Plain':
-        return Plain(*_bind_keywords(_bind_positionals(
-                self.parameters, args, kwargs,
-                has_variadic=bool(self.parameters_by_kind[
-                                      Parameter.Kind.VARIADIC_POSITIONAL
-                                  ])),
+    def bind(self, *args: _Arg, **kwargs: _T) -> 'PlainSignature':
+        return PlainSignature(*_bind_keywords(
+                _bind_positionals(
+                        self.parameters, args, kwargs,
+                        has_variadic=bool(
+                                self.parameters_by_kind[
+                                    SignatureParameter.Kind.VARIADIC_POSITIONAL
+                                ]
+                        )
+                ),
                 kwargs,
                 has_variadic=bool(self.parameters_by_kind[
-                                      Parameter.Kind.VARIADIC_KEYWORD
+                                      SignatureParameter.Kind.VARIADIC_KEYWORD
                                   ])
         ))
 
 
-def _bind_positionals(parameters: Tuple[Parameter, ...],
+def _bind_positionals(parameters: Tuple[SignatureParameter, ...],
                       args: Tuple[_T, ...],
                       kwargs: Dict[str, _T],
                       *,
-                      has_variadic: bool) -> Tuple[Parameter, ...]:
-    def is_positional(parameter: Parameter) -> bool:
-        return parameter.kind in Parameter.positionals_kinds
+                      has_variadic: bool) -> Tuple[SignatureParameter, ...]:
+    def is_positional(parameter: SignatureParameter) -> bool:
+        return parameter.kind in SignatureParameter.positionals_kinds
 
     positionals = tuple(takewhile(is_positional, parameters))
     if len(args) > len(positionals) and not has_variadic:
@@ -294,7 +315,7 @@ def _bind_positionals(parameters: Tuple[Parameter, ...],
                                 verb='was' if len(args) == 1 else 'were'))
     for positional in positionals[:len(args)]:
         if positional.name in kwargs:
-            if positional.kind in Parameter.keywords_kinds:
+            if positional.kind in SignatureParameter.keywords_kinds:
                 raise TypeError('Got multiple values '
                                 'for parameter "{name}".'
                                 .format(name=positional.name))
@@ -306,15 +327,17 @@ def _bind_positionals(parameters: Tuple[Parameter, ...],
     return positionals[len(args):] + parameters[len(positionals):]
 
 
-def _bind_keywords(parameters: Tuple[Parameter, ...],
+def _bind_keywords(parameters: Tuple[SignatureParameter, ...],
                    kwargs: Dict[str, Any],
                    *,
-                   has_variadic: bool) -> Tuple[Parameter, ...]:
+                   has_variadic: bool) -> Tuple[SignatureParameter, ...]:
     kwargs_names = set(kwargs)
-    extra_kwargs_names = (kwargs_names -
-                          {parameter.name
-                           for parameter in parameters
-                           if parameter.kind in Parameter.keywords_kinds})
+    extra_kwargs_names = (
+            kwargs_names -
+            {parameter.name
+             for parameter in parameters
+             if parameter.kind in SignatureParameter.keywords_kinds}
+    )
     if extra_kwargs_names and not has_variadic:
         value = 'argument' + 's' * (len(extra_kwargs_names) != 1)
         raise TypeError('Got unexpected keyword {value} "{names}".'
@@ -327,36 +350,41 @@ def _bind_keywords(parameters: Tuple[Parameter, ...],
                              for index, parameter in enumerate(parameters)
                              if parameter.name in kwargs_names)
     return (parameters[:first_kwarg_index]
-            + tuple(Parameter(name=parameter.name,
-                              kind=Parameter.Kind.KEYWORD_ONLY,
-                              has_default=(parameter.has_default
-                                           or parameter.name in kwargs_names))
-                    if parameter.kind in Parameter.keywords_kinds
+            + tuple(
+                    SignatureParameter(
+                            name=parameter.name,
+                            kind=SignatureParameter.Kind.KEYWORD_ONLY,
+                            has_default=(parameter.has_default
+                                         or parameter.name in kwargs_names)
+                    )
+                    if parameter.kind in SignatureParameter.keywords_kinds
                     else parameter
                     for parameter in parameters[first_kwarg_index:]
-                    if parameter.kind != Parameter.Kind.VARIADIC_POSITIONAL))
+                    if (parameter.kind
+                        != SignatureParameter.Kind.VARIADIC_POSITIONAL)
+            ))
 
 
-class Overloaded(Base):
-    def __new__(cls, *signatures: Base) -> Base:
+class OverloadedSignature(_Signature):
+    def __new__(cls, *signatures: _Signature) -> _Signature:
         return (signatures[0]
                 if len(signatures) == 1
                 else super().__new__(cls))
 
     __slots__ = 'signatures',
 
-    def __init__(self, *signatures: Base) -> None:
-        def flatten(signature: Base) -> Sequence[Base]:
+    def __init__(self, *signatures: _Signature) -> None:
+        def flatten(signature: _Signature) -> Sequence[_Signature]:
             return (signature.signatures
-                    if isinstance(signature, Overloaded)
+                    if isinstance(signature, OverloadedSignature)
                     else [signature])
 
         self.signatures = tuple(chain.from_iterable(map(flatten, signatures)))
 
     def __eq__(self, other: Any) -> Any:
-        return ((isinstance(other, Overloaded)
+        return ((isinstance(other, OverloadedSignature)
                  and self.signatures == other.signatures)
-                if isinstance(other, Base)
+                if isinstance(other, _Signature)
                 else NotImplemented)
 
     def __hash__(self) -> int:
@@ -368,19 +396,18 @@ class Overloaded(Base):
         return ' or '.join(map(str, self.signatures))
 
     def all_set(self, *args: _Arg, **kwargs: _T) -> bool:
-        return any(map(methodcaller(Base.all_set.__name__, *args, **kwargs),
-                       self.signatures))
+        return any(signature.all_set(*args, **kwargs)
+                   for signature in self.signatures)
 
     def expects(self, *args: _Arg, **kwargs: _T) -> bool:
-        return any(map(methodcaller(Base.expects.__name__, *args, **kwargs),
-                       self.signatures))
+        return any(signature.expects(*args, **kwargs)
+                   for signature in self.signatures)
 
-    def bind(self, *args: _Arg, **kwargs: _T) -> 'Overloaded':
+    def bind(self, *args: _Arg, **kwargs: _T) -> 'OverloadedSignature':
         signatures = [signature
                       for signature in self.signatures
                       if signature.expects(*args, **kwargs)]
         if not signatures:
             raise TypeError('No corresponding signature found.')
-        signatures = map(methodcaller(Base.bind.__name__, *args, **kwargs),
-                         signatures)
-        return Overloaded(*signatures)
+        return OverloadedSignature(*[signature.bind(*args, **kwargs)
+                                     for signature in signatures])
