@@ -47,8 +47,8 @@ Usage
 
 With setup
 ```python
->>> from paradigm.base import (PlainSignature,
-...                            SignatureParameter,
+>>> from paradigm.base import (Parameter,
+...                            PlainSignature,
 ...                            signature_from_callable)
 
 ```
@@ -58,15 +58,15 @@ we can obtain a signature of
   >>> def func(foo, bar=None, **kwargs):
   ...     pass
   >>> signature_from_callable(func) == PlainSignature(
-  ...     SignatureParameter(name='foo',
-  ...                        kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
-  ...                        has_default=False),
-  ...     SignatureParameter(name='bar',
-  ...                        kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
-  ...                        has_default=True),
-  ...     SignatureParameter(name='kwargs',
-  ...                        kind=SignatureParameter.Kind.VARIADIC_KEYWORD,
-  ...                        has_default=False)
+  ...     Parameter(name='foo',
+  ...               kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
+  ...               has_default=False),
+  ...     Parameter(name='bar',
+  ...               kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
+  ...               has_default=True),
+  ...     Parameter(name='kwargs',
+  ...               kind=Parameter.Kind.VARIADIC_KEYWORD,
+  ...               has_default=False)
   ... )
   True
   
@@ -83,9 +83,9 @@ we can obtain a signature of
   ...     def __getattr__(self, name):
   ...         return getattr(self._outfile, name)
   >>> signature_from_callable(UpperOut) == PlainSignature(
-  ...     SignatureParameter(name='outfile',
-  ...                        kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
-  ...                        has_default=False)
+  ...     Parameter(name='outfile',
+  ...               kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
+  ...               has_default=False)
   ... )
   True
   
@@ -93,11 +93,11 @@ we can obtain a signature of
 - user-defined classes methods
   ```python
   >>> signature_from_callable(UpperOut.write) == PlainSignature(
-  ...     SignatureParameter(name='self',
-  ...                        kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
-  ...                        has_default=False),
-  ...     SignatureParameter(name='s',
-  ...               kind=SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
+  ...     Parameter(name='self',
+  ...               kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
+  ...               has_default=False),
+  ...     Parameter(name='s',
+  ...               kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
   ...               has_default=False)
   ... )
   True
@@ -106,9 +106,9 @@ we can obtain a signature of
 - built-in functions
   ```python
   >>> signature_from_callable(any) == PlainSignature(
-  ...     SignatureParameter(name='__iterable',
-  ...                        kind=SignatureParameter.Kind.POSITIONAL_ONLY,
-  ...                        has_default=False)
+  ...     Parameter(name='__iterable',
+  ...               kind=Parameter.Kind.POSITIONAL_ONLY,
+  ...               has_default=False)
   ... )
   True
   
@@ -116,9 +116,9 @@ we can obtain a signature of
 - built-in classes
   ```python
   >>> signature_from_callable(float) == PlainSignature(
-  ...     SignatureParameter(name='x', 
-  ...                        kind=SignatureParameter.Kind.POSITIONAL_ONLY,
-  ...                        has_default=True)
+  ...     Parameter(name='x', 
+  ...               kind=Parameter.Kind.POSITIONAL_ONLY,
+  ...               has_default=True)
   ... )
   True
   
@@ -126,9 +126,9 @@ we can obtain a signature of
 - built-in classes methods
   ```python
   >>> signature_from_callable(float.as_integer_ratio) == PlainSignature(
-  ...     SignatureParameter(name='self',
-  ...                        kind=SignatureParameter.Kind.POSITIONAL_ONLY,
-  ...                        has_default=False)
+  ...     Parameter(name='self',
+  ...               kind=Parameter.Kind.POSITIONAL_ONLY,
+  ...               has_default=False)
   ... )
   True
   
