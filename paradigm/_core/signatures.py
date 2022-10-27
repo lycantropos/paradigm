@@ -20,8 +20,7 @@ _Signature = _t.Union[_OverloadedSignature, _PlainSignature]
 
 @_singledispatch
 def from_callable(_callable: _t.Callable[..., _t.Any]) -> _Signature:
-    raise TypeError('Unsupported object type: {type}.'
-                    .format(type=type(_callable)))
+    raise TypeError(f'Unsupported object type: {type(_callable)}.')
 
 
 @from_callable.register(_types.BuiltinFunctionType)
