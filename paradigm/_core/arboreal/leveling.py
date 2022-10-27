@@ -219,6 +219,8 @@ class Node:
                 final_name = self._object_path.parts[-1]
                 try:
                     node = parent._local_lookup_name(final_name)
+                    if node is self:
+                        raise NameLookupError(final_name)
                 except NameLookupError:
                     for parent_sub_node in parent._sub_nodes:
                         parent_sub_node.resolve()
@@ -232,6 +234,7 @@ class Node:
                             break
                     else:
                         raise
+                assert node is not self, self
                 node.resolve()
                 self._merge_with(node)
         assert self._kind is not NodeKind.MODULE or not self._object_path.parts
