@@ -92,7 +92,6 @@ def all_parameters_has_defaults(
 _Self = TypeVar('_Self')
 _Arg = TypeVar('_Arg')
 _KwArg = TypeVar('_KwArg')
-_T = TypeVar('_T')
 
 
 class _Signature(ABC):
@@ -122,7 +121,7 @@ class PlainSignature(_Signature):
     def parameters(self) -> Sequence[SignatureParameter]:
         return self._parameters
 
-    def all_set(self, *args: _Arg, **kwargs: _T) -> bool:
+    def all_set(self, *args: _Arg, **kwargs: _KwArg) -> bool:
         parameters_by_kind = to_parameters_by_kind(self._parameters)
         positionals = (
                 parameters_by_kind[SignatureParameter.Kind.POSITIONAL_ONLY]
@@ -166,7 +165,7 @@ class PlainSignature(_Signature):
         return (all_parameters_has_defaults(rest_positionals_only)
                 and all_parameters_has_defaults(rest_keywords))
 
-    def expects(self, *args: _Arg, **kwargs: _T) -> bool:
+    def expects(self, *args: _Arg, **kwargs: _KwArg) -> bool:
         parameters_by_kind = to_parameters_by_kind(self._parameters)
         positionals = (parameters_by_kind[
                            SignatureParameter.Kind.POSITIONAL_ONLY
@@ -199,7 +198,7 @@ class PlainSignature(_Signature):
         )
         return not unexpected_keyword_arguments_found
 
-    def bind(self, *args: _Arg, **kwargs: _T) -> 'PlainSignature':
+    def bind(self, *args: _Arg, **kwargs: _KwArg) -> 'PlainSignature':
         parameters_by_kind = to_parameters_by_kind(self._parameters)
         return PlainSignature(*_bind_keywords(
                 _bind_positionals(
@@ -304,15 +303,15 @@ class OverloadedSignature(_Signature):
     def signatures(self) -> Sequence[_Signature]:
         return self._signatures
 
-    def all_set(self, *args: _Arg, **kwargs: _T) -> bool:
+    def all_set(self, *args: _Arg, **kwargs: _KwArg) -> bool:
         return any(signature.all_set(*args, **kwargs)
                    for signature in self._signatures)
 
-    def expects(self, *args: _Arg, **kwargs: _T) -> bool:
+    def expects(self, *args: _Arg, **kwargs: _KwArg) -> bool:
         return any(signature.expects(*args, **kwargs)
                    for signature in self._signatures)
 
-    def bind(self, *args: _Arg, **kwargs: _T) -> 'OverloadedSignature':
+    def bind(self, *args: _Arg, **kwargs: _KwArg) -> 'OverloadedSignature':
         signatures = [signature
                       for signature in self._signatures
                       if signature.expects(*args, **kwargs)]
@@ -352,8 +351,8 @@ class OverloadedSignature(_Signature):
 
 
 def _bind_positionals(parameters: Tuple[SignatureParameter, ...],
-                      args: Tuple[_T, ...],
-                      kwargs: Dict[str, _T],
+                      args: Tuple[_Arg, ...],
+                      kwargs: Dict[str, _KwArg],
                       *,
                       has_variadic: bool) -> Tuple[SignatureParameter, ...]:
     def is_positional(parameter: SignatureParameter) -> bool:
