@@ -218,9 +218,9 @@ def signature_to_min_positionals_count(signature: AnySignature) -> int:
 @signature_to_max_positionals_count.register(PlainSignature)
 @signature_to_min_positionals_count.register(PlainSignature)
 def _(signature: PlainSignature) -> int:
-    positionals = (signature.parameters_by_kind[
-                       SignatureParameter.Kind.POSITIONAL_ONLY]
-                   + signature.parameters_by_kind[
+    parameters_by_kind = to_parameters_by_kind(signature.parameters)
+    positionals = (parameters_by_kind[SignatureParameter.Kind.POSITIONAL_ONLY]
+                   + parameters_by_kind[
                        SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
                    ])
     return len(positionals)
@@ -257,11 +257,11 @@ def signature_to_keywords_union(
 @signature_to_keywords_union.register(PlainSignature)
 @signature_to_keywords_intersection.register(PlainSignature)
 def _(signature: PlainSignature) -> Dict[str, SignatureParameter]:
-    keywords = (signature.parameters_by_kind[
+    parameters_by_kind = to_parameters_by_kind(signature.parameters)
+    keywords = (parameters_by_kind[
                     SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
                 ]
-                + signature.parameters_by_kind[
-                    SignatureParameter.Kind.KEYWORD_ONLY])
+                + parameters_by_kind[SignatureParameter.Kind.KEYWORD_ONLY])
     return to_parameters_by_name(keywords)
 
 
