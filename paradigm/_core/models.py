@@ -1,7 +1,6 @@
 import enum
 from abc import (ABC,
                  abstractmethod)
-from collections import defaultdict
 from itertools import (chain,
                        takewhile)
 from typing import (Any,
@@ -29,12 +28,6 @@ class SignatureParameter:
         def __str__(self) -> str:
             return self.name.lower().replace('_', ' ')
 
-    positionals_kinds = {Kind.POSITIONAL_ONLY, Kind.POSITIONAL_OR_KEYWORD}
-    keywords_kinds = {Kind.POSITIONAL_OR_KEYWORD, Kind.KEYWORD_ONLY}
-    kinds_prefixes = defaultdict(str,
-                                 {Kind.VARIADIC_POSITIONAL: '*',
-                                  Kind.VARIADIC_KEYWORD: '**'})
-
     def __init__(self,
                  *,
                  name: str,
@@ -42,7 +35,8 @@ class SignatureParameter:
                  has_default: bool) -> None:
         # performing validation inside of `__init__` instead of `__new__`,
         # because `pickle` does not support keyword only arguments in `__new__`
-        if (kind not in (self.positionals_kinds | self.keywords_kinds)
+        if ((kind is self.Kind.VARIADIC_POSITIONAL
+             or kind is self.Kind.VARIADIC_KEYWORD)
                 and has_default):
             raise ValueError('Variadic parameters '
                              'can\'t have default arguments.')
@@ -54,7 +48,7 @@ class SignatureParameter:
         if not isinstance(other, SignatureParameter):
             return NotImplemented
         return (self.name == other.name
-                and self.kind == other.kind
+                and self.kind is other.kind
                 and self.has_default is other.has_default)
 
     def __hash__(self) -> int:
@@ -63,7 +57,11 @@ class SignatureParameter:
     __repr__ = generate_repr(__init__)
 
     def __str__(self) -> str:
-        return ''.join([self.kinds_prefixes[self.kind],
+        return ''.join(['*'
+                        if self.kind is self.Kind.VARIADIC_POSITIONAL
+                        else ('**'
+                              if self.kind is self.Kind.VARIADIC_KEYWORD
+                              else ''),
                         self.name,
                         '=...' if self.has_default else ''])
 
@@ -71,9 +69,9 @@ class SignatureParameter:
 def to_parameters_by_kind(
         parameters: Iterable[SignatureParameter]
 ) -> Dict[SignatureParameter.Kind, List[SignatureParameter]]:
-    result = defaultdict(list)
+    result = {}
     for parameter in parameters:
-        result[parameter.kind].append(parameter)
+        result.setdefault(parameter.kind, []).append(parameter)
     return result
 
 
@@ -238,7 +236,8 @@ class PlainSignature(_Signature):
                                      f'with kind "{prior.kind!s}" '
                                      f'precedes parameter "{name}" '
                                      f'with kind "{kind!s}".')
-                if kind in SignatureParameter.positionals_kinds:
+                if (kind is SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
+                        or kind is SignatureParameter.Kind.POSITIONAL_ONLY):
                     if not parameter.has_default:
                         if prior.has_default:
                             raise ValueError('Invalid parameters order: '
@@ -247,7 +246,8 @@ class PlainSignature(_Signature):
                                              'follows '
                                              f'parameter "{prior.name}" '
                                              'with default argument.')
-                elif kind not in SignatureParameter.keywords_kinds:
+                elif (kind is not SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
+                      and kind is not SignatureParameter.Kind.KEYWORD_ONLY):
                     if kind in visited_kinds:
                         raise ValueError('Variadic parameters '
                                          'should have unique kinds, '
@@ -355,29 +355,26 @@ def _bind_positionals(parameters: Tuple[SignatureParameter, ...],
                       kwargs: Dict[str, _KwArg],
                       *,
                       has_variadic: bool) -> Tuple[SignatureParameter, ...]:
-    def is_positional(parameter: SignatureParameter) -> bool:
-        return parameter.kind in SignatureParameter.positionals_kinds
+    def is_positionable(parameter: SignatureParameter) -> bool:
+        return (parameter.kind is SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
+                or parameter.kind is SignatureParameter.Kind.POSITIONAL_ONLY)
 
-    positionals = tuple(takewhile(is_positional, parameters))
+    positionals = tuple(takewhile(is_positionable, parameters))
     if len(args) > len(positionals) and not has_variadic:
         value = 'argument' + 's' * (len(positionals) != 1)
-        raise TypeError('Takes {parameters_count} positional {value}, '
-                        'but {arguments_count} {verb} given.'
-                        .format(parameters_count=len(positionals),
-                                value=value,
-                                arguments_count=len(args),
-                                verb='was' if len(args) == 1 else 'were'))
+        raise TypeError(f'Takes {len(positionals)} positional {value}, '
+                        f'but {len(args)} '
+                        f'{"was" if len(args) == 1 else "were"} given.')
     for positional in positionals[:len(args)]:
         if positional.name in kwargs:
-            if positional.kind in SignatureParameter.keywords_kinds:
+            kind = positional.kind
+            if (kind is SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
+                    or kind is SignatureParameter.Kind.KEYWORD_ONLY):
                 raise TypeError('Got multiple values '
-                                'for parameter "{name}".'
-                                .format(name=positional.name))
+                                f'for parameter "{positional.name}".')
             else:
-                raise TypeError('Parameter "{name}" is {kind!s}, '
-                                'but was passed as a keyword.'
-                                .format(name=positional.name,
-                                        kind=positional.kind))
+                raise TypeError(f'Parameter "{positional.name}" is {kind!s}, '
+                                'but was passed as a keyword.')
     return positionals[len(args):] + parameters[len(positionals):]
 
 
@@ -387,16 +384,17 @@ def _bind_keywords(parameters: Tuple[SignatureParameter, ...],
                    has_variadic: bool) -> Tuple[SignatureParameter, ...]:
     kwargs_names = set(kwargs)
     extra_kwargs_names = (
-            kwargs_names -
-            {parameter.name
-             for parameter in parameters
-             if parameter.kind in SignatureParameter.keywords_kinds}
+            kwargs_names
+            - {parameter.name
+               for parameter in parameters
+               if ((parameter.kind
+                    is SignatureParameter.Kind.POSITIONAL_OR_KEYWORD)
+                   or parameter.kind is SignatureParameter.Kind.KEYWORD_ONLY)}
     )
     if extra_kwargs_names and not has_variadic:
         value = 'argument' + 's' * (len(extra_kwargs_names) != 1)
-        raise TypeError('Got unexpected keyword {value} "{names}".'
-                        .format(value=value,
-                                names='", "'.join(extra_kwargs_names)))
+        names = '", "'.join(extra_kwargs_names)
+        raise TypeError(f'Got unexpected keyword {value}: "{names}".')
     kwargs_names -= extra_kwargs_names
     if not kwargs_names:
         return parameters
@@ -411,9 +409,12 @@ def _bind_keywords(parameters: Tuple[SignatureParameter, ...],
                             has_default=(parameter.has_default
                                          or parameter.name in kwargs_names)
                     )
-                    if parameter.kind in SignatureParameter.keywords_kinds
+                    if ((parameter.kind
+                         is SignatureParameter.Kind.POSITIONAL_OR_KEYWORD)
+                        or (parameter.kind
+                            is SignatureParameter.Kind.KEYWORD_ONLY))
                     else parameter
                     for parameter in parameters[first_kwarg_index:]
                     if (parameter.kind
-                        != SignatureParameter.Kind.VARIADIC_POSITIONAL)
+                        is not SignatureParameter.Kind.VARIADIC_POSITIONAL)
             ))
