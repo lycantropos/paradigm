@@ -35,10 +35,11 @@ def to_parameters(*,
                   has_default_flags: Strategy[bool] =
                   strategies.booleans()) -> Strategy[SignatureParameter]:
     def normalize_mapping(mapping: Dict[str, Any]) -> Dict[str, Any]:
-        if mapping['kind'] not in (SignatureParameter.positionals_kinds
-                                   | SignatureParameter.keywords_kinds):
-            return {**mapping, 'has_default': False}
-        return mapping
+        kind = mapping['kind']
+        return ({**mapping, 'has_default': False}
+                if (kind is SignatureParameter.Kind.VARIADIC_KEYWORD
+                    or kind is SignatureParameter.Kind.VARIADIC_POSITIONAL)
+                else mapping)
 
     return (strategies.fixed_dictionaries(dict(name=names,
                                                kind=kinds,
@@ -57,15 +58,12 @@ def to_plain_signatures(*,
     if min_size < 0:
         raise ValueError('Min size '
                          'should not be negative, '
-                         'but found {min_size}.'
-                         .format(min_size=min_size))
+                         f'but found {min_size}.')
     if min_size > max_size:
         raise ValueError('Min size '
                          'should not be greater '
                          'than max size, '
-                         'but found {min_size} > {max_size}.'
-                         .format(min_size=min_size,
-                                 max_size=max_size))
+                         f'but found {min_size} > {max_size}.')
 
     empty = strategies.builds(PlainSignature)
     if max_size == 0:
@@ -82,16 +80,19 @@ def to_plain_signatures(*,
         last_precursor = precursors[-1]
 
         def is_kind_valid(parameter: SignatureParameter) -> bool:
-            if parameter.kind not in (SignatureParameter.positionals_kinds
-                                      | SignatureParameter.keywords_kinds):
-                return not precursors_kinds[parameter.kind]
-            return True
+            kind = parameter.kind
+            return (not precursors_kinds[kind]
+                    if (kind is SignatureParameter.Kind.VARIADIC_KEYWORD
+                        or kind is SignatureParameter.Kind.VARIADIC_POSITIONAL)
+                    else True)
 
         def normalize(parameter: SignatureParameter) -> SignatureParameter:
-            if parameter.kind in SignatureParameter.positionals_kinds:
+            kind = parameter.kind
+            if (kind is SignatureParameter.Kind.POSITIONAL_OR_KEYWORD
+                    or kind is SignatureParameter.Kind.POSITIONAL_ONLY):
                 if last_precursor.has_default and not parameter.has_default:
                     return SignatureParameter(name=parameter.name,
-                                              kind=parameter.kind,
+                                              kind=kind,
                                               has_default=True)
             return parameter
 
@@ -205,14 +206,12 @@ def to_unexpected_kwargs(
 
 @singledispatch
 def signature_to_max_positionals_count(signature: AnySignature) -> int:
-    raise TypeError('Unsupported signature type: {type}.'
-                    .format(type=type(signature)))
+    raise TypeError(f'Unsupported signature type: {type(signature)}.')
 
 
 @singledispatch
 def signature_to_min_positionals_count(signature: AnySignature) -> int:
-    raise TypeError('Unsupported signature type: {type}.'
-                    .format(type=type(signature)))
+    raise TypeError(f'Unsupported signature type: {type(signature)}.')
 
 
 @signature_to_max_positionals_count.register(PlainSignature)
@@ -242,16 +241,14 @@ def _(signature: OverloadedSignature) -> int:
 def signature_to_keywords_intersection(
         signature: AnySignature
 ) -> Dict[str, SignatureParameter]:
-    raise TypeError('Unsupported signature type: {type}.'
-                    .format(type=type(signature)))
+    raise TypeError(f'Unsupported signature type: {type(signature)}.')
 
 
 @singledispatch
 def signature_to_keywords_union(
         signature: AnySignature
 ) -> Dict[str, SignatureParameter]:
-    raise TypeError('Unsupported signature type: {type}.'
-                    .format(type=type(signature)))
+    raise TypeError(f'Unsupported signature type: {type(signature)}.')
 
 
 @signature_to_keywords_union.register(PlainSignature)

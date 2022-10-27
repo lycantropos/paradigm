@@ -53,8 +53,7 @@ def test_expected_kwargs(
 def signature_parameters_has_defaults(signature: AnySignature,
                                       *,
                                       names: Iterable[str]) -> bool:
-    raise TypeError('Unsupported signature type: {type}.'
-                    .format(type=type(signature)))
+    raise TypeError(f'Unsupported signature type: {type(signature)}.')
 
 
 @signature_parameters_has_defaults.register(PlainSignature)

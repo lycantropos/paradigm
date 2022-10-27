@@ -50,8 +50,7 @@ def _safe_import(name: str) -> Optional[types.ModuleType]:
     try:
         return importlib.import_module(name)
     except ImportError:
-        warnings.warn('Failed to import module "{module}".'
-                      .format(module=name))
+        warnings.warn(f'Failed to import module "{name}".', ImportWarning)
         return None
 
 

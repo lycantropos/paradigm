@@ -16,15 +16,18 @@ from .factories import (to_overloaded_signatures,
                         to_signature_with_unexpected_args,
                         to_signature_with_unexpected_kwargs)
 
-positionals_kinds = strategies.sampled_from(
-        list(SignatureParameter.positionals_kinds))
-keywords_kinds = strategies.sampled_from(
-        list(SignatureParameter.keywords_kinds))
-non_variadic_kinds = positionals_kinds | keywords_kinds
+positionable_kinds = strategies.sampled_from(
+        [SignatureParameter.Kind.POSITIONAL_ONLY,
+         SignatureParameter.Kind.POSITIONAL_OR_KEYWORD]
+)
+keywordable_kinds = strategies.sampled_from(
+        [SignatureParameter.Kind.POSITIONAL_OR_KEYWORD,
+         SignatureParameter.Kind.KEYWORD_ONLY]
+)
+non_variadic_kinds = positionable_kinds | keywordable_kinds
 variadic_kinds = strategies.sampled_from(
-        list(set(SignatureParameter.Kind)
-             - SignatureParameter.positionals_kinds
-             - SignatureParameter.keywords_kinds)
+        [SignatureParameter.Kind.VARIADIC_KEYWORD,
+         SignatureParameter.Kind.VARIADIC_POSITIONAL]
 )
 kinds = non_variadic_kinds | variadic_kinds
 parameters = to_parameters(kinds=kinds)
@@ -50,8 +53,7 @@ non_variadic_signatures_with_unexpected_kwargs = (
 
 @singledispatch
 def is_signature_empty(signature: AnySignature) -> bool:
-    raise TypeError('Unsupported signature type: {type}.'
-                    .format(type=type(signature)))
+    raise TypeError(f'Unsupported signature type: {type(signature)}.')
 
 
 @is_signature_empty.register(PlainSignature)
