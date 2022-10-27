@@ -9,10 +9,10 @@ from typing import (Any,
                     Optional,
                     Union)
 
-from paradigm import (catalog,
-                      qualified)
-from paradigm.discovery import (stdlib_modules_names,
-                                unsupported_stdlib_modules_names)
+from paradigm._core import (catalog,
+                            qualified)
+from paradigm._core.discovery import (stdlib_modules_names,
+                                      unsupported_stdlib_modules_names)
 from tests import unsupported
 
 

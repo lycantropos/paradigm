@@ -1,19 +1,19 @@
 from hypothesis import given
 
-from paradigm import (models,
-                      signatures)
+from paradigm import signatures
+from tests.utils import AnySignature
 from . import strategies
 
 
 @given(strategies.signatures)
-def test_type(signature: models.Base) -> None:
+def test_type(signature: AnySignature) -> None:
     result = repr(signature)
 
     assert isinstance(result, str)
 
 
 @given(strategies.plain_signatures)
-def test_plain(plain_signature: models.Plain) -> None:
+def test_plain(plain_signature: signatures.Plain) -> None:
     result = repr(plain_signature)
 
     assert all(repr(parameter) in result
@@ -21,7 +21,7 @@ def test_plain(plain_signature: models.Plain) -> None:
 
 
 @given(strategies.overloaded_signatures)
-def test_nesting(overloaded_signature: models.Overloaded) -> None:
+def test_nesting(overloaded_signature: signatures.Overloaded) -> None:
     result = repr(overloaded_signature)
 
     assert all(repr(signature) in result
@@ -29,9 +29,9 @@ def test_nesting(overloaded_signature: models.Overloaded) -> None:
 
 
 @given(strategies.signatures)
-def test_evaluation(signature: models.Base) -> None:
+def test_evaluation(signature: AnySignature) -> None:
     signature_repr = repr(signature)
 
-    result = eval(signature_repr, vars(signatures))
+    result = eval(signature_repr, vars(signature))
 
     assert result == signature

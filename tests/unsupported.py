@@ -10,16 +10,16 @@ from typing import (Any,
                     Set,
                     Union)
 
-from paradigm import (catalog,
-                      namespaces)
+from paradigm._core import (catalog,
+                            namespaces)
 from .utils import to_contents
 
 
-def _load_and_add(set_: Set[Any], module_name: str, name: str) -> None:
+def _load_and_add(set_: Set[Any], module_name: str, object_name: str) -> None:
     module = _safe_import(module_name)
     if module is None:
         return
-    path = catalog.path_from_string(name)
+    path = catalog.path_from_string(object_name)
     try:
         object_ = _search_by_path(module, path)
     except KeyError:

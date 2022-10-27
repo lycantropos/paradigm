@@ -1,4 +1,4 @@
-from paradigm import catalog
+from paradigm._core import catalog
 from tests.utils import pack
 from .utils import (identifiers,
                     modules,

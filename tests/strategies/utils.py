@@ -2,27 +2,30 @@ import ast
 import importlib
 import keyword
 import os
+import warnings
 from pathlib import Path
 from string import ascii_letters
 from typing import (List,
                     Optional,
-                    Tuple)
+                    Tuple,
+                    TypeVar)
 
 from hypothesis import strategies
 
-from paradigm.discovery import supported_stdlib_modules_names
-from paradigm.hints import Domain
+from paradigm._core.discovery import supported_stdlib_modules_names
 from tests.contracts import is_supported
 from tests.utils import (Strategy,
                          negate,
                          pack)
 
+_T = TypeVar('_T')
 
-def to_homogeneous_tuples(elements: Optional[Strategy[Domain]] = None,
+
+def to_homogeneous_tuples(elements: Optional[Strategy[_T]] = None,
                           *,
                           min_size: int = 0,
                           max_size: Optional[int] = None
-                          ) -> Strategy[Tuple[Domain, ...]]:
+                          ) -> Strategy[Tuple[_T, ...]]:
     return (strategies.lists(elements,
                              min_size=min_size,
                              max_size=max_size)
@@ -70,7 +73,14 @@ invalid_source_lines = ((keywords_lists.map(' '.join)
                         .filter(negate(is_valid_source)))
 invalid_sources = strategies.lists(invalid_source_lines,
                                    min_size=1).map('\n'.join)
+
+
+def import_module(name):
+    warnings.warn(f'Importing {name}')
+    return importlib.import_module(name)
+
+
 modules_list = list(filter(is_supported,
-                           map(importlib.import_module,
+                           map(import_module,
                                supported_stdlib_modules_names)))
 modules = strategies.sampled_from(modules_list)

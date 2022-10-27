@@ -5,18 +5,20 @@ from typing import (Any,
                     Dict,
                     List,
                     Tuple,
+                    TypeVar,
                     Union)
 
 from hypothesis.strategies import SearchStrategy
 
-from paradigm.hints import (Domain,
-                            Map,
-                            Range)
+from paradigm import signatures
 
+AnySignature = TypeVar('AnySignature', signatures.Overloaded, signatures.Plain)
 Strategy = SearchStrategy
 Predicate = Callable[..., bool]
-Args = Tuple[Domain, ...]
-Kwargs = Dict[str, Domain]
+_T1 = TypeVar('_T1')
+_T2 = TypeVar('_T2')
+Args = Tuple[_T1, ...]
+Kwargs = Dict[str, _T1]
 
 
 def equivalence(left_statement: bool, right_statement: bool) -> bool:
@@ -34,8 +36,8 @@ def negate(predicate: Predicate) -> Predicate:
     return negated
 
 
-def pack(function: Callable[..., Range]) -> Map[Tuple[Domain, ...], Range]:
-    def packed(args: Tuple[Domain, ...]) -> Range:
+def pack(function: Callable[..., _T2]) -> Callable[[Tuple[_T1, ...]], _T2]:
+    def packed(args: Tuple[_T1, ...]) -> _T2:
         return function(*args)
 
     return packed
