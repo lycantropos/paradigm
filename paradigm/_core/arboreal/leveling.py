@@ -3,32 +3,21 @@ import builtins
 import enum
 import importlib
 import sys
-import typing
+import typing as t
 from collections import deque
 from functools import (partial,
                        reduce,
                        singledispatch)
-from itertools import chain
 from pathlib import Path
 from reprlib import recursive_repr
 from types import MappingProxyType
-from typing import (Any,
-                    Container,
-                    Dict,
-                    Iterable,
-                    List,
-                    Optional,
-                    Tuple,
-                    Type,
-                    Union)
 
 from reprit.base import generate_repr
 
-from paradigm import (catalog,
-                      namespaces,
-                      sources)
-from paradigm.hints import (Namespace,
-                            Predicate)
+from paradigm._core import (catalog,
+                            namespaces,
+                            sources)
+from paradigm._core.hints import Namespace
 from . import construction
 from .execution import execute_statement
 from .utils import singledispatchmethod
@@ -63,8 +52,9 @@ class NodeKind(enum.IntEnum):
         return f'{type(self).__qualname__}.{self.name}'
 
 
-NODE_KINDS_AST_TYPES: Dict[NodeKind,
-                           Union[Type[ast.AST], Tuple[Type[ast.AST], ...]]] = {
+NODE_KINDS_AST_TYPES: t.Dict[
+    NodeKind, t.Union[t.Type[ast.AST], t.Tuple[t.Type[ast.AST], ...]]
+] = {
     NodeKind.ANNOTATED_ASSIGNMENT: ast.AnnAssign,
     NodeKind.ASSIGNMENT: ast.Assign,
     NodeKind.CLASS: ast.ClassDef,
@@ -77,7 +67,7 @@ NODE_KINDS_AST_TYPES: Dict[NodeKind,
     NodeKind.UNDEFINED: (),
     NodeKind.UNION: ast.BinOp,
 }
-AST_TYPES_NODE_KINDS: Dict[Type[ast.AST], NodeKind] = {
+AST_TYPES_NODE_KINDS: t.Dict[t.Type[ast.AST], NodeKind] = {
     ast.AnnAssign: NodeKind.ANNOTATED_ASSIGNMENT,
     ast.Assign: NodeKind.ASSIGNMENT,
     ast.AsyncFunctionDef: NodeKind.FUNCTION,
@@ -94,7 +84,7 @@ assert all(kind in NODE_KINDS_AST_TYPES for kind in NodeKind)
 
 
 def _named_tuple_to_constructor_ast_node(ast_node, class_name):
-    annotations_ast_nodes: List[ast.AnnAssign] = [
+    annotations_ast_nodes: t.List[ast.AnnAssign] = [
         ast_child_node
         for ast_child_node in ast_node.body
         if isinstance(ast_child_node, ast.AnnAssign)
@@ -112,7 +102,7 @@ def _named_tuple_to_constructor_ast_node(ast_node, class_name):
 
 if sys.version_info < (3, 8):
     def _annotations_to_signature(
-            ast_nodes: List[ast.AnnAssign]
+            ast_nodes: t.List[ast.AnnAssign]
     ) -> ast.arguments:
         return ast.arguments([ast.arg(ast_node.target.id, ast_node.annotation)
                               for ast_node in ast_nodes],
@@ -122,7 +112,7 @@ if sys.version_info < (3, 8):
                               if ast_node.value is not None])
 else:
     def _annotations_to_signature(
-            ast_nodes: List[ast.AnnAssign]
+            ast_nodes: t.List[ast.AnnAssign]
     ) -> ast.arguments:
         return ast.arguments([],
                              [ast.arg(ast_node.target.id, ast_node.annotation)
@@ -135,7 +125,7 @@ else:
 
 class Node:
     @property
-    def ast_nodes(self) -> List[ast.AST]:
+    def ast_nodes(self) -> t.List[ast.AST]:
         assert len({AST_TYPES_NODE_KINDS[type(ast_node)]
                     for ast_node in self._ast_nodes}) <= 1, self
         return self._ast_nodes
@@ -189,7 +179,7 @@ class Node:
                         if self is not self._builtins
                         else self._lookup_constant(name))
 
-    def locate_name(self, name: str) -> Tuple[int, 'Node']:
+    def locate_name(self, name: str) -> t.Tuple[int, 'Node']:
         try:
             return 0, self._local_lookup_name(name)
         except NameLookupError:
@@ -320,7 +310,7 @@ class Node:
         assert self.kind is NodeKind.MODULE, self
 
     _builtins: 'Node'
-    _constants: Dict[str, 'Node']
+    _constants: t.Dict[str, 'Node']
 
     def _append(self, node: 'Node') -> None:
         assert node is not self, self
@@ -395,16 +385,17 @@ class Node:
         )
 
     @singledispatchmethod
-    def _resolve_assigning_value(self, ast_node: ast.AST) -> Optional['Node']:
+    def _resolve_assigning_value(self,
+                                 ast_node: ast.AST) -> t.Optional['Node']:
         raise TypeError(type(ast_node))
 
     @_resolve_assigning_value.register(ast.Name)
-    def _(self, ast_node: ast.Name) -> Optional['Node']:
+    def _(self, ast_node: ast.Name) -> t.Optional['Node']:
         assert isinstance(ast_node.ctx, ast.Load), ast_node
         return self._global_lookup_name_inserting_default(ast_node.id)
 
     @_resolve_assigning_value.register(ast.Attribute)
-    def _(self, ast_node: ast.Attribute) -> Optional['Node']:
+    def _(self, ast_node: ast.Attribute) -> t.Optional['Node']:
         assert isinstance(ast_node.ctx, ast.Load), ast_node
         value_node = self._resolve_assigning_value(ast_node.value)
         return (
@@ -417,27 +408,28 @@ class Node:
     @_resolve_assigning_value.register(ast.Tuple)
     @_resolve_assigning_value.register(ast.List)
     @_resolve_assigning_value.register(ast.Set)
-    def _(self, ast_node: ast.expr) -> Optional['Node']:
+    def _(self, ast_node: ast.expr) -> t.Optional['Node']:
         assert isinstance(ast_node.ctx, ast.Load), ast_node
         return None
 
     @_resolve_assigning_value.register(ast.Subscript)
-    def _(self, ast_node: ast.Subscript) -> Optional['Node']:
+    def _(self, ast_node: ast.Subscript) -> t.Optional['Node']:
         assert isinstance(ast_node.ctx, ast.Load), ast_node
         return Node(self._stub_path, self._module_path, None,
                     NodeKind.SUBSCRIPT, [ast_node])
 
     @_resolve_assigning_value.register(ast.Constant)
     @_resolve_assigning_value.register(ast.NameConstant)
-    def _(self,
-          ast_node: Union[ast.Constant, ast.NameConstant]) -> Optional['Node']:
+    def _(
+            self, ast_node: t.Union[ast.Constant, ast.NameConstant]
+    ) -> t.Optional['Node']:
         try:
             return self._lookup_constant(repr(ast_node.value))
         except NameLookupError:
             return None
 
     @_resolve_assigning_value.register(ast.BinOp)
-    def _(self, ast_node: ast.BinOp) -> Optional['Node']:
+    def _(self, ast_node: ast.BinOp) -> t.Optional['Node']:
         if isinstance(ast_node.op, ast.BitOr):
             left_node = self._resolve_assigning_value(ast_node.left)
             right_node = self._resolve_assigning_value(ast_node.right)
@@ -451,7 +443,7 @@ class Node:
 
     @_resolve_assigning_value.register(ast.Call)
     @_resolve_assigning_value.register(ast.Ellipsis)
-    def _(self, ast_node: ast.Call) -> Optional['Node']:
+    def _(self, ast_node: ast.Call) -> t.Optional['Node']:
         return None
 
     @singledispatchmethod
@@ -472,7 +464,7 @@ class Node:
 
     @_resolve_annotation.register(ast.NameConstant)
     @_resolve_annotation.register(ast.Constant)
-    def _(self, ast_node: Union[ast.Constant, ast.NameConstant]) -> 'Node':
+    def _(self, ast_node: t.Union[ast.Constant, ast.NameConstant]) -> 'Node':
         return self._lookup_constant(repr(ast_node.value))
 
     @_resolve_annotation.register(ast.Attribute)
@@ -598,15 +590,14 @@ class Node:
             ast_node: ast.ClassDef,
             *,
             _named_tuple_path: catalog.Path
-            = catalog.object_path_from_callable(typing.NamedTuple),
-            _typing_path: catalog.Path
-            = catalog.module_path_from_module(typing)
+            = catalog.object_path_from_callable(t.NamedTuple),
+            _typing_path: catalog.Path = catalog.module_path_from_module(t)
     ) -> None:
         class_name = ast_node.name
         class_node = self._local_lookup_name_inserting_default(class_name)
         class_node._set_ast_node(ast_node)
         assert class_node._kind is NodeKind.CLASS
-        ast_children_nodes: List[ast.AST] = [*ast_node.body]
+        ast_children_nodes: t.List[ast.AST] = [*ast_node.body]
         for ast_base_node in ast_node.bases:
             base_path = _resolve_base_class_path(ast_base_node)
             base_node = self._global_lookup_path_inserting_default(base_path)
@@ -630,7 +621,7 @@ class Node:
     @_visit_names.register(ast.AsyncFunctionDef)
     @_visit_names.register(ast.FunctionDef)
     def _(self,
-          ast_node: Union[ast.AsyncFunctionDef, ast.FunctionDef]) -> None:
+          ast_node: t.Union[ast.AsyncFunctionDef, ast.FunctionDef]) -> None:
         function_node = self._local_lookup_name_inserting(
                 ast_node.name,
                 Node(self._stub_path, self._module_path,
@@ -647,7 +638,7 @@ class Node:
         return self.__stub_path[0]
 
     @property
-    def _sub_nodes(self) -> List['Node']:
+    def _sub_nodes(self) -> t.List['Node']:
         return self.__sub_nodes
 
     @_kind.setter
@@ -666,9 +657,9 @@ class Node:
     def __init__(self,
                  _stub_path: Path,
                  _module_path: catalog.Path,
-                 _object_path: Optional[catalog.Path],
+                 _object_path: t.Optional[catalog.Path],
                  _kind: NodeKind,
-                 _ast_nodes: List[ast.AST],
+                 _ast_nodes: t.List[ast.AST],
                  *_sub_nodes: 'Node',
                  **_locals: 'Node') -> None:
         (
@@ -682,7 +673,7 @@ class Node:
     __repr__ = recursive_repr()(generate_repr(__init__))
 
 
-_graph: Dict[catalog.Path, Node] = {}
+_graph: t.Dict[catalog.Path, Node] = {}
 
 
 def _is_module_path(path: catalog.Path) -> bool:
@@ -844,10 +835,10 @@ def rectify_ifs(module_root: ast.Module,
         node.body = new_body
 
 
-def _flatten_ifs(candidates: Iterable[ast.AST],
+def _flatten_ifs(candidates: t.Iterable[ast.AST],
                  *,
                  namespace: Namespace,
-                 source_path: Path) -> Iterable[ast.AST]:
+                 source_path: Path) -> t.Iterable[ast.AST]:
     for candidate in candidates:
         if isinstance(candidate, ast.If):
             if evaluate_expression(candidate.test,
@@ -866,7 +857,7 @@ def _flatten_ifs(candidates: Iterable[ast.AST],
 def evaluate_expression(node: ast.expr,
                         *,
                         source_path: Path,
-                        namespace: Namespace) -> Any:
+                        namespace: Namespace) -> t.Any:
     # to avoid name conflicts
     # we're using name that won't be present
     # because it'll lead to ``SyntaxError`` otherwise
@@ -960,19 +951,19 @@ def node_has_name(node: ast.AST, name: str) -> bool:
 
 
 @singledispatch
-def node_to_names(node: ast.AST) -> List[str]:
+def node_to_names(node: ast.AST) -> t.List[str]:
     return []
 
 
 @node_to_names.register(ast.ClassDef)
 @node_to_names.register(ast.FunctionDef)
-def class_def_or_function_def_to_name(node: ast.AST) -> List[str]:
+def class_def_or_function_def_to_name(node: ast.AST) -> t.List[str]:
     return [node.name]
 
 
 @node_to_names.register(ast.Import)
 @node_to_names.register(ast.ImportFrom)
-def import_or_import_from_to_name(node: ast.Import) -> List[str]:
+def import_or_import_from_to_name(node: ast.Import) -> t.List[str]:
     result = []
     for name_alias in node.names:
         result.append(to_alias_string(name_alias))
@@ -980,7 +971,8 @@ def import_or_import_from_to_name(node: ast.Import) -> List[str]:
 
 
 def left_search_within_children(node: ast.AST,
-                                condition: Predicate[ast.AST]) -> Iterable:
+                                condition: t.Callable[
+                                    [ast.AST], bool]) -> t.Iterable:
     children = deque(ast.iter_child_nodes(node))
     while children:
         child = children.popleft()
@@ -1008,4 +1000,4 @@ Node._constants = MappingProxyType({
     for name in ['None', 'True', 'False']
 })
 _builtins_node.resolve()
-_builtins_names: Container[str] = vars(builtins).keys()
+_builtins_names: t.Container[str] = vars(builtins).keys()

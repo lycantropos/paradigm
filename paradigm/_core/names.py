@@ -31,8 +31,8 @@ except Exception:
     import warnings as _warnings
     from multiprocessing.queues import Queue as _Queue
 
-    from paradigm import qualified as _qualified
-    from paradigm.discovery import (
+    from paradigm._core import qualified as _qualified
+    from paradigm._core.discovery import (
         supported_stdlib_modules_names as _supported_stdlib_modules_names
     )
 

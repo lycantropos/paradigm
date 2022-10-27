@@ -1,13 +1,14 @@
 import builtins
-import importlib.util
 import pathlib
 import types
+from importlib.util import find_spec
 from typing import (Any,
                     Callable,
                     Optional,
                     Tuple)
 
-from . import file_system, qualified
+from . import (file_system,
+               qualified)
 
 
 class Path:
@@ -83,7 +84,7 @@ def path_from_string(string: str) -> Path:
 
 
 def is_package(module_path: Path) -> bool:
-    spec = importlib.util.find_spec(str(module_path))
+    spec = find_spec(str(module_path))
     return (spec.origin is not None
             and pathlib.Path(spec.origin).stem == file_system.INIT_MODULE_NAME)
 

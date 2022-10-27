@@ -1,7 +1,7 @@
 import ast
 from pathlib import Path
 
-from paradigm.hints import Namespace
+from paradigm._core.hints import Namespace
 from . import construction
 
 

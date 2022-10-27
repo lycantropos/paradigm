@@ -2,8 +2,8 @@ import ast
 from typing import (List,
                     Tuple)
 
-from paradigm import (catalog,
-                      sources)
+from paradigm._core import (catalog,
+                            sources)
 from .leveling import (NameLookupError,
                        NodeKind,
                        import_module_node)
