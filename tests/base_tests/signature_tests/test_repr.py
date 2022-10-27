@@ -1,5 +1,6 @@
 from hypothesis import given
 
+from paradigm import base
 from paradigm.base import (OverloadedSignature,
                            PlainSignature)
 from tests.utils import AnySignature
@@ -33,6 +34,6 @@ def test_nesting(overloaded_signature: OverloadedSignature) -> None:
 def test_evaluation(signature: AnySignature) -> None:
     signature_repr = repr(signature)
 
-    result = eval(signature_repr, vars(signature))
+    result = eval(signature_repr, vars(base))
 
     assert result == signature
