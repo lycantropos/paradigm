@@ -17,22 +17,6 @@ def name_from(value: Any) -> Name:
     return None, ''
 
 
-@name_from.register(types.BuiltinFunctionType)
-@name_from.register(types.BuiltinMethodType)
-def _(value: Union[types.BuiltinFunctionType,
-                   types.BuiltinMethodType]) -> Name:
-    return ((value.__self__.__module__, value.__qualname__)
-            if isinstance(value.__self__, type)
-            else ((value.__self__.__spec__.name, value.__qualname__)
-                  if isinstance(value.__self__, types.ModuleType)
-                  else (type(value.__self__).__module__, value.__qualname__)))
-
-
-@name_from.register(types.FunctionType)
-def _(value: types.FunctionType) -> Name:
-    return value.__module__, value.__qualname__
-
-
 _T1 = TypeVar('_T1')
 _T2 = TypeVar('_T2')
 
@@ -48,6 +32,23 @@ def _decorate_if(decorator: Callable[[_T1], _T2],
         return decorator(wrapped) if condition else wrapped
 
     return wrapper
+
+
+@name_from.register(types.BuiltinFunctionType)
+@_decorate_if(name_from.register(types.BuiltinMethodType),
+              platform.python_implementation() != 'PyPy')
+def _(value: Union[types.BuiltinFunctionType,
+                   types.BuiltinMethodType]) -> Name:
+    return ((value.__self__.__module__, value.__qualname__)
+            if isinstance(value.__self__, type)
+            else ((value.__self__.__spec__.name, value.__qualname__)
+                  if isinstance(value.__self__, types.ModuleType)
+                  else (type(value.__self__).__module__, value.__qualname__)))
+
+
+@name_from.register(types.FunctionType)
+def _(value: types.FunctionType) -> Name:
+    return value.__module__, value.__qualname__
 
 
 @_decorate_if(name_from.register(types.MethodDescriptorType),
