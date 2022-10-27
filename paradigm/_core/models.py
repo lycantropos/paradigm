@@ -1,6 +1,7 @@
 import enum
 from abc import (ABC,
                  abstractmethod)
+from collections import defaultdict
 from itertools import (chain,
                        takewhile)
 from typing import (Any,
@@ -69,9 +70,9 @@ class SignatureParameter:
 def to_parameters_by_kind(
         parameters: Iterable[SignatureParameter]
 ) -> Dict[SignatureParameter.Kind, List[SignatureParameter]]:
-    result = {}
+    result = defaultdict(list)
     for parameter in parameters:
-        result.setdefault(parameter.kind, []).append(parameter)
+        result[parameter.kind].append(parameter)
     return result
 
 
