@@ -126,25 +126,23 @@ else:
 class Node:
     @property
     def ast_nodes(self) -> t.List[ast.AST]:
-        assert len({AST_TYPES_NODE_KINDS[type(ast_node)]
-                    for ast_node in self._ast_nodes}) <= 1, self
-        return self._ast_nodes
+        return self._resolve_ast_nodes()
 
     @property
     def kind(self) -> NodeKind:
-        return self._kind
+        return self._resolve_kind()
 
     @property
     def module_path(self) -> catalog.Path:
-        return self._module_path
+        return self._resolve_module_path()
 
     @property
     def object_path(self) -> catalog.Path:
-        return self._object_path
+        return self._resolve_object_path()
 
     @property
     def stub_path(self) -> Path:
-        return self._stub_path
+        return self._resolve_stub_path()
 
     def get_attribute_by_name(self, name: str) -> 'Node':
         try:
@@ -160,22 +158,22 @@ class Node:
     def get_attribute_by_path(self, path: catalog.Path) -> 'Node':
         return reduce(type(self).get_attribute_by_name, path.parts, self)
 
-    def lookup_name(self, name: str) -> 'Node':
+    def global_lookup_name(self, name: str) -> 'Node':
         try:
             return self._local_lookup_name(name)
         except NameLookupError:
-            if self._kind is NodeKind.CLASS:
-                parent = _graph[self._module_path]
-                assert parent._kind is NodeKind.MODULE, parent
-                return parent.lookup_name(name)
+            if self._resolve_kind() is NodeKind.CLASS:
+                parent = _graph[self._resolve_module_path()]
+                assert parent._resolve_kind() is NodeKind.MODULE, parent
+                return parent.global_lookup_name(name)
             else:
-                if self._kind is NodeKind.MODULE:
-                    for sub_node in self._sub_nodes:
+                if self._resolve_kind() is NodeKind.MODULE:
+                    for sub_node in self._resolve_sub_nodes():
                         try:
-                            return sub_node.lookup_name(name)
+                            return sub_node.global_lookup_name(name)
                         except NameLookupError:
                             pass
-                return (self._builtins.lookup_name(name)
+                return (self._builtins.global_lookup_name(name)
                         if self is not self._builtins
                         else self._lookup_constant(name))
 
@@ -183,7 +181,7 @@ class Node:
         try:
             return 0, self._local_lookup_name(name)
         except NameLookupError:
-            for depth, sub_node in enumerate(self._sub_nodes,
+            for depth, sub_node in enumerate(self._resolve_sub_nodes(),
                                              start=1):
                 try:
                     sub_depth, node = sub_node.locate_name(name)
@@ -194,35 +192,37 @@ class Node:
             raise NameLookupError(name)
 
     def resolve(self) -> None:
-        module_node = _graph[self._module_path]
-        while module_node._kind is NodeKind.MODULE_IMPORT:
+        module_node = _graph[self._resolve_module_path()]
+        while module_node._resolve_kind() is NodeKind.MODULE_IMPORT:
             module_node._resolve_module_import()
-            module_node = _graph[self._module_path]
-        assert _graph[self._module_path] is module_node, self
-        if self._kind is NodeKind.IMPORT_FROM:
-            assert len(self._object_path.parts) == 1, self
-            final_name, = self._object_path.parts
-            for submodule_node in reversed(module_node._sub_nodes):
+            module_node = _graph[self._resolve_module_path()]
+        assert _graph[self._resolve_module_path()] is module_node, self
+        if self._resolve_kind() is NodeKind.IMPORT_FROM:
+            assert len(self._resolve_object_path().parts) == 1, self
+            final_name, = self._resolve_object_path().parts
+            for submodule_node in reversed(module_node._resolve_sub_nodes()):
                 try:
                     node = submodule_node.get_attribute_by_name(final_name)
                 except NameLookupError:
                     pass
                 else:
                     node.resolve()
-                    self._merge_with(node)
+                    self._set_redirect(node)
                     break
-        for sub_node in self._sub_nodes:
+        for sub_node in self._resolve_sub_nodes():
             sub_node.resolve()
-        if self._kind is NodeKind.UNDEFINED:
-            parent = module_node._local_lookup_path(self._object_path.parent)
-            if parent._kind is NodeKind.CLASS:
-                final_name = self._object_path.parts[-1]
+        if self._resolve_kind() is NodeKind.UNDEFINED:
+            parent = module_node._local_lookup_path(
+                    self._resolve_object_path().parent
+            )
+            if parent._resolve_kind() is NodeKind.CLASS:
+                final_name = self._resolve_object_path().parts[-1]
                 try:
                     node = parent._local_lookup_name(final_name)
                     if node is self:
                         raise NameLookupError(final_name)
                 except NameLookupError:
-                    for parent_sub_node in parent._sub_nodes:
+                    for parent_sub_node in parent._resolve_sub_nodes():
                         parent_sub_node.resolve()
                         try:
                             node = parent_sub_node.get_attribute_by_name(
@@ -236,13 +236,15 @@ class Node:
                         raise
                 assert node is not self, self
                 node.resolve()
-                self._merge_with(node)
-        assert self._kind is not NodeKind.MODULE or not self._object_path.parts
-        assert self._kind not in (NodeKind.IMPORT_FROM, NodeKind.MODULE_IMPORT,
-                                  NodeKind.UNDEFINED), self
+                self._set_redirect(node)
+        assert (self._resolve_kind() is not NodeKind.MODULE
+                or not self._resolve_object_path().parts), self
+        assert self._resolve_kind() not in (NodeKind.IMPORT_FROM,
+                                            NodeKind.MODULE_IMPORT,
+                                            NodeKind.UNDEFINED), self
 
     def _locals_contain(self, name: str) -> bool:
-        return name in self._locals
+        return name in self._resolve_locals()
 
     def _lookup_constant(self, name: str) -> 'Node':
         try:
@@ -252,11 +254,13 @@ class Node:
 
     def _global_lookup_name_inserting_default(self, name: str) -> 'Node':
         try:
-            return self.lookup_name(name)
+            return self.global_lookup_name(name)
         except NameLookupError:
-            result = Node(self._stub_path, self._module_path,
+            result = Node(self._resolve_stub_path(),
+                          self._resolve_module_path(),
                           catalog.Path(name), NodeKind.UNDEFINED, [])
-            _import_module_node(self._module_path)._set_name(name, result)
+            _import_module_node(self._resolve_module_path())._set_name(name,
+                                                                       result)
             return result
 
     def _global_lookup_path_inserting_default(self,
@@ -268,7 +272,7 @@ class Node:
 
     def _local_lookup_name(self, name: str) -> 'Node':
         try:
-            return self._locals[name]
+            return self._resolve_locals()[name]
         except KeyError as error:
             raise NameLookupError(name) from error
 
@@ -284,8 +288,8 @@ class Node:
             return self._local_lookup_name(name)
         except NameLookupError:
             result = Node(
-                    self._stub_path, self._module_path,
-                    self._object_path.join(catalog.Path(name)),
+                    self._resolve_stub_path(), self._resolve_module_path(),
+                    self._resolve_object_path().join(catalog.Path(name)),
                     NodeKind.UNDEFINED, []
             )
             self._set_name(name, result)
@@ -305,8 +309,8 @@ class Node:
         return result
 
     def _resolve_module_import(self) -> None:
-        ast_node = flat_module_ast_node_from_path(self._stub_path,
-                                                  self._module_path)
+        ast_node = flat_module_ast_node_from_path(self._resolve_stub_path(),
+                                                  self._resolve_module_path())
         self._set_ast_node(ast_node)
         for child_ast_node in ast_node.body:
             self._visit_names(child_ast_node)
@@ -322,29 +326,16 @@ class Node:
                 or self._kind is NodeKind.MODULE), self
         self._sub_nodes.append(node)
 
-    def _append_ast_node(self, ast_node: ast.AST) -> None:
-        ast_node_kind = AST_TYPES_NODE_KINDS[type(ast_node)]
-        assert not (ast_node_kind is NodeKind.IMPORT_FROM
-                    or ast_node_kind is NodeKind.MODULE_IMPORT), self
-        if (self._kind is NodeKind.IMPORT_FROM
-                or self._kind is NodeKind.MODULE_IMPORT
-                or self._kind is NodeKind.UNDEFINED):
-            self._kind = ast_node_kind
-        else:
-            assert self._kind is ast_node_kind, self
-        self._ast_nodes.append(ast_node)
-
     def _set_ast_node(self, ast_node: ast.AST) -> None:
-        assert (self._kind is NodeKind.IMPORT_FROM
-                or self._kind is NodeKind.MODULE_IMPORT
-                or self._kind is NodeKind.UNDEFINED), self
+        assert (self._resolve_kind() is NodeKind.IMPORT_FROM
+                or self._resolve_kind() is NodeKind.MODULE_IMPORT
+                or self._resolve_kind() is NodeKind.UNDEFINED), self
         node_kind = AST_TYPES_NODE_KINDS[type(ast_node)]
         assert (node_kind is not NodeKind.IMPORT_FROM
                 and node_kind is not NodeKind.MODULE_IMPORT
                 and node_kind is not NodeKind.UNDEFINED), self
         self._kind = node_kind
-        if node_kind is NodeKind.CLASS:
-            assert not self._ast_nodes, self
+        assert not self._ast_nodes, self
         self._ast_nodes = [ast_node]
 
     def _set_name(self, name: str, value: 'Node') -> None:
@@ -370,22 +361,21 @@ class Node:
         if self._locals_contain(name):
             candidate = self._locals[name]
             if candidate is not value:
-                candidate._merge_with(value)
+                candidate._set_redirect(value)
         else:
             self._set_name(name, value)
 
-    def _merge_with(self, other: 'Node') -> None:
-        assert self._kind in (NodeKind.IMPORT_FROM, NodeKind.UNDEFINED), self
+    def _set_redirect(self, other: 'Node') -> None:
+        assert (
+                self._resolve_kind() in (NodeKind.IMPORT_FROM,
+                                         NodeKind.UNDEFINED)
+        ), self
         assert not self._ast_nodes, self
         assert not self._sub_nodes, self
-        (
-            self._ast_nodes, self._locals, self.__kind, self.__module_path,
-            self.__object_path, self.__stub_path, self.__sub_nodes
-        ) = (
-            other._ast_nodes, other._locals, other.__kind,
-            other.__module_path, other.__object_path, other.__stub_path,
-            other.__sub_nodes
-        )
+        cursor = self._redirect
+        while cursor is not None:
+            cursor, cursor._redirect = cursor._redirect, other
+        self._redirect = other
 
     @singledispatchmethod
     def _resolve_assigning_value(self,
@@ -418,7 +408,8 @@ class Node:
     @_resolve_assigning_value.register(ast.Subscript)
     def _(self, ast_node: ast.Subscript) -> t.Optional['Node']:
         assert isinstance(ast_node.ctx, ast.Load), ast_node
-        return Node(self._stub_path, self._module_path, None,
+        return Node(self._resolve_stub_path(), self._resolve_module_path(),
+                    None,
                     NodeKind.SUBSCRIPT, [ast_node])
 
     @_resolve_assigning_value.register(ast.Constant)
@@ -438,7 +429,8 @@ class Node:
             right_node = self._resolve_assigning_value(ast_node.right)
             return (None
                     if left_node is None or right_node is None
-                    else Node(self._stub_path, self._module_path, None,
+                    else Node(self._resolve_stub_path(),
+                              self._resolve_module_path(), None,
                               NodeKind.UNION, [ast_node], left_node,
                               right_node))
         else:
@@ -461,8 +453,8 @@ class Node:
     @_resolve_annotation.register(ast.Subscript)
     def _(self, ast_node: ast.Subscript) -> 'Node':
         assert isinstance(ast_node.ctx, ast.Load), ast_node
-        return Node(self._stub_path, self._module_path, None,
-                    NodeKind.SUBSCRIPT, [ast_node],
+        return Node(self._resolve_stub_path(), self._resolve_module_path(),
+                    None, NodeKind.SUBSCRIPT, [ast_node],
                     self._resolve_annotation(ast_node.value))
 
     @_resolve_annotation.register(ast.NameConstant)
@@ -481,8 +473,8 @@ class Node:
         assert isinstance(ast_node.op, ast.BitOr), ast_node
         left_node = self._resolve_annotation(ast_node.left)
         right_node = self._resolve_annotation(ast_node.right)
-        return Node(self._stub_path, self._module_path, None, NodeKind.UNION,
-                    [ast_node], left_node, right_node)
+        return Node(self._resolve_stub_path(), self._resolve_module_path(),
+                    None, NodeKind.UNION, [ast_node], left_node, right_node)
 
     @singledispatchmethod
     def _visit_names(self, ast_node: ast.AST) -> None:
@@ -511,8 +503,8 @@ class Node:
             value_node = self._resolve_assigning_value(value_ast_node)
             if value_node is None:
                 value_node = self._resolve_annotation(ast_node.annotation)
-            if value_node._object_path is None:
-                value_node.__object_path[0] = target_path
+            if value_node._resolve_object_path() is None:
+                value_node._object_path = target_path
             self._upsert_path(target_path, value_node)
 
     @_visit_names.register(ast.Assign)
@@ -523,7 +515,7 @@ class Node:
             assert targets, ast_node
             target_path = _resolve_assignment_target(targets[0])
             value_node = self._local_lookup_path_inserting_default(target_path)
-            assert value_node._object_path is not None
+            assert value_node._resolve_object_path() is not None
             value_node._set_ast_node(ast_node)
             for target in targets[1:]:
                 self._upsert_path(_resolve_assignment_target(target),
@@ -543,23 +535,23 @@ class Node:
 
     @_visit_names.register(ast.ImportFrom)
     def _(self, ast_node: ast.ImportFrom) -> None:
-        assert self._kind is NodeKind.MODULE, self
-        assert not self._object_path.parts, self
+        assert self._resolve_kind() is NodeKind.MODULE, self
+        assert not self._resolve_object_path().parts, self
         module_path = to_parent_module_path(
                 ast_node,
-                parent_module_path=self._module_path
+                parent_module_path=self._resolve_module_path()
         )
-        if module_path == self._module_path:
+        if module_path == self._resolve_module_path():
             for alias in ast_node.names:
                 submodule_name = alias.name
                 assert submodule_name != catalog.WILDCARD_IMPORT_NAME
-                submodule_path = self._module_path.join(
+                submodule_path = self._resolve_module_path().join(
                         catalog.Path(submodule_name)
                 )
                 submodule_node = _import_module_node(submodule_path)
                 assert (
-                        submodule_node._kind in (NodeKind.MODULE_IMPORT,
-                                                 NodeKind.MODULE)
+                        submodule_node._resolve_kind()
+                        in (NodeKind.MODULE_IMPORT, NodeKind.MODULE)
                 ), self
                 self._upsert_name(to_alias_string(alias), submodule_node)
         else:
@@ -580,7 +572,8 @@ class Node:
                         imported_node = (
                             module_node._local_lookup_name_inserting(
                                     actual_name,
-                                    Node(module_node._stub_path, module_path,
+                                    Node(module_node._resolve_stub_path(),
+                                         module_path,
                                          catalog.Path(actual_name),
                                          NodeKind.IMPORT_FROM, [])
                             )
@@ -599,7 +592,7 @@ class Node:
         class_name = ast_node.name
         class_node = self._local_lookup_name_inserting_default(class_name)
         class_node._set_ast_node(ast_node)
-        assert class_node._kind is NodeKind.CLASS
+        assert class_node._resolve_kind() is NodeKind.CLASS
         ast_children_nodes: t.List[ast.AST] = [*ast_node.body]
         for ast_base_node in ast_node.bases:
             base_path = _resolve_base_class_path(ast_base_node)
@@ -616,7 +609,9 @@ class Node:
                     self._builtins.get_attribute_by_name(object.__name__)
             )
         elif class_name != object.__name__:
-            assert self._module_path == catalog.BUILTINS_MODULE_PATH, self
+            assert (
+                    self._resolve_module_path() == catalog.BUILTINS_MODULE_PATH
+            ), self
             class_node._append(self.get_attribute_by_name(object.__name__))
         for ast_child_node in ast_children_nodes:
             class_node._visit_names(ast_child_node)
@@ -625,37 +620,64 @@ class Node:
     @_visit_names.register(ast.FunctionDef)
     def _(self,
           ast_node: t.Union[ast.AsyncFunctionDef, ast.FunctionDef]) -> None:
-        function_node = self._local_lookup_name_inserting(
-                ast_node.name,
-                Node(self._stub_path, self._module_path,
-                     catalog.Path(ast_node.name), NodeKind.FUNCTION, [])
-        )
-        function_node._append_ast_node(ast_node)
+        try:
+            namesake_node = self._local_lookup_name(ast_node.name)
+        except NameLookupError:
+            node = Node(self._resolve_stub_path(), self._resolve_module_path(),
+                        catalog.Path(ast_node.name), NodeKind.FUNCTION,
+                        [ast_node])
+            self._set_name(ast_node.name, node)
+        else:
+            if namesake_node._resolve_kind() is NodeKind.FUNCTION:
+                assert any(
+                        (isinstance(decorator.value, ast.Name)
+                         and decorator.value.id == ast_node.name
+                         and (decorator.attr == 'setter'
+                              or decorator.attr == 'deleter'))
+                        if isinstance(decorator, ast.Attribute)
+                        else
+                        (isinstance(decorator, ast.Name)
+                         and decorator.id == t.overload.__name__
+                         and ((self.global_lookup_name(t.overload.__name__)
+                               .module_path)
+                              == catalog.module_path_from_module(t)))
+                        for decorator in ast_node.decorator_list
+                ), self
+                namesake_node._ast_nodes.append(ast_node)
+            else:
+                node = Node(self._resolve_stub_path(),
+                            self._resolve_module_path(),
+                            catalog.Path(ast_node.name), NodeKind.FUNCTION,
+                            [ast_node])
+                self._upsert_name(ast_node.name, node)
 
-    @property
-    def _kind(self) -> NodeKind:
-        return self.__kind[0]
+    def _resolve_ast_nodes(self) -> t.List[ast.AST]:
+        return self._follow_redirects()._ast_nodes
 
-    @property
-    def _stub_path(self) -> sources.Path:
-        return self.__stub_path[0]
+    def _resolve_kind(self) -> NodeKind:
+        return self._follow_redirects()._kind
 
-    @property
-    def _sub_nodes(self) -> t.List['Node']:
-        return self.__sub_nodes
+    def _resolve_locals(self) -> t.Dict[str, 'Node']:
+        return self._follow_redirects()._locals
 
-    @_kind.setter
-    def _kind(self, value: NodeKind) -> None:
-        assert value is not NodeKind.UNDEFINED, self
-        self.__kind[0] = value
+    def _resolve_module_path(self) -> catalog.Path:
+        return self._follow_redirects()._module_path
 
-    @property
-    def _module_path(self) -> catalog.Path:
-        return self.__module_path[0]
+    def _resolve_object_path(self) -> catalog.Path:
+        return self._follow_redirects()._object_path
 
-    @property
-    def _object_path(self) -> catalog.Path:
-        return self.__object_path[0]
+    def _resolve_stub_path(self) -> sources.Path:
+        return self._stub_path
+
+    def _resolve_sub_nodes(self) -> t.List['Node']:
+        return self._follow_redirects()._sub_nodes
+
+    def _follow_redirects(self) -> 'Node':
+        cursor = self
+        while cursor._redirect is not None:
+            cursor = cursor._redirect
+            assert cursor is not self, self
+        return cursor
 
     def __init__(self,
                  _stub_path: Path,
@@ -663,17 +685,18 @@ class Node:
                  _object_path: t.Optional[catalog.Path],
                  _kind: NodeKind,
                  _ast_nodes: t.List[ast.AST],
-                 *_sub_nodes: 'Node',
-                 **_locals: 'Node') -> None:
+                 *_sub_nodes: 'Node') -> None:
         (
-            self._ast_nodes, self._locals, self.__kind, self.__module_path,
-            self.__object_path, self.__stub_path, self.__sub_nodes
+            self._ast_nodes, self._kind, self._module_path,
+            self._object_path, self._stub_path, self._sub_nodes
         ) = (
-            _ast_nodes, _locals, [_kind], [_module_path], [_object_path],
-            [_stub_path], [*_sub_nodes]
+            _ast_nodes, _kind, _module_path, _object_path, _stub_path,
+            [*_sub_nodes]
         )
+        self._locals: t.Dict[str, Node] = {}
+        self._redirect = None
 
-    __repr__ = recursive_repr()(generate_repr(__init__))
+    __repr__ = generate_repr(__init__)
 
 
 _graph: t.Dict[catalog.Path, Node] = {}
