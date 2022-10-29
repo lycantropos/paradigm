@@ -9,7 +9,6 @@ from functools import (partial,
                        reduce,
                        singledispatch)
 from pathlib import Path
-from reprlib import recursive_repr
 from types import MappingProxyType
 
 from reprit.base import generate_repr
