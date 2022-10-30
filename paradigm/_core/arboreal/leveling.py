@@ -5,8 +5,7 @@ import importlib
 import sys
 import typing as t
 from collections import deque
-from functools import (partial,
-                       reduce,
+from functools import (reduce,
                        singledispatch)
 from pathlib import Path
 from types import MappingProxyType
@@ -793,19 +792,23 @@ class NamespaceUpdater(ast.NodeVisitor):
                  *,
                  namespace: Namespace,
                  module_path: catalog.Path,
-                 parent_path: catalog.Path,
-                 is_nested: bool) -> None:
+                 parent_path: catalog.Path) -> None:
         self.namespace = namespace
         self.module_path = module_path
         self.parent_path = parent_path
-        self.is_nested = is_nested
 
     def visit_Import(self, node: ast.Import) -> None:
-        for name_alias in node.names:
-            actual_path = to_actual_path(name_alias)
-            top_module_name = actual_path.first_name
-            module = importlib.import_module(top_module_name)
-            self.namespace[top_module_name] = module
+        for alias in node.names:
+            actual_module_name = alias.name
+            module = importlib.import_module(actual_module_name)
+            module_name = alias.asname
+            if module_name is None:
+                module_name, _, tail = actual_module_name.partition(
+                        catalog.Path.SEPARATOR
+                )
+                if tail:
+                    module = sys.modules[module_name]
+            self.namespace[module_name] = module
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         parent_module_path = to_parent_module_path(
@@ -831,26 +834,22 @@ class NamespaceUpdater(ast.NodeVisitor):
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         path = self.resolve_path(catalog.path_from_string(node.name))
         (NamespaceUpdater(namespace=self.namespace,
-                          parent_path=path,
                           module_path=self.module_path,
-                          is_nested=True)
+                          parent_path=path)
          .generic_visit(node))
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         return
 
     def resolve_path(self, path: catalog.Path) -> catalog.Path:
-        if self.is_nested:
-            return self.parent_path.join(path)
-        return path
+        return self.parent_path.join(path)
 
 
-def rectify_ifs(module_root: ast.Module,
+def flatten_ifs(module_root: ast.Module,
                 *,
-                namespace: Namespace,
+                module_path: catalog.Path,
                 source_path: Path) -> None:
-    namespace = namespace
-    source_path = source_path
+    namespace = construct_namespace(module_root, module_path)
     ast_nodes = [module_root]
     while ast_nodes:
         node = ast_nodes.pop()
@@ -927,37 +926,25 @@ def flat_module_ast_node_from_path(source_path: Path,
     return result
 
 
-def flatten_ifs(module_root: ast.Module,
-                *,
-                module_path: catalog.Path,
-                source_path: Path) -> None:
-    rectify_ifs(module_root,
-                namespace=construct_namespace(module_root, module_path),
-                source_path=source_path)
-
-
 def construct_namespace(module_ast_node: ast.Module,
                         module_path: catalog.Path) -> Namespace:
     result = builtins_namespace.copy()
     update_namespace = NamespaceUpdater(namespace=result,
                                         module_path=module_path,
-                                        parent_path=catalog.Path(),
-                                        is_nested=False).visit
-    for node in left_search_within_children(module_ast_node,
-                                            ast.If.__instancecheck__):
-        dependencies_names = {
+                                        parent_path=catalog.Path()).visit
+    for if_node in left_search_within_children(module_ast_node,
+                                               ast.If.__instancecheck__):
+        for dependency_name in {
             child.id
             for child in left_search_within_children(
-                    node.test, ast.Name.__instancecheck__
+                    if_node.test,
+                    lambda node: (isinstance(node, ast.Name)
+                                  and isinstance(node.ctx, ast.Load))
             )
-            if isinstance(child.ctx, ast.Load)
-        }
-        while dependencies_names:
-            dependency_name = dependencies_names.pop()
-            dependency_node = next(
-                    right_search_within_children(module_ast_node,
-                                                 partial(node_has_name,
-                                                         name=dependency_name))
+        }:
+            dependency_node = right_find_within_children(
+                    module_ast_node,
+                    lambda node: dependency_name in node_to_names(node)
             )
             update_namespace(dependency_node)
     return result
@@ -993,32 +980,32 @@ def class_def_or_function_def_to_name(node: ast.AST) -> t.List[str]:
 @node_to_names.register(ast.Import)
 @node_to_names.register(ast.ImportFrom)
 def import_or_import_from_to_name(node: ast.Import) -> t.List[str]:
-    result = []
-    for name_alias in node.names:
-        result.append(to_alias_string(name_alias))
-    return result
+    return [to_alias_string(alias) for alias in node.names]
 
 
-def left_search_within_children(node: ast.AST,
-                                condition: t.Callable[
-                                    [ast.AST], bool]) -> t.Iterable:
-    children = deque(ast.iter_child_nodes(node))
-    while children:
-        child = children.popleft()
-        if condition(child):
-            yield child
+def left_search_within_children(
+        node: ast.AST, condition: t.Callable[[ast.AST], bool]
+) -> t.Iterable[ast.AST]:
+    candidates = deque(ast.iter_child_nodes(node))
+    while candidates:
+        candidate = candidates.popleft()
+        if condition(candidate):
+            yield candidate
         else:
-            children.extend(ast.iter_child_nodes(child))
+            candidates.extend(ast.iter_child_nodes(candidate))
 
 
-def right_search_within_children(node, condition):
-    children = deque(ast.iter_child_nodes(node))
-    while children:
-        child = children.pop()
-        if condition(child):
-            yield child
+def right_find_within_children(
+        node: ast.AST, condition: t.Callable[[ast.AST], bool]
+) -> t.Optional[ast.AST]:
+    candidates = deque(ast.iter_child_nodes(node))
+    while candidates:
+        candidate = candidates.pop()
+        if condition(candidate):
+            return candidate
         else:
-            children.extendleft(ast.iter_child_nodes(child))
+            candidates.extendleft(ast.iter_child_nodes(candidate))
+    return None
 
 
 _builtins_node = _import_module_node(catalog.BUILTINS_MODULE_PATH)
