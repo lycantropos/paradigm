@@ -1,5 +1,4 @@
 import importlib
-import platform
 import sys
 import types
 import warnings
@@ -77,7 +76,7 @@ methods_descriptors: Set[types.MethodDescriptorType] = set()
 wrappers_descriptors: Set[types.WrapperDescriptorType] = set()
 
 if sys.platform == 'linux':
-    if platform.python_implementation() == 'PyPy':
+    if sys.implementation.name == 'pypy':
         _load_and_update(classes, '_cffi_backend', ['FFI',
                                                     'buffer'])
         _load_and_update(classes, '_collections', ['deque_iterator',
@@ -553,7 +552,7 @@ if sys.platform == 'linux':
                              'types', ['UnionType.__instancecheck__',
                                        'UnionType.__subclasscheck__'])
 elif sys.platform == 'darwin':
-    if platform.python_implementation() == 'PyPy':
+    if sys.implementation.name == 'pypy':
         _load_and_update(classes, '_cffi_backend', ['FFI',
                                                     'buffer'])
         _load_and_update(classes, '_collections', ['deque_iterator',
@@ -1037,7 +1036,7 @@ elif sys.platform == 'darwin':
                              'types', ['UnionType.__instancecheck__',
                                        'UnionType.__subclasscheck__'])
 elif sys.platform == 'win32':
-    if platform.python_implementation() == 'PyPy':
+    if sys.implementation.name == 'pypy':
         _load_and_update(classes, '_cffi_backend', ['FFI',
                                                     'buffer'])
         _load_and_update(classes, '_collections', ['deque_iterator',
@@ -1509,13 +1508,13 @@ elif sys.platform == 'win32':
                                    'CoroutineType.__del__',
                                    'GeneratorType.__del__'])
 
-        if platform.architecture()[0] == '32bit':
+        if sys.maxsize == 0x100000000:
             _load_and_update(methods_descriptors,
                              'decimal', ['Context._unsafe_setemax',
                                          'Context._unsafe_setemin',
                                          'Context._unsafe_setprec'])
 
-        if platform.architecture()[0] != '32bit' or sys.version_info < (3, 9):
+        if sys.maxsize > 0x100000000 or sys.version_info < (3, 9):
             _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
             _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
 
@@ -1538,9 +1537,8 @@ elif sys.platform == 'win32':
                              'lzma', ['LZMACompressor.__getstate__',
                                       'LZMADecompressor.__getstate__'])
 
-            if platform.architecture()[0] == '32bit':
-                _load_and_add(methods_descriptors,
-                              'decimal', 'Context._apply')
+            if sys.maxsize == 0x100000000:
+                _load_and_add(methods_descriptors, 'decimal', 'Context._apply')
         else:
             _load_and_update(built_in_functions,
                              '_xxsubinterpreters', ['_channel_id',
@@ -1617,7 +1615,7 @@ elif sys.platform == 'win32':
                              'types', ['UnionType.__instancecheck__',
                                        'UnionType.__subclasscheck__'])
 
-            if platform.architecture()[0] == '32bit':
+            if sys.maxsize == 0x100000000:
                 _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
             else:
                 _load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
