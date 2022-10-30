@@ -716,18 +716,18 @@ def _is_module_path(path: catalog.Path) -> bool:
 
 
 def _import_module_node(path: catalog.Path) -> Node:
-    try:
-        return _graph[path]
-    except KeyError:
-        assert len(path.parts) > 0, path
-        sub_path = catalog.Path()
-        for part in path.parts:
-            sub_path = sub_path.suffix(part)
+    assert len(path.parts) > 0, path
+    sub_path = catalog.Path()
+    for part in path.parts:
+        sub_path = sub_path.suffix(part)
+        try:
+            result = _graph[sub_path]
+        except KeyError:
             result = _graph[sub_path] = Node(
                     sources.from_module_path(sub_path), sub_path,
                     catalog.Path(), NodeKind.MODULE_IMPORT, []
             )
-        return result
+    return result
 
 
 @singledispatch
