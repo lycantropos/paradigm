@@ -224,7 +224,11 @@ if sys.platform == 'linux':
 
         _load_and_update(classes, '_collections', ['_deque_iterator',
                                                    '_deque_reverse_iterator'])
-        _load_and_add(classes, 'asyncio.events', '_RunningLoop')
+        _load_and_update(
+                classes,
+                'asyncio.events', ['BaseDefaultEventLoopPolicy._Local',
+                                   '_RunningLoop']
+        )
         _load_and_add(classes, 'csv', '_Dialect')
         _load_and_add(classes, 'ctypes', '_CFuncPtr')
         _load_and_update(classes, 'ctypes._endian', ['_array_type',
@@ -358,6 +362,7 @@ if sys.platform == 'linux':
         _load_and_add(classes,
                       'multiprocessing.process', 'AuthenticationString')
         _load_and_add(classes, 'runpy', '_Error')
+        _load_and_add(classes, 'selectors', 'DefaultSelector._selector_cls')
         _load_and_add(classes, 'socket', '_GiveupOnSendfile')
         _load_and_add(classes, 'ssl', '_SSLContext')
         _load_and_update(classes, 'tarfile', ['EOFHeaderError',
@@ -503,6 +508,27 @@ if sys.platform == 'linux':
                          'types', ['AsyncGeneratorType.__del__',
                                    'CoroutineType.__del__',
                                    'GeneratorType.__del__'])
+
+        if sys.byteorder == 'little':
+            _load_and_update(classes,
+                             'ctypes', ['c_double.__ctype_be__',
+                                        'c_float.__ctype_be__',
+                                        'c_int16.__ctype_be__',
+                                        'c_int32.__ctype_be__',
+                                        'c_int64.__ctype_be__',
+                                        'c_uint16.__ctype_be__',
+                                        'c_uint32.__ctype_be__',
+                                        'c_uint64.__ctype_be__'])
+        elif sys.byteorder == 'big':
+            _load_and_update(classes,
+                             'ctypes', ['c_double.__ctype_le__',
+                                        'c_float.__ctype_le__',
+                                        'c_int16.__ctype_le__',
+                                        'c_int32.__ctype_le__',
+                                        'c_int64.__ctype_le__',
+                                        'c_uint16.__ctype_le__',
+                                        'c_uint32.__ctype_le__',
+                                        'c_uint64.__ctype_le__'])
 
         if sys.version_info < (3, 8):
             _load_and_add(classes, 'macpath', 'norm_error')
@@ -675,10 +701,6 @@ elif sys.platform == 'darwin':
                                                          'exit_thread',
                                                          'start_new'])
         _load_and_add(built_in_functions, 'ctypes', '_dlopen')
-        _load_and_add(
-                built_in_functions,
-                'ctypes.macholib.dyld', '_dyld_shared_cache_contains_path'
-        )
         _load_and_update(built_in_functions,
                          'faulthandler', ['_fatal_error_c_thread',
                                           '_read_null',
@@ -709,10 +731,16 @@ elif sys.platform == 'darwin':
                                                      'tcsetattr'])
         _load_and_add(built_in_functions, 'warnings', '_filters_mutated')
         _load_and_add(built_in_functions, 'xxsubtype', 'bench')
+        _load_and_add(built_in_functions,
+                      'socketserver', '_ServerSelector._selector_cls')
 
         _load_and_update(classes, '_collections', ['_deque_iterator',
                                                    '_deque_reverse_iterator'])
-        _load_and_add(classes, 'asyncio.events', '_RunningLoop')
+        _load_and_update(
+                classes,
+                'asyncio.events', ['_RunningLoop',
+                                   'BaseDefaultEventLoopPolicy._Local']
+        )
         _load_and_add(classes, 'csv', '_Dialect')
         _load_and_add(classes, 'ctypes', '_CFuncPtr')
         _load_and_update(classes, 'ctypes._endian', ['_array_type',
@@ -987,6 +1015,27 @@ elif sys.platform == 'darwin':
                                    'CoroutineType.__del__',
                                    'GeneratorType.__del__'])
 
+        if sys.byteorder == 'little':
+            _load_and_update(classes,
+                             'ctypes', ['c_double.__ctype_be__',
+                                        'c_float.__ctype_be__',
+                                        'c_int16.__ctype_be__',
+                                        'c_int32.__ctype_be__',
+                                        'c_int64.__ctype_be__',
+                                        'c_uint16.__ctype_be__',
+                                        'c_uint32.__ctype_be__',
+                                        'c_uint64.__ctype_be__'])
+        elif sys.byteorder == 'big':
+            _load_and_update(classes,
+                             'ctypes', ['c_double.__ctype_le__',
+                                        'c_float.__ctype_le__',
+                                        'c_int16.__ctype_le__',
+                                        'c_int32.__ctype_le__',
+                                        'c_int64.__ctype_le__',
+                                        'c_uint16.__ctype_le__',
+                                        'c_uint32.__ctype_le__',
+                                        'c_uint64.__ctype_le__'])
+
         if sys.version_info < (3, 8):
             _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
             _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
@@ -1006,10 +1055,16 @@ elif sys.platform == 'darwin':
                              'lzma', ['LZMACompressor.__getstate__',
                                       'LZMADecompressor.__getstate__'])
         else:
+            _load_and_add(
+                    built_in_functions,
+                    'ctypes.macholib.dyld', '_dyld_shared_cache_contains_path'
+            )
             _load_and_add(built_in_functions, 'math', 'hypot')
             _load_and_add(built_in_functions, 'threading', 'excepthook')
 
             _load_and_add(classes, 'collections', '_tuplegetter')
+            _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
+            _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
             _load_and_add(classes, 'shutil', '_GiveupOnFastCopy')
 
             _load_and_add(methods_descriptors,
@@ -1017,8 +1072,6 @@ elif sys.platform == 'darwin':
         if sys.version_info < (3, 9):
             _load_and_add(classes, 'dataclasses', '_InitVarMeta')
         else:
-            _load_and_add(built_in_functions, 'ctypes.macholib.dyld',
-                          '_dyld_shared_cache_contains_path')
             _load_and_add(built_in_functions, 'sys', 'breakpointhook')
             _load_and_add(built_in_functions, 'uuid', '_generate_time_safe')
 
@@ -1037,8 +1090,8 @@ elif sys.platform == 'darwin':
         if sys.version_info < (3, 10):
             _load_and_add(built_in_functions, 'faulthandler', '_fatal_error')
         else:
-            _load_and_add(classes, 'importlib.metadata',
-                          'FreezableDefaultDict')
+            _load_and_add(classes,
+                          'importlib.metadata', 'FreezableDefaultDict')
             _load_and_add(classes, 'importlib.metadata._text', 'FoldedCase')
             _load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
             _load_and_add(classes, 'unittest.mock', 'InvalidSpecError')
