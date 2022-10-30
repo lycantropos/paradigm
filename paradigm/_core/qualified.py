@@ -37,13 +37,18 @@ def _decorate_if(decorator: Callable[[_T1], _T2],
 @name_from.register(types.BuiltinFunctionType)
 @_decorate_if(name_from.register(types.BuiltinMethodType),
               platform.python_implementation() != 'PyPy')
-def _(value: Union[types.BuiltinFunctionType,
-                   types.BuiltinMethodType]) -> Name:
-    return ((value.__self__.__module__, value.__qualname__)
-            if isinstance(value.__self__, type)
-            else ((value.__self__.__spec__.name, value.__qualname__)
-                  if isinstance(value.__self__, types.ModuleType)
-                  else (type(value.__self__).__module__, value.__qualname__)))
+def _(
+        value: Union[types.BuiltinFunctionType, types.BuiltinMethodType]
+) -> Name:
+    self = value.__self__
+    return ((self.__module__, value.__qualname__)
+            if isinstance(self, type)
+            else ((self.__name__
+                   if self.__spec__ is None
+                   else self.__spec__.name,
+                   value.__qualname__)
+                  if isinstance(self, types.ModuleType)
+                  else (None, value.__qualname__ if self is None else '')))
 
 
 @name_from.register(types.FunctionType)
