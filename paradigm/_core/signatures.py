@@ -1,5 +1,6 @@
 import ast as _ast
 import inspect as _inspect
+import sys as _sys
 import types as _types
 import typing as _t
 from functools import (partial as _partial,
@@ -79,32 +80,59 @@ def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
         else:
             qualified_paths = []
     else:
-        qualified_paths = [(_catalog.path_from_string(module_name),
-                            _catalog.path_from_string(object_name))
-                           for module_name, object_name in candidates_names]
-    _, result = min(
-            filter(_itemgetter(1),
-                   [_from_path(module_path, object_path)
-                    for module_path, object_path in qualified_paths]),
-            key=_itemgetter(0)
-    )
-    return result
+        qualified_paths = [
+            (_catalog.path_from_string(module_name),
+             _catalog.path_from_string(object_name))
+            for module_name, object_name in candidates_names
+            if _value_has_qualified_name(value, module_name, object_name)
+        ]
+    candidates = [_from_node(node)
+                  for node in [_arboreal.find_node(module_path, object_path)
+                               for module_path, object_path in qualified_paths]
+                  if node is not None]
+    _, node = min(candidates,
+                  key=_itemgetter(0))
+    assert node.kind is _arboreal.NodeKind.FUNCTION, (module_name, object_name)
+    return _OverloadedSignature(*[_from_ast(ast_node.args)
+                                  for ast_node in node.ast_nodes])
 
 
-def _from_path(
-        module_path: _catalog.Path, object_path: _catalog.Path
-) -> _t.Tuple[int, _t.Optional[_Signature]]:
-    try:
-        depth, nodes = _arboreal.to_functions_defs(module_path, object_path)
-    except KeyError:
-        return -1, None
+def _value_has_qualified_name(value: _t.Any,
+                              module_name: str,
+                              object_name: str) -> bool:
+    if module_name not in _sys.modules:
+        # undecidable, let's keep it
+        return True
+    candidate = _sys.modules[module_name]
+    for part in object_name.split(_catalog.Path.SEPARATOR):
+        try:
+            candidate = getattr(candidate, part)
+        except AttributeError:
+            return False
+    return candidate is value
+
+
+def _from_node(object_node: _arboreal.Node,
+               *,
+               constructor_name: str = object.__new__.__name__,
+               initializer_name: str = object.__init__.__name__):
+    if object_node.kind is _arboreal.NodeKind.CLASS:
+        initializer_depth, initializer_node = object_node.locate_name(
+                initializer_name
+        )
+        constructor_depth, constructor_node = object_node.locate_name(
+                constructor_name
+        )
+        return ((constructor_depth, constructor_node)
+                if constructor_depth < initializer_depth
+                else (initializer_depth, initializer_node))
+    elif object_node.kind is _arboreal.NodeKind.FUNCTION:
+        return 0, object_node
     else:
-        assert len(nodes) > 0 or depth == -1
-        return ((depth,
-                 _OverloadedSignature(*[_from_ast(node.args)
-                                        for node in nodes]))
-                if nodes
-                else (-1, None))
+        assert (
+                object_node.kind is not _arboreal.NodeKind.UNDEFINED
+        ), object_node
+        return -1, None
 
 
 def _from_raw_signature(object_: _inspect.Signature) -> _Signature:
