@@ -1,7 +1,6 @@
 import importlib.machinery
 import math
 import os
-import platform
 import sys
 from collections import deque
 from itertools import chain
@@ -72,7 +71,7 @@ _recursively_update_modules_names(unsupported_stdlib_modules_names,
                                   'turtle',
                                   'turtledemo')
 
-if platform.python_implementation() == 'PyPy':
+if sys.implementation.name == 'pypy':
     _recursively_update_modules_names(unsupported_stdlib_modules_names,
                                       '_crypt',
                                       '_curses_build',
