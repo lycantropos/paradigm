@@ -86,10 +86,16 @@ def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
             for module_name, object_name in candidates_names
             if _value_has_qualified_name(value, module_name, object_name)
         ]
-    candidates = [_from_node(node)
-                  for node in [_arboreal.find_node(module_path, object_path)
-                               for module_path, object_path in qualified_paths]
-                  if node is not None]
+    candidates = [
+        (depth, node)
+        for depth, node in [
+            _from_node(node)
+            for node in [_arboreal.find_node(module_path, object_path)
+                         for module_path, object_path in qualified_paths]
+            if node is not None
+        ]
+        if node is not None
+    ]
     _, node = min(candidates,
                   key=_itemgetter(0))
     assert node.kind is _arboreal.NodeKind.FUNCTION, (module_name, object_name)
