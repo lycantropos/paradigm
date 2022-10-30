@@ -1,5 +1,6 @@
 import ast as _ast
 import inspect as _inspect
+import sys as _sys
 import types as _types
 import typing as _t
 from functools import (partial as _partial,
@@ -83,19 +84,38 @@ def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
             (_catalog.path_from_string(module_name),
              _catalog.path_from_string(object_name))
             for module_name, object_name in candidates_names
+            if _value_has_qualified_name(value, module_name, object_name)
         ]
-    candidates_nodes = [_arboreal.find_node(module_path, object_path)
-                        for module_path, object_path in qualified_paths]
-    candidates = [(depth, node)
-                  for depth, node in [_from_node(node)
-                                      for node in candidates_nodes
-                                      if node is not None]
-                  if node is not None]
+    candidates = [
+        (depth, node)
+        for depth, node in [
+            _from_node(node)
+            for node in [_arboreal.find_node(module_path, object_path)
+                         for module_path, object_path in qualified_paths]
+            if node is not None
+        ]
+        if node is not None
+    ]
     _, node = min(candidates,
                   key=_itemgetter(0))
     assert node.kind is _arboreal.NodeKind.FUNCTION, (module_name, object_name)
     return _OverloadedSignature(*[_from_ast(ast_node.args)
                                   for ast_node in node.ast_nodes])
+
+
+def _value_has_qualified_name(value: _t.Any,
+                              module_name: str,
+                              object_name: str) -> bool:
+    if module_name not in _sys.modules:
+        # undecidable, let's keep it
+        return True
+    candidate = _sys.modules[module_name]
+    for part in object_name.split(_catalog.Path.SEPARATOR):
+        try:
+            candidate = getattr(candidate, part)
+        except AttributeError:
+            return False
+    return candidate is value
 
 
 def _from_node(object_node: _arboreal.Node,
