@@ -23,6 +23,18 @@ class Path:
         return self
 
     @property
+    def final_name(self) -> str:
+        return self._parts[-1]
+
+    @property
+    def first_name(self) -> str:
+        return self._parts[0]
+
+    @property
+    def parent(self) -> 'Path':
+        return type(self)(*self._parts[:-1])
+
+    @property
     def parts(self) -> Tuple[str, ...]:
         return self._parts
 
@@ -41,14 +53,12 @@ class Path:
     def __hash__(self) -> int:
         return hash(self._parts)
 
-    def join(self, other: 'Path') -> 'Path':
-        if not isinstance(other, Path):
-            return NotImplemented
-        return type(self)(*self._parts, *other._parts)
+    def suffix(self, part: str) -> 'Path':
+        return type(self)(*self._parts, part)
 
-    @property
-    def parent(self) -> 'Path':
-        return type(self)(*self._parts[:-1])
+    def join(self, other: 'Path') -> 'Path':
+        assert isinstance(other, Path), other
+        return type(self)(*self._parts, *other._parts)
 
     def with_parent(self, parent: 'Path') -> 'Path':
         return type(self)(*parent._parts, *self._parts[len(parent._parts):])

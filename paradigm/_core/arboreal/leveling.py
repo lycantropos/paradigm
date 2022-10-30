@@ -215,7 +215,7 @@ class Node:
                     self._resolve_object_path().parent
             )
             if parent._resolve_kind() is NodeKind.CLASS:
-                final_name = self._resolve_object_path().parts[-1]
+                final_name = self._resolve_object_path().final_name
                 try:
                     node = parent._local_lookup_name(final_name)
                     if node is self:
@@ -256,15 +256,15 @@ class Node:
             return self.global_lookup_name(name)
         except NameLookupError:
             result = Node(self._resolve_stub_path(),
-                          self._resolve_module_path(),
-                          catalog.Path(name), NodeKind.UNDEFINED, [])
+                          self._resolve_module_path(), catalog.Path(name),
+                          NodeKind.UNDEFINED, [])
             _import_module_node(self._resolve_module_path())._set_name(name,
                                                                        result)
             return result
 
     def _global_lookup_path_inserting_default(self,
                                               path: catalog.Path) -> 'Node':
-        result = self._global_lookup_name_inserting_default(path.parts[0])
+        result = self._global_lookup_name_inserting_default(path.first_name)
         for part in path.parts[1:]:
             result = result._local_lookup_name_inserting_default(part)
         return result
@@ -288,7 +288,7 @@ class Node:
         except NameLookupError:
             result = Node(
                     self._resolve_stub_path(), self._resolve_module_path(),
-                    self._resolve_object_path().join(catalog.Path(name)),
+                    self._resolve_object_path().suffix(name),
                     NodeKind.UNDEFINED, []
             )
             self._set_name(name, result)
@@ -347,13 +347,13 @@ class Node:
         node = (self._local_lookup_path_inserting_default(path.parent)
                 if len(path.parts) > 1
                 else self)
-        node._set_name(path.parts[-1], value)
+        node._set_name(path.final_name, value)
 
     def _upsert_path(self, path: catalog.Path, value: 'Node') -> None:
         node = (self._global_lookup_path_inserting_default(path.parent)
                 if len(path.parts) > 1
                 else self)
-        node._upsert_name(path.parts[-1], value)
+        node._upsert_name(path.final_name, value)
 
     def _upsert_name(self, name: str, value: 'Node') -> None:
         assert catalog.Path.SEPARATOR not in name, name
@@ -547,8 +547,8 @@ class Node:
             for alias in ast_node.names:
                 submodule_name = alias.name
                 assert submodule_name != catalog.WILDCARD_IMPORT_NAME
-                submodule_path = self._resolve_module_path().join(
-                        catalog.Path(submodule_name)
+                submodule_path = self._resolve_module_path().suffix(
+                        submodule_name
                 )
                 submodule_node = _import_module_node(submodule_path)
                 assert (
@@ -564,8 +564,7 @@ class Node:
                     module_node.resolve()
                     self._append(module_node)
                 else:
-                    actual_path = catalog.Path(actual_name)
-                    candidate_module_path = module_path.join(actual_path)
+                    candidate_module_path = module_path.suffix(actual_name)
                     if _is_module_path(candidate_module_path):
                         imported_node = _import_module_node(
                                 candidate_module_path
@@ -751,9 +750,7 @@ def _(ast_node: ast.Name) -> catalog.Path:
 @_resolve_base_class_path.register(ast.Attribute)
 def _(ast_node: ast.Attribute) -> catalog.Path:
     assert isinstance(ast_node.ctx, ast.Load), ast_node
-    return _resolve_base_class_path(ast_node.value).join(
-            catalog.Path(ast_node.attr)
-    )
+    return _resolve_base_class_path(ast_node.value).suffix(ast_node.attr)
 
 
 @singledispatch
@@ -770,9 +767,7 @@ def _(ast_node: ast.Name) -> catalog.Path:
 @_resolve_assignment_target.register(ast.Attribute)
 def _(ast_node: ast.Attribute) -> catalog.Path:
     assert isinstance(ast_node.ctx, ast.Store), ast_node
-    return _resolve_assignment_target(ast_node.value).join(
-            catalog.Path(ast_node.attr)
-    )
+    return _resolve_assignment_target(ast_node.value).suffix(ast_node.attr)
 
 
 def to_parent_module_path(object_: ast.ImportFrom,
@@ -808,9 +803,9 @@ class NamespaceUpdater(ast.NodeVisitor):
     def visit_Import(self, node: ast.Import) -> None:
         for name_alias in node.names:
             actual_path = to_actual_path(name_alias)
-            parent_module_name = actual_path.parts[0]
-            module = importlib.import_module(parent_module_name)
-            self.namespace[parent_module_name] = module
+            top_module_name = actual_path.first_name
+            module = importlib.import_module(top_module_name)
+            self.namespace[top_module_name] = module
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         parent_module_path = to_parent_module_path(
