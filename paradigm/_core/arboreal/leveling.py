@@ -720,10 +720,14 @@ def _import_module_node(path: catalog.Path) -> Node:
     try:
         return _graph[path]
     except KeyError:
-        result = _graph[path] = Node(
-                sources.from_module_path(path), path, catalog.Path(),
-                NodeKind.MODULE_IMPORT, []
-        )
+        assert len(path.parts) > 0, path
+        sub_path = catalog.Path()
+        for part in path.parts:
+            sub_path = sub_path.suffix(part)
+            result = _graph[sub_path] = Node(
+                    sources.from_module_path(sub_path), sub_path,
+                    catalog.Path(), NodeKind.MODULE_IMPORT, []
+            )
         return result
 
 
