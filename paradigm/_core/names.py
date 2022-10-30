@@ -1,5 +1,4 @@
 import inspect as _inspect
-import platform as _platform
 import sys as _sys
 import typing as _t
 from importlib import import_module as _import_module
@@ -10,8 +9,8 @@ _QualifiedNames = _t.Dict[_t.Optional[str],
                           _t.Dict[str, _t.List[_t.Tuple[str, str]]]]
 
 _CACHE_PATH = _Path(__file__).with_name(
-        '_' + _platform.system().lower()
-        + '_' + _platform.python_implementation().lower()
+        '_' + _sys.platform
+        + '_' + _sys.implementation.name
         + '_' + '_'.join(map(str, _sys.version_info))
         + '_' + _Path(__file__).name
 )
