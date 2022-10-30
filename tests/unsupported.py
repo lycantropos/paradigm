@@ -121,7 +121,6 @@ if sys.platform == 'linux':
                                                  'PkgConfigError',
                                                  'VerificationError',
                                                  'VerificationMissing'])
-        _load_and_add(classes, 'dataclasses', '_InitVarMeta')
         _load_and_update(classes, 'datetime', ['dateinterop',
                                                'deltainterop',
                                                'timeinterop'])
@@ -205,11 +204,14 @@ if sys.platform == 'linux':
                                           'c_encode_basestring_ascii',
                                           'encode_basestring',
                                           'encode_basestring_ascii'])
-        _load_and_add(built_in_functions, 'locale', '_setlocale')
+        _load_and_update(built_in_functions, 'locale', ['_localeconv',
+                                                        '_setlocale'])
         _load_and_add(built_in_functions,
                       'multiprocessing.synchronize', 'sem_unlink')
         _load_and_add(built_in_functions, 'pty', 'select')
         _load_and_add(built_in_functions, 'random', '_log')
+        _load_and_add(built_in_functions,
+                      'selectors', 'PollSelector._selector_cls')
         _load_and_add(built_in_functions, 'threading', '_set_sentinel')
         _load_and_update(built_in_functions, 'tty', ['tcdrain',
                                                      'tcflow',
@@ -376,30 +378,6 @@ if sys.platform == 'linux':
                                  '_deque_reverse_iterator.__length_hint__',
                                  '_deque_reverse_iterator.__reduce__']
         )
-        _load_and_update(methods_descriptors, '_io', ['_BufferedIOBase.read',
-                                                      '_BufferedIOBase.read1',
-                                                      '_BufferedIOBase.write',
-                                                      '_IOBase.__enter__',
-                                                      '_IOBase.__exit__',
-                                                      '_IOBase._checkClosed',
-                                                      '_IOBase._checkReadable',
-                                                      '_IOBase._checkSeekable',
-                                                      '_IOBase._checkWritable',
-                                                      '_IOBase.seek',
-                                                      '_IOBase.truncate',
-                                                      '_RawIOBase.readinto',
-                                                      '_RawIOBase.write',
-                                                      '_TextIOBase.detach',
-                                                      '_TextIOBase.read',
-                                                      '_TextIOBase.readline',
-                                                      '_TextIOBase.write'])
-        _load_and_update(methods_descriptors,
-                         '_thread', ['LockType.acquire_lock',
-                                     'LockType.locked_lock',
-                                     'LockType.release_lock'])
-        _load_and_update(methods_descriptors,
-                         'builtins', ['complex.__getnewargs__',
-                                      'reversed.__setstate__'])
         _load_and_update(
                 methods_descriptors,
                 '_collections_abc', ['bytearray_iterator.__length_hint__',
@@ -434,6 +412,30 @@ if sys.platform == 'linux':
                                      'tuple_iterator.__reduce__',
                                      'tuple_iterator.__setstate__']
         )
+        _load_and_update(methods_descriptors, '_io', ['_BufferedIOBase.read',
+                                                      '_BufferedIOBase.read1',
+                                                      '_BufferedIOBase.write',
+                                                      '_IOBase.__enter__',
+                                                      '_IOBase.__exit__',
+                                                      '_IOBase._checkClosed',
+                                                      '_IOBase._checkReadable',
+                                                      '_IOBase._checkSeekable',
+                                                      '_IOBase._checkWritable',
+                                                      '_IOBase.seek',
+                                                      '_IOBase.truncate',
+                                                      '_RawIOBase.readinto',
+                                                      '_RawIOBase.write',
+                                                      '_TextIOBase.detach',
+                                                      '_TextIOBase.read',
+                                                      '_TextIOBase.readline',
+                                                      '_TextIOBase.write'])
+        _load_and_update(methods_descriptors,
+                         '_thread', ['LockType.acquire_lock',
+                                     'LockType.locked_lock',
+                                     'LockType.release_lock'])
+        _load_and_update(methods_descriptors,
+                         'builtins', ['complex.__getnewargs__',
+                                      'reversed.__setstate__'])
         _load_and_add(methods_descriptors,
                       'ctypes', '_SimpleCData.__ctypes_from_outparam__')
         _load_and_update(
@@ -446,7 +448,9 @@ if sys.platform == 'linux':
         )
         _load_and_add(methods_descriptors,
                       'datetime', 'timezone.__getinitargs__')
-        _load_and_add(methods_descriptors, 'decimal', 'Context._apply')
+        _load_and_update(methods_descriptors,
+                         'decimal', ['Context._apply',
+                                     'Decimal.__sizeof__'])
         _load_and_add(methods_descriptors, 'functools', 'partial.__setstate__')
         _load_and_update(methods_descriptors,
                          'io', ['BufferedRandom._dealloc_warn',
@@ -540,6 +544,8 @@ if sys.platform == 'linux':
         if sys.version_info < (3, 10):
             _load_and_add(built_in_functions, 'faulthandler', '_fatal_error')
         else:
+            _load_and_add(methods_descriptors,
+                          'collections', 'deque.__reversed__')
             _load_and_add(classes,
                           'importlib.metadata', 'FreezableDefaultDict')
             _load_and_add(classes, 'importlib.metadata._text', 'FoldedCase')
@@ -597,7 +603,6 @@ elif sys.platform == 'darwin':
                                                  'PkgConfigError',
                                                  'VerificationError',
                                                  'VerificationMissing'])
-        _load_and_add(classes, 'dataclasses', '_InitVarMeta')
         _load_and_update(classes, 'datetime', ['dateinterop',
                                                'deltainterop',
                                                'timeinterop'])
@@ -655,6 +660,9 @@ elif sys.platform == 'darwin':
             _load_and_add(classes, '_collections_abc', 'EllipsisType')
             _load_and_add(classes, 'unittest.mock', '_AnyComparer')
     else:
+        _load_and_add(built_in_functions, 'locale', '_localeconv')
+        _load_and_update(built_in_functions, 'sys', ['__breakpointhook__',
+                                                     'breakpointhook'])
         _load_and_update(built_in_functions,
                          'urllib.request', ['_get_proxies',
                                             '_get_proxy_settings'])
@@ -667,6 +675,10 @@ elif sys.platform == 'darwin':
                                                          'exit_thread',
                                                          'start_new'])
         _load_and_add(built_in_functions, 'ctypes', '_dlopen')
+        _load_and_add(
+                built_in_functions,
+                'ctypes.macholib.dyld', '_dyld_shared_cache_contains_path'
+        )
         _load_and_update(built_in_functions,
                          'faulthandler', ['_fatal_error_c_thread',
                                           '_read_null',
@@ -851,30 +863,6 @@ elif sys.platform == 'darwin':
                                  '_deque_reverse_iterator.__length_hint__',
                                  '_deque_reverse_iterator.__reduce__']
         )
-        _load_and_update(methods_descriptors, '_io', ['_BufferedIOBase.read',
-                                                      '_BufferedIOBase.read1',
-                                                      '_BufferedIOBase.write',
-                                                      '_IOBase.__enter__',
-                                                      '_IOBase.__exit__',
-                                                      '_IOBase._checkClosed',
-                                                      '_IOBase._checkReadable',
-                                                      '_IOBase._checkSeekable',
-                                                      '_IOBase._checkWritable',
-                                                      '_IOBase.seek',
-                                                      '_IOBase.truncate',
-                                                      '_RawIOBase.readinto',
-                                                      '_RawIOBase.write',
-                                                      '_TextIOBase.detach',
-                                                      '_TextIOBase.read',
-                                                      '_TextIOBase.readline',
-                                                      '_TextIOBase.write'])
-        _load_and_update(methods_descriptors,
-                         '_thread', ['LockType.acquire_lock',
-                                     'LockType.locked_lock',
-                                     'LockType.release_lock'])
-        _load_and_update(methods_descriptors,
-                         'builtins', ['complex.__getnewargs__',
-                                      'reversed.__setstate__'])
         _load_and_update(
                 methods_descriptors,
                 '_collections_abc', ['bytearray_iterator.__length_hint__',
@@ -909,6 +897,30 @@ elif sys.platform == 'darwin':
                                      'tuple_iterator.__reduce__',
                                      'tuple_iterator.__setstate__']
         )
+        _load_and_update(methods_descriptors, '_io', ['_BufferedIOBase.read',
+                                                      '_BufferedIOBase.read1',
+                                                      '_BufferedIOBase.write',
+                                                      '_IOBase.__enter__',
+                                                      '_IOBase.__exit__',
+                                                      '_IOBase._checkClosed',
+                                                      '_IOBase._checkReadable',
+                                                      '_IOBase._checkSeekable',
+                                                      '_IOBase._checkWritable',
+                                                      '_IOBase.seek',
+                                                      '_IOBase.truncate',
+                                                      '_RawIOBase.readinto',
+                                                      '_RawIOBase.write',
+                                                      '_TextIOBase.detach',
+                                                      '_TextIOBase.read',
+                                                      '_TextIOBase.readline',
+                                                      '_TextIOBase.write'])
+        _load_and_update(methods_descriptors,
+                         '_thread', ['LockType.acquire_lock',
+                                     'LockType.locked_lock',
+                                     'LockType.release_lock'])
+        _load_and_update(methods_descriptors,
+                         'builtins', ['complex.__getnewargs__',
+                                      'reversed.__setstate__'])
         _load_and_add(methods_descriptors,
                       'ctypes', '_SimpleCData.__ctypes_from_outparam__')
         _load_and_update(methods_descriptors,
@@ -919,7 +931,9 @@ elif sys.platform == 'darwin':
                                             '_array_type.in_dll'])
         _load_and_add(methods_descriptors,
                       'datetime', 'timezone.__getinitargs__')
-        _load_and_add(methods_descriptors, 'decimal', 'Context._apply')
+        _load_and_update(methods_descriptors,
+                         'decimal', ['Context._apply',
+                                     'Decimal.__sizeof__'])
         _load_and_add(methods_descriptors, 'functools', 'partial.__setstate__')
         _load_and_update(methods_descriptors,
                          'io', ['BufferedRandom._dealloc_warn',
@@ -1032,6 +1046,8 @@ elif sys.platform == 'darwin':
             _load_and_update(methods_descriptors,
                              'builtins', ['property.__set_name__',
                                           'zip.__setstate__'])
+            _load_and_add(methods_descriptors,
+                          'collections', 'deque.__reversed__')
             _load_and_update(methods_descriptors,
                              'types', ['UnionType.__instancecheck__',
                                        'UnionType.__subclasscheck__'])
