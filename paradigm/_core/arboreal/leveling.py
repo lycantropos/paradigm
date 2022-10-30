@@ -527,10 +527,13 @@ class Node:
     @_visit_names.register(ast.Import)
     def _(self, ast_node: ast.Import) -> None:
         for alias in ast_node.names:
-            module_import_node = _import_module_node(
-                    catalog.path_from_string(alias.name)
-            )
-            self._upsert_path(to_alias_path(alias), module_import_node)
+            module_path = catalog.path_from_string(alias.name)
+            module_import_node = _import_module_node(module_path)
+            if alias.asname is None:
+                self._upsert_path(module_path, module_import_node)
+            else:
+                assert isinstance(alias.asname, str), self
+                self._upsert_name(alias.asname, module_import_node)
 
     @_visit_names.register(ast.ImportFrom)
     def _(self, ast_node: ast.ImportFrom) -> None:
@@ -623,8 +626,8 @@ class Node:
             namesake_node = self._local_lookup_name(ast_node.name)
         except NameLookupError:
             node = Node(self._resolve_stub_path(), self._resolve_module_path(),
-                        catalog.Path(ast_node.name), NodeKind.FUNCTION,
-                        [ast_node])
+                        self._resolve_object_path().suffix(ast_node.name),
+                        NodeKind.FUNCTION, [ast_node])
             self._set_name(ast_node.name, node)
         else:
             if namesake_node._resolve_kind() is NodeKind.FUNCTION:
@@ -644,10 +647,11 @@ class Node:
                 ), self
                 namesake_node._ast_nodes.append(ast_node)
             else:
-                node = Node(self._resolve_stub_path(),
-                            self._resolve_module_path(),
-                            catalog.Path(ast_node.name), NodeKind.FUNCTION,
-                            [ast_node])
+                node = Node(
+                        self._resolve_stub_path(), self._resolve_module_path(),
+                        self._resolve_object_path().suffix(ast_node.name),
+                        NodeKind.FUNCTION, [ast_node]
+                )
                 self._upsert_name(ast_node.name, node)
 
     def _resolve_ast_nodes(self) -> t.List[ast.AST]:
@@ -813,8 +817,9 @@ class NamespaceUpdater(ast.NodeVisitor):
             alias_path = self.resolve_path(to_alias_path(name_alias))
             actual_path = to_actual_path(name_alias)
             if actual_path == catalog.WILDCARD_IMPORT_PATH:
-                self.namespace.update(namespaces
-                                      .from_module_path(parent_module_path))
+                self.namespace.update(
+                        namespaces.from_module_path(parent_module_path)
+                )
                 continue
             namespace = namespaces.from_module_path(parent_module_path)
             try:
