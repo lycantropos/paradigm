@@ -1135,7 +1135,11 @@ elif sys.platform == 'win32':
                                               'Structure'])
         _load_and_add(classes, '_rawffi.alt', '_StructDescr')
         _load_and_add(classes, 'ast', 'RevDBMetaVar')
-        _load_and_add(classes, 'asyncio.events', '_RunningLoop')
+        _load_and_update(
+                classes,
+                'asyncio.events', ['_RunningLoop',
+                                   'BaseDefaultEventLoopPolicy._Local']
+        )
         _load_and_add(classes, 'builtins', 'NoneType')
         _load_and_update(classes, 'cffi._pycparser.ply.yacc', ['GrammarError',
                                                                'LALRError',
@@ -1236,7 +1240,11 @@ elif sys.platform == 'win32':
         _load_and_update(built_in_functions,
                          'json.encoder', ['c_encode_basestring',
                                           'encode_basestring'])
-        _load_and_add(built_in_functions, 'locale', '_setlocale')
+        _load_and_update(built_in_functions, 'locale', ['_localeconv',
+                                                        '_setlocale'])
+        _load_and_update(built_in_functions,
+                         'multiprocessing.connection', ['Connection._read',
+                                                        'Connection._write'])
         _load_and_add(built_in_functions,
                       'multiprocessing.synchronize', 'sem_unlink')
         _load_and_add(built_in_functions, 'threading', '_set_sentinel')
@@ -1245,13 +1253,21 @@ elif sys.platform == 'win32':
 
         _load_and_update(classes, '_collections', ['_deque_iterator',
                                                    '_deque_reverse_iterator'])
+        _load_and_update(classes, '_io', ['_BufferedIOBase',
+                                          '_IOBase',
+                                          '_RawIOBase',
+                                          '_TextIOBase'])
         _load_and_add(classes, '_lsprof', 'Profiler')
         _load_and_update(classes,
                          '_multibytecodec', ['MultibyteIncrementalDecoder',
                                              'MultibyteIncrementalEncoder',
                                              'MultibyteStreamReader',
                                              'MultibyteStreamWriter'])
-        _load_and_add(classes, 'asyncio.events', '_RunningLoop')
+        _load_and_update(
+                classes,
+                'asyncio.events', ['_RunningLoop',
+                                   'BaseDefaultEventLoopPolicy._Local']
+        )
         _load_and_add(classes, 'ctypes', '_CFuncPtr')
         _load_and_update(classes, 'ctypes._endian', ['_array_type',
                                                      '_swapped_meta'])
@@ -1414,10 +1430,6 @@ elif sys.platform == 'win32':
                                                       'StreamReader',
                                                       'StreamWriter'])
         _load_and_add(classes, 'importlib._bootstrap', '_DeadlockError')
-        _load_and_update(classes, '_io', ['_BufferedIOBase',
-                                          '_IOBase',
-                                          '_RawIOBase',
-                                          '_TextIOBase'])
         _load_and_update(classes, 'itertools', ['_grouper',
                                                 '_tee',
                                                 '_tee_dataobject'])
@@ -1506,6 +1518,9 @@ elif sys.platform == 'win32':
                                             '_array_type.in_dll'])
         _load_and_add(methods_descriptors,
                       'datetime', 'timezone.__getinitargs__')
+        _load_and_update(methods_descriptors,
+                         'decimal', ['Context._apply',
+                                     'Decimal.__sizeof__'])
         _load_and_add(methods_descriptors, 'functools', 'partial.__setstate__')
         _load_and_update(methods_descriptors,
                          'io', ['BufferedRandom._dealloc_warn',
@@ -1577,15 +1592,38 @@ elif sys.platform == 'win32':
                                    'CoroutineType.__del__',
                                    'GeneratorType.__del__'])
 
-        if sys.maxsize == 0x100000000:
+        if sys.maxsize == 0x7fffffff:
             _load_and_update(methods_descriptors,
                              'decimal', ['Context._unsafe_setemax',
                                          'Context._unsafe_setemin',
                                          'Context._unsafe_setprec'])
 
-        if sys.maxsize > 0x100000000 or sys.version_info < (3, 9):
+        if sys.maxsize != 0x7fffffff or sys.version_info < (3, 9):
             _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
             _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
+
+        if sys.byteorder == 'little':
+            _load_and_update(classes,
+                             'ctypes', ['HRESULT.__ctype_be__',
+                                        'c_double.__ctype_be__',
+                                        'c_float.__ctype_be__',
+                                        'c_int16.__ctype_be__',
+                                        'c_int32.__ctype_be__',
+                                        'c_int64.__ctype_be__',
+                                        'c_uint16.__ctype_be__',
+                                        'c_uint32.__ctype_be__',
+                                        'c_uint64.__ctype_be__'])
+        elif sys.byteorder == 'big':
+            _load_and_update(classes,
+                             'ctypes', ['HRESULT.__ctype_le__',
+                                        'c_double.__ctype_le__',
+                                        'c_float.__ctype_le__',
+                                        'c_int16.__ctype_le__',
+                                        'c_int32.__ctype_le__',
+                                        'c_int64.__ctype_le__',
+                                        'c_uint16.__ctype_le__',
+                                        'c_uint32.__ctype_le__',
+                                        'c_uint64.__ctype_le__'])
 
         if sys.version_info < (3, 8):
             _load_and_add(classes, 'macpath', 'norm_error')
@@ -1605,9 +1643,6 @@ elif sys.platform == 'win32':
             _load_and_update(methods_descriptors,
                              'lzma', ['LZMACompressor.__getstate__',
                                       'LZMADecompressor.__getstate__'])
-
-            if sys.maxsize == 0x100000000:
-                _load_and_add(methods_descriptors, 'decimal', 'Context._apply')
         else:
             _load_and_update(built_in_functions,
                              '_xxsubinterpreters', ['_channel_id',
@@ -1641,7 +1676,6 @@ elif sys.platform == 'win32':
 
             _load_and_add(methods_descriptors,
                           'collections', '_tuplegetter.__reduce__')
-            _load_and_add(methods_descriptors, 'decimal', 'Context._apply')
 
         if sys.version_info < (3, 9):
             _load_and_add(classes, 'dataclasses', '_InitVarMeta')
@@ -1680,11 +1714,13 @@ elif sys.platform == 'win32':
             _load_and_update(methods_descriptors,
                              'builtins', ['property.__set_name__',
                                           'zip.__setstate__'])
+            _load_and_add(methods_descriptors,
+                          'collections', 'deque.__reversed__')
             _load_and_update(methods_descriptors,
                              'types', ['UnionType.__instancecheck__',
                                        'UnionType.__subclasscheck__'])
 
-            if sys.maxsize == 0x100000000:
+            if sys.maxsize == 0x7fffffff:
                 _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
             else:
                 _load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
