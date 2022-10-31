@@ -108,7 +108,11 @@ if sys.platform == 'linux':
         _load_and_add(classes, '_rawffi.alt', '_StructDescr')
         _load_and_add(classes, '_vmprof', 'VMProfError')
         _load_and_add(classes, 'ast', 'RevDBMetaVar')
-        _load_and_add(classes, 'asyncio.events', '_RunningLoop')
+        _load_and_update(
+                classes,
+                'asyncio.events', ['_RunningLoop',
+                                   'BaseDefaultEventLoopPolicy._Local']
+        )
         _load_and_add(classes, 'builtins', 'NoneType')
         _load_and_update(classes, 'cffi._pycparser.ply.yacc', ['GrammarError',
                                                                'LALRError',
@@ -176,7 +180,9 @@ if sys.platform == 'linux':
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
 
-        if sys.version_info >= (3, 9):
+        if sys.version_info < (3, 9):
+            _load_and_add(classes, 'dataclasses', '_InitVarMeta')
+        else:
             _load_and_add(classes, '_collections_abc', 'EllipsisType')
             _load_and_add(classes, 'unittest.mock', '_AnyComparer')
     else:
@@ -616,7 +622,11 @@ elif sys.platform == 'darwin':
         _load_and_add(classes, '_rawffi.alt', '_StructDescr')
         _load_and_add(classes, '_vmprof', 'VMProfError')
         _load_and_add(classes, 'ast', 'RevDBMetaVar')
-        _load_and_add(classes, 'asyncio.events', '_RunningLoop')
+        _load_and_update(
+                classes,
+                'asyncio.events', ['_RunningLoop',
+                                   'BaseDefaultEventLoopPolicy._Local']
+        )
         _load_and_add(classes, 'builtins', 'NoneType')
         _load_and_update(classes, 'cffi._pycparser.ply.yacc', ['GrammarError',
                                                                'LALRError',
@@ -682,7 +692,9 @@ elif sys.platform == 'darwin':
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
 
-        if sys.version_info >= (3, 9):
+        if sys.version_info < (3, 9):
+            _load_and_add(classes, 'dataclasses', '_InitVarMeta')
+        else:
             _load_and_add(classes, '_collections_abc', 'EllipsisType')
             _load_and_add(classes, 'unittest.mock', '_AnyComparer')
     else:
