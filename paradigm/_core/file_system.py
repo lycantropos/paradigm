@@ -11,10 +11,10 @@ from typing import (Iterator,
 INIT_MODULE_NAME = '__init__'
 
 
-def find_files(directory: Path) -> Iterator[Path]:
-    def to_paths(root: str, files: List[str]) -> Iterator[Path]:
+def find_files_paths(directory: Path) -> Iterator[Path]:
+    def to_files_paths(root: str, files: List[str]) -> Iterator[Path]:
         yield from map(truediv, repeat(Path(root)), files)
 
-    yield from chain.from_iterable(starmap(to_paths,
+    yield from chain.from_iterable(starmap(to_files_paths,
                                            map(itemgetter(0, 2),
                                                os.walk(str(directory)))))

@@ -1,8 +1,6 @@
 import inspect
 from pathlib import Path
-from types import ModuleType
 from typing import (Iterable,
-                    Optional,
                     Tuple)
 
 import mypy
@@ -17,16 +15,6 @@ class NotFound(Exception):
     pass
 
 
-def from_module(module: ModuleType) -> Path:
-    try:
-        return Path(module.__path__[0])
-    except AttributeError:
-        try:
-            return Path(inspect.getfile(module))
-        except Exception as error:
-            raise NotFound(module) from error
-
-
 def from_module_path(module_path: catalog.Path) -> Path:
     try:
         return _stubs_cache[module_path]
@@ -35,16 +23,18 @@ def from_module_path(module_path: catalog.Path) -> Path:
 
 
 def _generate_stubs_cache_items(
-        root: Path
+        root: Path = Path(mypy.__spec__.origin).parent / 'typeshed' / 'stdlib'
 ) -> Iterable[Tuple[catalog.Path, Path]]:
-    def to_module_path(stub: Path) -> catalog.Path:
+    assert root.exists(), root
+
+    def to_module_path(stub_path: Path) -> catalog.Path:
         return _relative_file_path_to_module_path(
-                stub.relative_to(root).with_suffix('.py')
+                stub_path.relative_to(root).with_suffix('.py')
         )
 
-    return [(to_module_path(file), file)
-            for file in file_system.find_files(root)
-            if _is_stub(file)]
+    return [(to_module_path(file_path), file_path)
+            for file_path in file_system.find_files_paths(root)
+            if _is_stub(file_path)]
 
 
 def _is_stub(path: Path) -> bool:
@@ -53,21 +43,12 @@ def _is_stub(path: Path) -> bool:
 
 def _relative_file_path_to_module_path(path: Path) -> catalog.Path:
     assert not path.is_absolute(), 'Path should be relative.'
-    *parts, module_file_name = path.parts
-
-    def to_module_name(file_name: str) -> Optional[str]:
-        if file_name == '.':
-            return None
-        result = inspect.getmodulename(file_name)
-        if result == file_system.INIT_MODULE_NAME:
-            return None
-        return result
-
-    module_name = to_module_name(module_file_name)
-    return (catalog.Path(*parts)
-            if module_name is None
-            else catalog.Path(*parts, module_name))
+    *parent_path, module_file_name = path
+    module_name = inspect.getmodulename(module_file_name)
+    return (parent_path
+            if (module_name is None
+                or module_name == file_system.INIT_MODULE_NAME)
+            else parent_path + (module_name,))
 
 
-_stubs_cache = dict(_generate_stubs_cache_items(from_module(mypy) / 'typeshed'
-                                                / 'stdlib'))
+_stubs_cache = dict(_generate_stubs_cache_items())
