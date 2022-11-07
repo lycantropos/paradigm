@@ -37,9 +37,9 @@ except Exception:
     import traceback as _traceback
     import types as _types
     import warnings as _warnings
-    from multiprocessing.queues import Queue as _Queue
 
-    from . import (exporting as _exporting,
+    from . import (execution as _execution,
+                   exporting as _exporting,
                    namespacing as _namespacing,
                    pretty as _pretty,
                    stubs as _stubs)
@@ -110,38 +110,7 @@ except Exception:
         return result
 
 
-    def _put_result_in_queue(queue: _Queue,
-                             function: _t.Callable[..., _t.Any],
-                             *args: _t.Any,
-                             **kwargs: _t.Any) -> None:
-        result = function(*args, **kwargs)
-        queue.put(result)
-
-
     if _current_process().name == 'MainProcess':
-        def _load_qualified_paths(
-                modules_names: _t.Iterable[str]
-        ) -> _QualifiedPaths:
-            if (getattr(_sys, 'ps1', None) is None
-                    and _Path(getattr(_sys.modules.get('__main__'), '__file__',
-                                      __file__)).exists()):
-                from multiprocessing import Process, get_context
-
-                context = get_context()
-                queue = context.Queue(1)
-                process = context.Process(
-                        target=_put_result_in_queue,
-                        name=_index_modules.__qualname__,
-                        args=(queue, _index_modules, modules_names)
-                )
-                process.start()
-                result = queue.get()
-                process.join()
-                return result
-            else:
-                return _index_modules(modules_names)
-
-
         def _to_supported_qualified_paths(
                 qualified_paths: _QualifiedPaths,
                 definitions: _t.Dict[_catalog.Path, _scoping.Scope],
@@ -175,7 +144,8 @@ except Exception:
 
 
         supported_stdlib_qualified_paths = _to_supported_qualified_paths(
-                _load_qualified_paths(_supported_stdlib_modules_paths),
+                _execution.try_in_process(_index_modules,
+                                          _supported_stdlib_modules_paths),
                 _stubs.definitions, _stubs.references, _stubs.sub_scopes
         )
         _exporting.save(

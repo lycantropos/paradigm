@@ -40,9 +40,9 @@ except Exception:
     import builtins as _builtins
     import warnings as _warnings
     from functools import singledispatch as _singledispatch
-    from multiprocessing.queues import Queue as _Queue
 
-    from . import (exporting as _exporting,
+    from . import (execution as _execution,
+                   exporting as _exporting,
                    pretty as _pretty)
     from .arboreal.leveling import (
         flat_module_ast_node_from_path as _flat_module_ast_node_from_path,
@@ -328,43 +328,9 @@ except Exception:
         return modules_definitions, modules_references, modules_sub_scopes
 
 
-    def _put_result_in_queue(queue: _Queue,
-                             function: _t.Callable[..., _t.Any],
-                             *args: _t.Any,
-                             **kwargs: _t.Any) -> None:
-        result = function(*args, **kwargs)
-        queue.put(result)
-
-
     if _current_process().name == 'MainProcess':
-        def _load_stubs_state(
-                modules_paths: _t.Iterable[_catalog.Path]
-        ) -> _t.Tuple[_t.Dict[_catalog.Path, _scoping.Scope],
-                      _t.Dict[_catalog.Path, _scoping.ModuleReferences],
-                      _t.Dict[_catalog.Path, _scoping.ModuleSubScopes]]:
-            import sys
-            if (getattr(sys, 'ps1', None) is None
-                    and _Path(getattr(sys.modules.get('__main__'), '__file__',
-                                      __file__)).exists()):
-                from multiprocessing import Process, get_context
-
-                context = get_context()
-                queue = context.Queue(1)
-                process = context.Process(
-                        target=_put_result_in_queue,
-                        name=_parse_stubs_state.__qualname__,
-                        args=(queue, _parse_stubs_state, modules_paths)
-                )
-                process.start()
-                result = queue.get()
-                process.join()
-                return result
-            else:
-                return _parse_stubs_state(modules_paths)
-
-
-        definitions, references, sub_scopes = _load_stubs_state(
-                _stdlib_modules_paths
+        definitions, references, sub_scopes = _execution.try_in_process(
+                _parse_stubs_state, _stdlib_modules_paths
         )
         _exporting.save(_CACHE_PATH, **{_DEFINITIONS_FIELD_NAME: definitions,
                                         _REFERENCES_FIELD_NAME: references,
