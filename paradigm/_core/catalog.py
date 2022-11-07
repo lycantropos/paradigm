@@ -87,12 +87,11 @@ def _(
 
 
 @_decorate_if(qualified_path_from.register(types.MemberDescriptorType),
-              sys.implementation.name != 'pypy')
+              sys.implementation.name == 'pypy')
 @_decorate_if(qualified_path_from.register(types.MethodWrapperType),
               sys.implementation.name != 'pypy')
 def _(
-        value: t.Union[types.MemberDescriptorType, types.MethodDescriptorType,
-                       types.MethodWrapperType, types.WrapperDescriptorType]
+        value: t.Union[types.MemberDescriptorType, types.MethodWrapperType]
 ) -> QualifiedPath:
     return (path_from_string(value.__objclass__.__module__),
             path_from_string(value.__qualname__))
@@ -100,11 +99,10 @@ def _(
 
 @_decorate_if(qualified_path_from.register(types.MemberDescriptorType),
               sys.implementation.name == 'pypy')
-def _(
-        value: types.MemberDescriptorType
-) -> QualifiedPath:
+def _(value: types.MemberDescriptorType) -> QualifiedPath:
     return (path_from_string(value.__objclass__.__module__),
-            (*path_from_string(value.__qualname__), value.__name__))
+            (*path_from_string(value.__objclass__.__qualname__),
+             value.__name__))
 
 
 @qualified_path_from.register(type)
