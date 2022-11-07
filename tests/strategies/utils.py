@@ -11,7 +11,8 @@ from typing import (List,
 
 from hypothesis import strategies
 
-from paradigm._core.discovery import supported_stdlib_modules_names
+from paradigm._core import catalog
+from paradigm._core.discovery import supported_stdlib_modules_paths
 from tests.contracts import is_supported
 from tests.utils import (Strategy,
                          negate,
@@ -74,5 +75,6 @@ invalid_sources = strategies.lists(invalid_source_lines,
                                    min_size=1).map('\n'.join)
 modules_list = list(filter(is_supported,
                            map(importlib.import_module,
-                               supported_stdlib_modules_names)))
+                               map(catalog.path_to_string,
+                                   supported_stdlib_modules_paths))))
 modules = strategies.sampled_from(modules_list)

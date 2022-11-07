@@ -10,7 +10,7 @@ from typing import (Any,
                     Union)
 
 from paradigm._core import (catalog,
-                            namespaces)
+                            namespacing)
 from .utils import to_contents
 
 
@@ -54,7 +54,7 @@ def _safe_import(name: str) -> Optional[types.ModuleType]:
 
 
 def _search_by_path(module: types.ModuleType, path: catalog.Path) -> Any:
-    return namespaces.search(namespaces.from_module(module), path)
+    return namespacing.search(namespacing.from_module(module), path)
 
 
 def _to_callables(

@@ -1,18 +1,16 @@
 import ast
-import importlib.machinery
-import importlib.util
 import platform
 import types
 from functools import singledispatch
+from importlib import import_module
+from importlib.util import find_spec
 from pathlib import Path
 from typing import (Any,
-                    Optional,
                     Union)
 
-from paradigm._core import (catalog,
-                            qualified)
-from paradigm._core.discovery import (stdlib_modules_names,
-                                      unsupported_stdlib_modules_names)
+from paradigm._core import catalog
+from paradigm._core.discovery import unsupported_stdlib_modules_paths
+from paradigm._core.sources import stdlib_modules_paths
 from tests import unsupported
 
 
@@ -26,9 +24,9 @@ def is_supported(object_: Any) -> bool:
 
 @is_supported.register(types.ModuleType)
 def _(object_: types.ModuleType) -> bool:
-    module_name = object_.__name__
-    return (module_name in stdlib_modules_names
-            and module_name not in unsupported_stdlib_modules_names
+    module_path = catalog.module_path_from_module(object_)
+    return (module_path in stdlib_modules_paths
+            and module_path not in unsupported_stdlib_modules_paths
             and object_ not in unsupported.stdlib_modules
             or has_supported_python_source_file(object_))
 
@@ -48,13 +46,16 @@ def is_source_path_supported(source_path: Path) -> bool:
 
 
 def is_module_path_supported(module_path: catalog.Path) -> bool:
-    module_name = str(module_path)
-    if module_name in stdlib_modules_names:
-        if module_name in unsupported_stdlib_modules_names:
+    module_name = catalog.path_to_string(module_path)
+    if module_path in stdlib_modules_paths:
+        if module_path in unsupported_stdlib_modules_paths:
             return False
-        module = importlib.import_module(module_name)
+        module = import_module(module_name)
         return is_supported(module)
-    spec = find_spec(module_path)
+    try:
+        spec = find_spec(module_name)
+    except (ImportError, ValueError):
+        return False
     if spec is None:
         return False
     source_path_string = spec.origin
@@ -63,21 +64,12 @@ def is_module_path_supported(module_path: catalog.Path) -> bool:
     return is_source_path_supported(Path(source_path_string))
 
 
-def find_spec(
-        module_path: catalog.Path
-) -> Optional[importlib.machinery.ModuleSpec]:
-    module_name = str(module_path)
-    try:
-        return importlib.util.find_spec(module_name)
-    except (ImportError, ValueError):
-        return None
-
-
 @is_supported.register(types.BuiltinFunctionType)
 @is_supported.register(types.BuiltinMethodType)
 def _(object_: Union[types.BuiltinFunctionType,
                      types.BuiltinMethodType]) -> bool:
-    return ((object_.__self__.__name__ not in unsupported_stdlib_modules_names
+    return (((catalog.module_path_from_module(object_.__self__)
+              not in unsupported_stdlib_modules_paths)
              and object_.__self__ not in unsupported.stdlib_modules
              and object_ not in unsupported.built_in_functions)
             if isinstance(object_.__self__, types.ModuleType)
@@ -102,8 +94,12 @@ def _(object_: type) -> bool:
 
 @is_supported.register(types.FunctionType)
 def _(object_: types.FunctionType) -> bool:
-    module_path = catalog.module_path_from_callable(object_)
-    return module_path is not None and is_module_path_supported(module_path)
+    return is_module_path_supported(module_path_from_callable(object_))
+
+
+def module_path_from_callable(value: Any) -> catalog.Path:
+    module_path, _ = catalog.qualified_path_from(value)
+    return module_path
 
 
 if platform.python_implementation() != 'PyPy':
@@ -129,5 +125,5 @@ def has_supported_python_source_file(module: types.ModuleType) -> bool:
 
 
 def is_stdlib_object(object_: Any) -> bool:
-    module_name, _ = qualified.name_from(object_)
-    return module_name is not None and module_name in stdlib_modules_names
+    module_path, _ = catalog.qualified_path_from(object_)
+    return module_path is not None and module_path in stdlib_modules_paths
