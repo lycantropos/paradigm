@@ -1,7 +1,9 @@
 from typing import Optional
 
 from paradigm._core import (catalog,
-                            sources)
+                            scoping,
+                            sources,
+                            stubs)
 from .leveling import (NameLookupError,
                        Node,
                        import_module_node)
@@ -10,15 +12,18 @@ from .leveling import (NameLookupError,
 def find_node(module_path: catalog.Path,
               object_path: catalog.Path) -> Optional[Node]:
     try:
-        module_node = import_module_node(module_path)
+        referent_module_path, referent_object_path = (
+            scoping.resolve_object_path(module_path, object_path,
+                                        stubs.definitions, stubs.references,
+                                        stubs.sub_scopes)
+        )
+    except scoping.ObjectNotFound:
+        return None
+    try:
+        module_node = import_module_node(referent_module_path)
     except sources.NotFound:
         return None
-    object_node = module_node
-    for part in object_path:
-        object_node.resolve()
-        try:
-            object_node = object_node.get_attribute_by_name(part)
-        except NameLookupError:
-            return None
-    object_node.resolve()
-    return object_node
+    try:
+        return module_node.get_attribute_by_path(referent_object_path)
+    except NameLookupError:
+        return None

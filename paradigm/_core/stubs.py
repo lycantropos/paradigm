@@ -44,7 +44,7 @@ except Exception:
     from . import (execution as _execution,
                    exporting as _exporting,
                    pretty as _pretty)
-    from .arboreal.leveling import (
+    from .arboreal.importing import (
         flat_module_ast_node_from_path as _flat_module_ast_node_from_path,
         to_parent_module_path as _to_parent_module_path
     )

@@ -107,7 +107,10 @@ def resolve_object_path(
         _builtins_module_path: catalog.Path
         = catalog.module_path_from_module(builtins)
 ) -> catalog.QualifiedPath:
-    module_definitions = modules_definitions[module_path]
+    try:
+        module_definitions = modules_definitions[module_path]
+    except KeyError:
+        raise ObjectNotFound((module_path, object_path))
     module_sub_scopes = modules_sub_scopes[module_path]
     if object_path and object_path[0] in module_definitions:
         scope = module_definitions[object_path[0]]
@@ -144,6 +147,8 @@ def resolve_object_path(
                             modules_definitions, modules_references,
                             modules_sub_scopes, *visited_modules_paths
                     )
+                else:
+                    raise ObjectNotFound((module_path, object_path))
         return (module_path, object_path)
     else:
         if () in module_sub_scopes:
@@ -178,4 +183,4 @@ def resolve_object_path(
         if scope_contains_path(modules_definitions[_builtins_module_path],
                                object_path):
             return _builtins_module_path, object_path
-        raise ObjectNotFound(object_path)
+        raise ObjectNotFound((module_path, object_path))
