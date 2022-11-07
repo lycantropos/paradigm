@@ -1178,7 +1178,6 @@ elif sys.platform == 'win32':
                                                  'PkgConfigError',
                                                  'VerificationError',
                                                  'VerificationMissing'])
-        _load_and_add(classes, 'dataclasses', '_InitVarMeta')
         _load_and_update(classes, 'datetime', ['dateinterop',
                                                'deltainterop',
                                                'timeinterop'])
@@ -1204,8 +1203,8 @@ elif sys.platform == 'win32':
                                                      'ConvertingList',
                                                      'ConvertingTuple'])
         _load_and_add(classes, 'macpath', 'norm_error')
-        _load_and_add(classes, 'multiprocessing.process',
-                      'AuthenticationString')
+        _load_and_add(classes,
+                      'multiprocessing.process', 'AuthenticationString')
         _load_and_add(classes, 'pickle', 'BytesBuilder')
         _load_and_add(
                 classes,
@@ -1231,10 +1230,13 @@ elif sys.platform == 'win32':
                                               'SubsequentHeaderError',
                                               'TruncatedHeaderError'])
         _load_and_add(classes, 'threading', '_CRLock')
+        _load_and_add(classes, 'typing_extensions', '_AnyMeta')
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
 
-        if sys.version_info >= (3, 9):
+        if sys.version_info < (3, 9):
+            _load_and_add(classes, 'dataclasses', '_InitVarMeta')
+        else:
             _load_and_add(classes, '_collections_abc', 'EllipsisType')
             _load_and_add(classes, 'unittest.mock', '_AnyComparer')
     else:
@@ -1475,6 +1477,7 @@ elif sys.platform == 'win32':
                                               'SubsequentHeaderError',
                                               'TruncatedHeaderError'])
         _load_and_add(classes, 'threading', '_CRLock')
+        _load_and_add(classes, 'typing_extensions', '_AnyMeta')
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
         _load_and_add(classes, 'xxsubtype', 'spamdict')
