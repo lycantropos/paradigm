@@ -14,7 +14,7 @@ def find_node(module_path: catalog.Path,
     except sources.NotFound:
         return None
     object_node = module_node
-    for part in object_path.parts:
+    for part in object_path:
         object_node.resolve()
         try:
             object_node = object_node.get_attribute_by_name(part)

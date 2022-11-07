@@ -9,12 +9,11 @@ from itertools import zip_longest as _zip_longest
 from operator import itemgetter as _itemgetter
 
 from . import (arboreal as _arboreal,
-               catalog as _catalog,
-               qualified as _qualified)
+               catalog as _catalog)
 from .models import (OverloadedSignature as _OverloadedSignature,
                      Parameter as _Parameter,
                      PlainSignature as _PlainSignature)
-from .names import qualified_names as _qualified_names
+from .modules import supported_stdlib_qualified_paths as _qualified_paths
 
 _Signature = _t.Union[_OverloadedSignature, _PlainSignature]
 
@@ -69,23 +68,19 @@ def _from_ast(signature_ast: _ast.arguments) -> _Signature:
 
 
 def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
-    module_name, object_name = _qualified.name_from(value)
+    module_path, object_path = _catalog.qualified_path_from(value)
     try:
-        candidates_names = _qualified_names[module_name][object_name]
+        candidates_paths = _qualified_paths[module_path][object_path]
     except KeyError:
-        if module_name is not None:
-            assert object_name, value
-            qualified_paths = [(_catalog.path_from_string(module_name),
-                                _catalog.path_from_string(object_name))]
+        if module_path:
+            assert object_path, value
+            qualified_paths = [(module_path, object_path)]
         else:
             qualified_paths = []
     else:
-        qualified_paths = [
-            (_catalog.path_from_string(module_name),
-             _catalog.path_from_string(object_name))
-            for module_name, object_name in candidates_names
-            if _value_has_qualified_name(value, module_name, object_name)
-        ]
+        qualified_paths = [path
+                           for path in candidates_paths
+                           if _value_has_qualified_path(value, path)]
     candidates = [
         (depth, node)
         for depth, node in [
@@ -101,19 +96,20 @@ def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
                       key=_itemgetter(0))
     except ValueError:
         raise ValueError(qualified_paths)
-    assert node.kind is _arboreal.NodeKind.FUNCTION, (module_name, object_name)
+    assert node.kind is _arboreal.NodeKind.FUNCTION, (module_path, object_path)
     return _OverloadedSignature(*[_from_ast(ast_node.args)
                                   for ast_node in node.ast_nodes])
 
 
-def _value_has_qualified_name(value: _t.Any,
-                              module_name: str,
-                              object_name: str) -> bool:
+def _value_has_qualified_path(value: _t.Any,
+                              path: _catalog.QualifiedPath) -> bool:
+    module_path, object_path = path
+    module_name = _catalog.path_to_string(module_path)
     if module_name not in _sys.modules:
         # undecidable, let's keep it
         return True
     candidate = _sys.modules[module_name]
-    for part in object_name.split(_catalog.Path.SEPARATOR):
+    for part in object_path:
         try:
             candidate = getattr(candidate, part)
         except AttributeError:
@@ -176,9 +172,10 @@ def _to_positional_parameters(
         signature_ast: _ast.arguments
 ) -> _t.Iterable[_Parameter]:
     # double-reversing since parameters with default arguments go last
-    parameters_with_defaults_ast: _t.List[_ast.arg] = list(_zip_longest(
-            reversed(signature_ast.args), signature_ast.defaults
-    ))[::-1]
+    parameters_with_defaults_ast: _t.List[
+        _t.Tuple[_ast.arg, _t.Optional[_ast.expr]]
+    ] = list(_zip_longest(reversed(signature_ast.args),
+                          signature_ast.defaults))[::-1]
     kind = _Parameter.Kind.POSITIONAL_ONLY
     return [_to_parameter(parameter_ast, default_ast,
                           kind=kind)

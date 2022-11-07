@@ -1,10 +1,11 @@
 import importlib
+import typing as t
 from functools import reduce
 from types import ModuleType
-from typing import Any
 
 from . import catalog
-from .hints import Namespace
+
+Namespace = t.Dict[str, t.Any]
 
 
 def from_module_path(object_: catalog.Path) -> Namespace:
@@ -12,7 +13,7 @@ def from_module_path(object_: catalog.Path) -> Namespace:
 
 
 def from_module(object_: ModuleType) -> Namespace:
-    return dict(vars(object_))
+    return vars(object_)
 
 
 def contains(namespace: Namespace, path: catalog.Path) -> bool:
@@ -24,8 +25,8 @@ def contains(namespace: Namespace, path: catalog.Path) -> bool:
         return True
 
 
-def search(namespace: Namespace, path: catalog.Path) -> Any:
-    root_object = namespace[path.parts[0]]
-    return (reduce(getattr, path.parts[1:], root_object)
-            if len(path.parts) > 1
+def search(namespace: Namespace, path: catalog.Path) -> t.Any:
+    root_object = namespace[path[0]]
+    return (reduce(getattr, path[1:], root_object)
+            if len(path) > 1
             else root_object)

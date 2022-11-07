@@ -1,101 +1,141 @@
 import builtins
 import pathlib
+import sys
 import types
+import typing as t
+from functools import singledispatch
 from importlib.util import find_spec
-from typing import (Any,
-                    Callable,
-                    Optional,
-                    Tuple)
 
-from . import (file_system,
-               qualified)
+from . import file_system
+
+Path = t.Tuple[str, ...]
+QualifiedPath = t.Tuple[Path, Path]
+SEPARATOR = '.'
 
 
-class Path:
-    __slots__ = '_parts',
+def path_from_string(value: str) -> Path:
+    assert isinstance(value, str), value
+    return tuple(value.split('.'))
 
-    SEPARATOR = '.'
 
-    def __new__(cls, *parts: str) -> 'Path':
-        assert all(cls.SEPARATOR not in part for part in parts), parts
-        self = super().__new__(cls)
-        self._parts = parts
-        return self
+def path_to_parent(value: Path) -> Path:
+    return value[:-1]
 
-    @property
-    def final_name(self) -> str:
-        return self._parts[-1]
 
-    @property
-    def first_name(self) -> str:
-        return self._parts[0]
+def path_to_string(value: Path) -> str:
+    return SEPARATOR.join(value)
 
-    @property
-    def parent(self) -> 'Path':
-        return type(self)(*self._parts[:-1])
 
-    @property
-    def parts(self) -> Tuple[str, ...]:
-        return self._parts
+@singledispatch
+def qualified_path_from(value: t.Any) -> QualifiedPath:
+    return (), ()
 
-    def __str__(self) -> str:
-        return self.SEPARATOR.join(self._parts)
 
-    def __repr__(self) -> str:
-        return (type(self).__qualname__
-                + '(' + ', '.join(map(repr, self._parts)) + ')')
+_T1 = t.TypeVar('_T1')
+_T2 = t.TypeVar('_T2')
 
-    def __eq__(self, other: 'Path') -> bool:
-        if not isinstance(other, Path):
-            return NotImplemented
-        return self._parts == other._parts
 
-    def __hash__(self) -> int:
-        return hash(self._parts)
+def _identity(value: _T1) -> _T1:
+    return value
 
-    def suffix(self, part: str) -> 'Path':
-        return type(self)(*self._parts, part)
 
-    def join(self, other: 'Path') -> 'Path':
-        assert isinstance(other, Path), other
-        return type(self)(*self._parts, *other._parts)
+def _decorate_if(decorator: t.Callable[[_T1], _T2],
+                 condition: bool) -> t.Union[t.Callable[[_T1], _T1],
+                                             t.Callable[[_T1], _T2]]:
+    return decorator if condition else _identity
 
-    def with_parent(self, parent: 'Path') -> 'Path':
-        return type(self)(*parent._parts, *self._parts[len(parent._parts):])
 
-    def is_child_of(self, parent: 'Path') -> bool:
-        return self._parts[:len(parent._parts)] == parent._parts
+@qualified_path_from.register(types.BuiltinFunctionType)
+@_decorate_if(qualified_path_from.register(types.BuiltinMethodType),
+              sys.implementation.name != 'pypy')
+def _(
+        value: t.Union[types.BuiltinFunctionType, types.BuiltinMethodType]
+) -> QualifiedPath:
+    self = value.__self__
+    return ((path_from_string(self.__module__),
+             path_from_string(value.__qualname__))
+            if isinstance(self, type)
+            else ((path_from_string(self.__name__
+                                    if self.__spec__ is None
+                                    else self.__spec__.name),
+                   path_from_string(value.__qualname__))
+                  if isinstance(self, types.ModuleType)
+                  else ((),
+                        path_from_string(value.__qualname__)
+                        if self is None
+                        else ())))
+
+
+@qualified_path_from.register(types.FunctionType)
+def _(value: types.FunctionType) -> QualifiedPath:
+    return (()
+            if value.__module__ is None
+            else path_from_string(value.__module__),
+            path_from_string(value.__qualname__))
+
+
+@_decorate_if(qualified_path_from.register(types.MethodDescriptorType),
+              sys.implementation.name != 'pypy')
+@_decorate_if(qualified_path_from.register(types.WrapperDescriptorType),
+              sys.implementation.name != 'pypy')
+def _(
+        value: t.Union[types.MemberDescriptorType, types.MethodDescriptorType,
+                       types.MethodWrapperType, types.WrapperDescriptorType]
+) -> QualifiedPath:
+    return (path_from_string(value.__objclass__.__module__),
+            path_from_string(value.__qualname__))
+
+
+@_decorate_if(qualified_path_from.register(types.MemberDescriptorType),
+              sys.implementation.name != 'pypy')
+@_decorate_if(qualified_path_from.register(types.MethodWrapperType),
+              sys.implementation.name != 'pypy')
+def _(
+        value: t.Union[types.MemberDescriptorType, types.MethodDescriptorType,
+                       types.MethodWrapperType, types.WrapperDescriptorType]
+) -> QualifiedPath:
+    return (path_from_string(value.__objclass__.__module__),
+            path_from_string(value.__qualname__))
+
+
+@_decorate_if(qualified_path_from.register(types.MemberDescriptorType),
+              sys.implementation.name == 'pypy')
+def _(
+        value: types.MemberDescriptorType
+) -> QualifiedPath:
+    return (path_from_string(value.__objclass__.__module__),
+            (*path_from_string(value.__qualname__), value.__name__))
+
+
+@qualified_path_from.register(type)
+def _(value: type) -> QualifiedPath:
+    return (path_from_string(value.__module__),
+            path_from_string(value.__qualname__))
 
 
 def is_attribute(path: Path) -> bool:
-    return len(path.parts) > 1
+    return len(path) > 1
 
 
 WILDCARD_IMPORT_NAME = '*'
-WILDCARD_IMPORT_PATH = Path(WILDCARD_IMPORT_NAME)
-
-
-def module_path_from_callable(value: Any) -> Optional[Path]:
-    module_name, _ = qualified.name_from(value)
-    return None if module_name is None else path_from_string(module_name)
+WILDCARD_IMPORT_PATH = (WILDCARD_IMPORT_NAME,)
 
 
 def module_path_from_module(object_: types.ModuleType) -> Path:
-    return path_from_string(object_.__name__)
+    return path_from_string(object_.__name__
+                            if object_.__spec__ is None
+                            else object_.__spec__.name)
 
 
-def object_path_from_callable(value: Callable[..., Any]) -> Path:
-    _, object_name = qualified.name_from(value)
-    return path_from_string(object_name)
-
-
-def path_from_string(string: str) -> Path:
-    return Path(*string.split(Path.SEPARATOR))
+def object_path_from_callable(value: t.Callable[..., t.Any]) -> Path:
+    _, object_path = qualified_path_from(value)
+    return object_path
 
 
 def is_package(module_path: Path) -> bool:
-    spec = find_spec(str(module_path))
-    return (spec.origin is not None
+    spec = find_spec(path_to_string(module_path))
+    return (spec is not None
+            and spec.origin is not None
             and pathlib.Path(spec.origin).stem == file_system.INIT_MODULE_NAME)
 
 

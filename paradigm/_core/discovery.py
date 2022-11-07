@@ -1,67 +1,24 @@
-import importlib.machinery
-import math
-import os
 import sys
-from collections import deque
-from itertools import chain
-from pathlib import Path
-from typing import (Container,
-                    Iterable,
-                    Sequence,
-                    Set)
+import typing as t
+
+from . import catalog
+from .sources import discoverable_stdlib_modules_paths
 
 
-def find_stdlib_modules_names(directory_path: Path) -> Iterable[str]:
-    def is_stdlib_module_path(path: Path,
-                              suffixes: Container[str] = tuple(
-                                      importlib.machinery.all_suffixes()
-                              )) -> bool:
-        return (path.name.endswith(suffixes)
-                and is_stdlib_module_path_parts(path.parts))
-
-    def is_stdlib_module_path_parts(parts: Sequence[str]) -> bool:
-        return not any((component.startswith('test')
-                        or component.startswith('__')
-                        or '-' in component)
-                       for component in parts)
-
-    queue = deque(directory_path.iterdir())
-    while queue:
-        candidate = queue.pop()
-        candidate_module_path = candidate.relative_to(directory_path)
-        if candidate.is_dir():
-            if is_stdlib_module_path_parts(candidate_module_path.parts):
-                yield '.'.join(candidate_module_path.parts)
-            queue.extendleft(candidate.iterdir())
-        elif is_stdlib_module_path(candidate_module_path):
-            yield '.'.join(candidate_module_path.with_name(
-                    candidate_module_path.name.split('.', 1)[0]
-            ).parts)
-
-
-stdlib_modules_names = set(chain(
-        sys.builtin_module_names,
-        find_stdlib_modules_names(Path(os.__file__).parent),
-        find_stdlib_modules_names(Path(math.__file__).parent)
-        if math.__spec__.has_location
-        else []
-))
-
-
-def _recursively_update_modules_names(
-        set_: Set[str],
+def _recursively_update_modules_paths(
+        set_: t.Set[catalog.Path],
         *names: str,
-        _stdlib_modules_names: Iterable[str] = stdlib_modules_names
 ) -> None:
-    set_.update({*names,
-                 *[name
-                   for name in _stdlib_modules_names
-                   if name.startswith(tuple(name + '.' for name in names))]})
+    paths = [catalog.path_from_string(name) for name in names]
+    set_.update({*paths,
+                 *[candidate
+                   for candidate in discoverable_stdlib_modules_paths
+                   if any(candidate[:len(path)] == path for path in paths)]})
 
 
 # importing will cause unwanted side effects such as raising error
-unsupported_stdlib_modules_names = set()
-_recursively_update_modules_names(unsupported_stdlib_modules_names,
+unsupported_stdlib_modules_paths: t.Set[catalog.Path] = set()
+_recursively_update_modules_paths(unsupported_stdlib_modules_paths,
                                   'antigravity',
                                   'crypt',
                                   'idlelib',
@@ -72,7 +29,7 @@ _recursively_update_modules_names(unsupported_stdlib_modules_names,
                                   'turtledemo')
 
 if sys.implementation.name == 'pypy':
-    _recursively_update_modules_names(unsupported_stdlib_modules_names,
+    _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
                                       '_crypt',
                                       '_curses_build',
                                       '_scproxy',
@@ -81,14 +38,14 @@ if sys.implementation.name == 'pypy':
                                       'msilib',
                                       'symtable',
                                       'tracemalloc')
-    unsupported_stdlib_modules_names.update(
-            [name
-             for name in stdlib_modules_names
-             if name.startswith(('__pypy', '_ctypes_', '_pypy', '_test',
-                                 'ctypes_'))]
+    unsupported_stdlib_modules_paths.update(
+            [path
+             for path in discoverable_stdlib_modules_paths
+             if path[0].startswith(('__pypy', '_ctypes_', '_pypy', '_test',
+                                    'ctypes_'))]
     )
     if sys.platform == 'win32':
-        _recursively_update_modules_names(unsupported_stdlib_modules_names,
+        _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
                                           '_curses',
                                           '_curses_panel',
                                           '_dbm',
@@ -127,7 +84,7 @@ if sys.implementation.name == 'pypy':
                                           'syslog',
                                           'tty')
     else:
-        _recursively_update_modules_names(unsupported_stdlib_modules_names,
+        _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
                                           '_overlapped',
                                           '_tkinter.tklib_build',
                                           '_winapi',
@@ -148,27 +105,27 @@ if sys.implementation.name == 'pypy':
                                           'pyrepl.pygame_console',
                                           'pyrepl.pygame_keymap')
     if sys.version_info >= (3, 9):
-        _recursively_update_modules_names(unsupported_stdlib_modules_names,
+        _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
                                           '_cffi_ssl._cffi_src.build_openssl')
-        _recursively_update_modules_names(unsupported_stdlib_modules_names,
+        _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
                                           '_ssl_build')
 else:
-    _recursively_update_modules_names(unsupported_stdlib_modules_names,
+    _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
                                       'distutils.command.bdist_msi')
 
     if sys.version_info < (3, 10):
-        _recursively_update_modules_names(
-                unsupported_stdlib_modules_names,
+        _recursively_update_modules_paths(
+                unsupported_stdlib_modules_paths,
                 'distutils.command.bdist_wininst'
         )
 
     if sys.platform == 'win32':
-        _recursively_update_modules_names(unsupported_stdlib_modules_names,
+        _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
                                           'curses',
                                           'pty',
                                           'tty')
-        _recursively_update_modules_names(
-                unsupported_stdlib_modules_names,
+        _recursively_update_modules_paths(
+                unsupported_stdlib_modules_paths,
                 'asyncio.unix_events',
                 'dbm.gnu',
                 'dbm.ndbm',
@@ -177,7 +134,7 @@ else:
                 'multiprocessing.popen_spawn_posix'
         )
     else:
-        _recursively_update_modules_names(unsupported_stdlib_modules_names,
+        _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
                                           'asyncio.windows_events',
                                           'asyncio.windows_utils',
                                           'ctypes.wintypes',
@@ -186,16 +143,16 @@ else:
                                           'encodings.oem',
                                           'multiprocessing.popen_spawn_win32')
         if sys.version_info < (3, 8):
-            _recursively_update_modules_names(unsupported_stdlib_modules_names,
+            _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
                                               'distutils._msvccompiler',
                                               'encodings.cp65001')
         if sys.platform == 'darwin':
             if sys.version_info >= (3, 8):
-                _recursively_update_modules_names(
-                        unsupported_stdlib_modules_names,
+                _recursively_update_modules_paths(
+                        unsupported_stdlib_modules_paths,
                         'dbm.gnu',
                         'distutils._msvccompiler',
                 )
 
-supported_stdlib_modules_names = (stdlib_modules_names
-                                  - unsupported_stdlib_modules_names)
+supported_stdlib_modules_paths = (discoverable_stdlib_modules_paths
+                                  - unsupported_stdlib_modules_paths)

@@ -212,7 +212,7 @@ class PlainSignature(_Signature):
             for parameter in rest:
                 name = parameter.name
                 if name in visited_names:
-                    raise ValueError('Parameters should have unique names, '
+                    raise ValueError('Parameters should have unique paths, '
                                      'but found duplicate '
                                      f'for parameter "{name}".')
                 kind = parameter.kind
