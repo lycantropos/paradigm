@@ -86,8 +86,8 @@ def _(object_: types.MethodType) -> bool:
 @is_supported.register(type)
 def _(object_: type) -> bool:
     return (object_ not in unsupported.classes
-            or (not is_stdlib_object(object_)
-                and is_module_path_supported(
+            and (is_stdlib_object(object_)
+                 or is_module_path_supported(
                             catalog.path_from_string(object_.__module__)
                     )))
 
@@ -126,4 +126,5 @@ def has_supported_python_source_file(module: types.ModuleType) -> bool:
 
 def is_stdlib_object(object_: Any) -> bool:
     module_path, _ = catalog.qualified_path_from(object_)
-    return module_path is not None and module_path in stdlib_modules_paths
+    return any(module_path[:-offset] in stdlib_modules_paths
+               for offset in range(len(module_path)))

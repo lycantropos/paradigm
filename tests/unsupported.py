@@ -23,7 +23,7 @@ def _load_and_add(set_: Set[Any], module_name: str, object_name: str) -> None:
         object_ = _search_by_path(module, path)
     except KeyError:
         warnings.warn(f'Module "{module_name}" has no object '
-                      f'with name "{path.parts[0]}".')
+                      f'with name "{path[0]}".')
     except AttributeError:
         warnings.warn(f'Module "{module_name}" has no object '
                       f'with path "{path}".')
@@ -177,6 +177,7 @@ if sys.platform == 'linux':
                                               'SubsequentHeaderError',
                                               'TruncatedHeaderError'])
         _load_and_add(classes, 'threading', '_CRLock')
+        _load_and_add(classes, 'typing_extensions', '_AnyMeta')
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
 
@@ -214,6 +215,7 @@ if sys.platform == 'linux':
                                                         '_setlocale'])
         _load_and_add(built_in_functions,
                       'multiprocessing.synchronize', 'sem_unlink')
+        _load_and_add(built_in_functions, 'parser', '_pickler')
         _load_and_add(built_in_functions, 'pty', 'select')
         _load_and_add(built_in_functions, 'random', '_log')
         _load_and_add(built_in_functions,
@@ -378,6 +380,7 @@ if sys.platform == 'linux':
                                               'TruncatedHeaderError'])
         _load_and_add(classes, 'threading', '_CRLock')
         _load_and_add(classes, 'tty', 'error')
+        _load_and_add(classes, 'typing_extensions', '_AnyMeta')
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
         _load_and_add(classes, 'xxsubtype', 'spamdict')
@@ -514,6 +517,7 @@ if sys.platform == 'linux':
                          'types', ['AsyncGeneratorType.__del__',
                                    'CoroutineType.__del__',
                                    'GeneratorType.__del__'])
+        _load_and_add(wrappers_descriptors, 'xxlimited', 'Xxo.__del__')
 
         if sys.byteorder == 'little':
             _load_and_update(classes,
@@ -576,16 +580,18 @@ if sys.platform == 'linux':
         if sys.version_info < (3, 10):
             _load_and_add(built_in_functions, 'faulthandler', '_fatal_error')
         else:
-            _load_and_add(methods_descriptors,
-                          'collections', 'deque.__reversed__')
             _load_and_add(classes,
                           'importlib.metadata', 'FreezableDefaultDict')
             _load_and_add(classes, 'importlib.metadata._text', 'FoldedCase')
             _load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
             _load_and_add(classes, 'unittest.mock', 'InvalidSpecError')
+            _load_and_update(methods_descriptors, '_csv', ['Writer.writerow',
+                                                           'Writer.writerows'])
             _load_and_update(methods_descriptors,
                              'builtins', ['property.__set_name__',
                                           'zip.__setstate__'])
+            _load_and_add(methods_descriptors,
+                          'collections', 'deque.__reversed__')
             _load_and_update(methods_descriptors,
                              'types', ['UnionType.__instancecheck__',
                                        'UnionType.__subclasscheck__'])
@@ -689,6 +695,7 @@ elif sys.platform == 'darwin':
                                               'SubsequentHeaderError',
                                               'TruncatedHeaderError'])
         _load_and_add(classes, 'threading', '_CRLock')
+        _load_and_add(classes, 'typing_extensions', '_AnyMeta')
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
 
@@ -699,6 +706,7 @@ elif sys.platform == 'darwin':
             _load_and_add(classes, 'unittest.mock', '_AnyComparer')
     else:
         _load_and_add(built_in_functions, 'locale', '_localeconv')
+        _load_and_add(built_in_functions, 'parser', '_pickler')
         _load_and_update(built_in_functions, 'sys', ['__breakpointhook__',
                                                      'breakpointhook'])
         _load_and_update(built_in_functions,
@@ -1026,6 +1034,7 @@ elif sys.platform == 'darwin':
                          'types', ['AsyncGeneratorType.__del__',
                                    'CoroutineType.__del__',
                                    'GeneratorType.__del__'])
+        _load_and_add(wrappers_descriptors, 'xxlimited', 'Xxo.__del__')
 
         if sys.byteorder == 'little':
             _load_and_update(classes,
@@ -1101,13 +1110,18 @@ elif sys.platform == 'darwin':
                           'weakref', 'ProxyType.__reversed__')
         if sys.version_info < (3, 10):
             _load_and_add(built_in_functions, 'faulthandler', '_fatal_error')
+            _load_and_add(classes, 'typing_extensions', '_AnyMeta')
         else:
-            _load_and_add(classes,
-                          'importlib.metadata', 'FreezableDefaultDict')
+            _load_and_add(
+                    classes,
+                    'importlib.metadata._collections', 'FreezableDefaultDict'
+            )
             _load_and_add(classes, 'importlib.metadata._text', 'FoldedCase')
             _load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
             _load_and_add(classes, 'unittest.mock', 'InvalidSpecError')
 
+            _load_and_update(methods_descriptors, '_csv', ['Writer.writerow',
+                                                           'Writer.writerows'])
             _load_and_update(methods_descriptors,
                              'builtins', ['property.__set_name__',
                                           'zip.__setstate__'])
