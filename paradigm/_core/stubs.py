@@ -105,10 +105,8 @@ except Exception:
             except TypeError:
                 self._add_path_definition(target_path)
             else:
-                value_module_path, value_object_path = _resolve_object_path(
-                        self.module_path, (), value_path,
-                        self.modules_definitions, self.modules_references,
-                        self.modules_sub_scopes, self.visited_modules_paths
+                value_module_path, value_object_path = self._to_qualified_path(
+                        value_path
                 )
                 self._add_reference(target_path, value_module_path,
                                     value_object_path)
@@ -121,14 +119,12 @@ except Exception:
                     target_path = _ast_node_to_path(target)
                     self._add_path_definition(target_path)
             else:
-                value_module_name, value_object_path = _resolve_object_path(
-                        self.module_path, self.parent_path, value_path,
-                        self.modules_definitions, self.modules_references,
-                        self.modules_sub_scopes, self.visited_modules_paths
+                value_module_path, value_object_path = self._to_qualified_path(
+                        value_path
                 )
                 for target in node.targets:
                     target_path = _ast_node_to_path(target)
-                    self._add_reference(target_path, value_module_name,
+                    self._add_reference(target_path, value_module_path,
                                         value_object_path)
 
         def visit_AsyncFunctionDef(self, node: _ast.AsyncFunctionDef) -> None:
@@ -139,18 +135,9 @@ except Exception:
             self._add_name_definition(class_name)
             class_path = self.parent_path + (class_name,)
             for base in node.bases:
-                base_local_path = _ast_node_to_path(base)
-                try:
-                    base_module_path, base_object_path = _resolve_object_path(
-                            self.module_path, self.parent_path,
-                            base_local_path,
-                            self.modules_definitions, self.modules_references,
-                            self.modules_sub_scopes, self.visited_modules_paths
-                    )
-                except ObjectNotFound:
-                    self._add_path_definition(base_local_path)
-                    base_module_path, base_object_path = (self.module_path,
-                                                          base_local_path)
+                base_module_path, base_object_path = self._to_qualified_path(
+                        _ast_node_to_path(base)
+                )
                 self._add_sub_scope(class_path, base_module_path,
                                     base_object_path)
             parse_child = _StateParser(
@@ -218,6 +205,19 @@ except Exception:
             self.module_sub_scopes.setdefault(
                     reference_path, set()
             ).add((referent_module_path, referent_object_path))
+
+        def _to_qualified_path(
+                self, object_path: _catalog.Path
+        ) -> _catalog.QualifiedPath:
+            try:
+                return _resolve_object_path(
+                        self.module_path, self.parent_path, object_path,
+                        self.modules_definitions, self.modules_references,
+                        self.modules_sub_scopes, self.visited_modules_paths
+                )
+            except ObjectNotFound:
+                self._add_path_definition(object_path)
+                return (self.module_path, object_path)
 
 
     class ObjectNotFound(Exception):
