@@ -1,12 +1,8 @@
 import builtins
-import pathlib
 import sys
 import types
 import typing as t
 from functools import singledispatch
-from importlib.util import find_spec
-
-from . import file_system
 
 Path = t.Tuple[str, ...]
 QualifiedPath = t.Tuple[Path, Path]
@@ -128,13 +124,6 @@ def module_path_from_module(object_: types.ModuleType) -> Path:
 def object_path_from_callable(value: t.Callable[..., t.Any]) -> Path:
     _, object_path = qualified_path_from(value)
     return object_path
-
-
-def is_package(module_path: Path) -> bool:
-    spec = find_spec(path_to_string(module_path))
-    return (spec is not None
-            and spec.origin is not None
-            and pathlib.Path(spec.origin).stem == file_system.INIT_MODULE_NAME)
 
 
 BUILTINS_MODULE_PATH = module_path_from_module(builtins)

@@ -777,7 +777,7 @@ def to_parent_module_path(
         assert ast_node.module is not None, ast_node
         return catalog.path_from_string(ast_node.module)
     depth = (len(parent_module_path)
-             + catalog.is_package(parent_module_path)
+             + sources.is_package(parent_module_path)
              - level) or None
     module_path_parts = (list(parent_module_path[:depth])
                          + ([]

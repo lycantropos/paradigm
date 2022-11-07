@@ -22,6 +22,17 @@ def from_module_path(module_path: catalog.Path) -> Path:
         raise NotFound(module_path) from error
 
 
+def is_package(module_path: catalog.Path) -> bool:
+    try:
+        source_path = from_module_path(module_path)
+    except NotFound:
+        spec = find_spec(catalog.path_to_string(module_path))
+        if spec is None or spec.origin is None:
+            return False
+        source_path = Path(spec.origin)
+    return source_path.stem == file_system.INIT_MODULE_NAME
+
+
 def _to_stubs_cache(
         root: Path = Path(mypy.__spec__.origin).parent / 'typeshed' / 'stdlib'
 ) -> Dict[catalog.Path, Path]:
