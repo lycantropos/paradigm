@@ -58,10 +58,12 @@ _stubs_cache = _to_stubs_cache()
 def _is_module_path_discoverable(module_path: catalog.Path) -> bool:
     module_name = catalog.path_to_string(module_path)
     try:
-        spec = find_spec(module_name)
-    except (ImportError, ValueError):
+        find_spec(module_name)
+    except ImportError:
         return False
-    return spec is not None
+    except ValueError:
+        pass
+    return True
 
 
 discoverable_stdlib_modules_paths = {
