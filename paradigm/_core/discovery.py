@@ -41,8 +41,7 @@ if sys.implementation.name == 'pypy':
     unsupported_stdlib_modules_paths.update(
             [path
              for path in stdlib_modules_paths
-             if path[0].startswith(('__pypy', '_ctypes_', '_pypy', '_test',
-                                    'ctypes_'))]
+             if path[0].startswith(('__pypy', '_pypy'))]
     )
     if sys.platform == 'win32':
         _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
@@ -85,6 +84,7 @@ if sys.implementation.name == 'pypy':
                                           'tty')
     else:
         _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
+                                          '__decimal',
                                           '_overlapped',
                                           '_tkinter.tklib_build',
                                           '_winapi',
