@@ -30,6 +30,7 @@ _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
 
 if sys.implementation.name == 'pypy':
     _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
+                                      '__decimal',
                                       '_crypt',
                                       '_curses_build',
                                       '_scproxy',
@@ -57,6 +58,7 @@ if sys.implementation.name == 'pypy':
                                           '_tkinter.tklib_build',
                                           'asyncio.unix_events',
                                           'cffi._pycparser._build_tables',
+                                          'ctypes_support',
                                           'curses',
                                           'dbm.gnu',
                                           'dbm.ndbm',
@@ -85,7 +87,6 @@ if sys.implementation.name == 'pypy':
                                           'tty')
     else:
         _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
-                                          '__decimal',
                                           '_overlapped',
                                           '_tkinter.tklib_build',
                                           '_winapi',
