@@ -46,7 +46,7 @@ def _(_callable: _t.Callable[..., _t.Any]) -> _Signature:
                 else (_from_callable(_callable).bind(_callable)
                       if isinstance(_callable, type)
                       else _from_callable(_callable)))
-    except ValueError:
+    except _NodeNotFound:
         return _from_raw_signature(_inspect.signature(_callable))
 
 
@@ -65,6 +65,10 @@ def _from_ast(signature_ast: _ast.arguments) -> _Signature:
              _to_variadic_keyword_parameter(signature_ast))
     )
     return _PlainSignature(*parameters)
+
+
+class _NodeNotFound(Exception):
+    pass
 
 
 def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
@@ -95,7 +99,7 @@ def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
         _, node = min(candidates,
                       key=_itemgetter(0))
     except ValueError:
-        raise ValueError(qualified_paths)
+        raise _NodeNotFound(qualified_paths)
     assert node.kind is _arboreal.NodeKind.FUNCTION, (module_path, object_path)
     return _OverloadedSignature(*[_from_ast(ast_node.args)
                                   for ast_node in node.ast_nodes])
