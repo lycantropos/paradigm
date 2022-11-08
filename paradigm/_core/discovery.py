@@ -41,7 +41,8 @@ if sys.implementation.name == 'pypy':
     unsupported_stdlib_modules_paths.update(
             [path
              for path in stdlib_modules_paths
-             if path[0].startswith(('__pypy', '_pypy'))]
+             if (path[0].startswith(('__pypy', '_pypy'))
+                 or '__pycache__' in path)]
     )
     if sys.platform == 'win32':
         _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
@@ -106,8 +107,7 @@ if sys.implementation.name == 'pypy':
                                           'pyrepl.pygame_keymap')
     if sys.version_info >= (3, 9):
         _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
-                                          '_cffi_ssl._cffi_src.build_openssl')
-        _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
+                                          '_cffi_ssl._cffi_src.build_openssl',
                                           '_ssl_build')
 else:
     _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
