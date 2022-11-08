@@ -101,7 +101,8 @@ def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
         _, node = min(candidates,
                       key=_itemgetter(0))
     except ValueError:
-        raise _NodeNotFound(qualified_paths)
+        raise _NodeNotFound(qualified_paths,
+                            _qualified_paths.get(module_path, {}))
     assert node.kind is _arboreal.NodeKind.FUNCTION, (module_path, object_path)
     return _OverloadedSignature(*[_from_ast(ast_node.args)
                                   for ast_node in node.ast_nodes])
