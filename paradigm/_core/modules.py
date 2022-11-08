@@ -2,7 +2,6 @@ import inspect as _inspect
 import sys as _sys
 import typing as _t
 from importlib import import_module as _import_module
-from multiprocessing import current_process as _current_process
 from pathlib import Path as _Path
 
 import mypy as _mypy
@@ -28,7 +27,7 @@ supported_stdlib_qualified_paths: _QualifiedPaths
 try:
     supported_stdlib_qualified_paths = getattr(
             _import_module((''
-                            if __name__ == '__main__'
+                            if __name__ in ('__main__', '__mp_main__')
                             else __name__.rsplit('.', maxsplit=1)[0] + '.')
                            + _inspect.getmodulename(str(_CACHE_PATH))),
             _STDLIB_QUALIFIED_PATHS_FIELD_NAME
@@ -110,7 +109,7 @@ except Exception:
         return result
 
 
-    if _current_process().name == 'MainProcess':
+    if _execution.is_main_process():
         def _to_supported_qualified_paths(
                 qualified_paths: _QualifiedPaths,
                 definitions: _t.Dict[_catalog.Path, _scoping.Scope],

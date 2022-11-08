@@ -1,31 +1,45 @@
+import inspect
+import multiprocessing
 import sys
+import threading
 import typing as t
-from multiprocessing import get_context
 from multiprocessing.queues import SimpleQueue
-from pathlib import Path
+
+
+def is_main_process() -> bool:
+    return multiprocessing.current_process().name == 'MainProcess'
 
 
 def try_in_process(function: t.Callable[..., t.Any],
                    *args: t.Any,
                    **kwargs: t.Any) -> t.Any:
-    if (getattr(sys, 'ps1', None) is None
-            and Path(
-                    getattr(sys.modules.get('__main__'), '__file__', __file__)
-            ).exists()):
-        context = get_context()
-        queue = context.SimpleQueue()
-        process = context.Process(target=_put_result_in_queue,
-                                  name=function.__qualname__,
-                                  args=(queue, function, *args),
-                                  kwargs=kwargs)
-        process.start()
-        result, error = queue.get()
-        process.join()
-        if error is not None:
-            raise error
-        return result
-    else:
-        return function(*args, **kwargs)
+    assert is_main_process()
+    with threading.Lock():
+        caller_frame = inspect.stack()[1].frame
+        caller_module = inspect.getmodule(caller_frame)
+        main_module = sys.modules.get('__main__')
+        try:
+            sys.modules['__main__'] = caller_module
+            context = multiprocessing.get_context()
+            queue = context.SimpleQueue()
+            process = context.Process(
+                    target=_put_result_in_queue,
+                    name=(f'{try_in_process.__qualname__}_'
+                          f'{function.__qualname__}'),
+                    args=(queue, function, *args),
+                    kwargs=kwargs
+            )
+            process.start()
+            result, error = queue.get()
+            process.join()
+            if error is not None:
+                raise error
+            return result
+        finally:
+            if main_module is None:
+                del sys.modules['__main__']
+            else:
+                sys.modules['__main__'] = main_module
 
 
 def _put_result_in_queue(queue: SimpleQueue,

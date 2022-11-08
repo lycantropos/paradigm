@@ -2,7 +2,6 @@ import inspect as _inspect
 import sys as _sys
 import typing as _t
 from importlib import import_module as _import_module
-from multiprocessing import current_process as _current_process
 from operator import attrgetter as _attrgetter
 from pathlib import Path as _Path
 
@@ -32,7 +31,7 @@ try:
             _DEFINITIONS_FIELD_NAME, _REFERENCES_FIELD_NAME,
             _SUB_SCOPES_FIELD_NAME
     )(_import_module((''
-                      if __name__ == '__main__'
+                      if __name__ in ('__main__', '__mp_main__')
                       else __name__.rsplit('.', maxsplit=1)[0] + '.')
                      + _inspect.getmodulename(_CACHE_PATH)))
 except Exception:
@@ -328,7 +327,7 @@ except Exception:
         return modules_definitions, modules_references, modules_sub_scopes
 
 
-    if _current_process().name == 'MainProcess':
+    if _execution.is_main_process():
         definitions, references, sub_scopes = _execution.try_in_process(
                 _parse_stubs_state, _stdlib_modules_paths
         )
