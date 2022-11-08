@@ -2,7 +2,8 @@ import inspect
 import os
 import site
 import typing as t
-from importlib.machinery import all_suffixes
+from importlib.machinery import (EXTENSION_SUFFIXES,
+                                 SOURCE_SUFFIXES)
 from importlib.util import find_spec
 from pathlib import Path
 
@@ -131,7 +132,8 @@ def _to_modules_paths(root: Path) -> t.Iterable[catalog.Path]:
     def is_source_path(
             path: Path,
             *,
-            _suffixes: t.Container[str] = frozenset(all_suffixes())
+            _suffixes: t.Container[str] = frozenset(SOURCE_SUFFIXES
+                                                    + EXTENSION_SUFFIXES)
     ) -> bool:
         return ''.join(path.suffixes) in _suffixes
 
@@ -146,10 +148,14 @@ def _to_modules_paths(root: Path) -> t.Iterable[catalog.Path]:
 
 
 def _is_valid_module_path(module_path: catalog.Path) -> bool:
-    return ('test' not in module_path
+    return (module_path
+            and 'test' not in module_path
             and 'tests' not in module_path
             and module_path[-1] != '__main__'
-            and all(part.isidentifier() for part in module_path))
+            and all((part.isidentifier()
+                     and not part.startswith(('_test', 'test_'))
+                     and not part.endswith('_test'))
+                    for part in module_path))
 
 
 stdlib_modules_paths = {module_path
