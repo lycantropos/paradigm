@@ -257,6 +257,11 @@ if sys.platform == 'linux':
                                           '_RawIOBase',
                                           '_TextIOBase'])
         _load_and_add(classes, '_lsprof', 'Profiler')
+        _load_and_update(classes,
+                         '_multibytecodec', ['MultibyteIncrementalDecoder',
+                                             'MultibyteIncrementalEncoder',
+                                             'MultibyteStreamReader',
+                                             'MultibyteStreamWriter'])
         _load_and_add(classes, '_multiprocessing', 'SemLock')
         _load_and_update(
                 classes,
@@ -626,6 +631,7 @@ if sys.platform == 'linux':
                                                     'ChannelError',
                                                     'ChannelNotEmptyError',
                                                     'ChannelNotFoundError',
+                                                    'InterpreterID',
                                                     'RunFailedError'])
             _load_and_add(classes, 'collections', '_tuplegetter')
             _load_and_add(classes, 'shutil', '_GiveupOnFastCopy')
@@ -635,6 +641,9 @@ if sys.platform == 'linux':
         if sys.version_info < (3, 9):
             _load_and_add(classes, 'dataclasses', '_InitVarMeta')
         else:
+            _load_and_update(built_in_functions,
+                             '_peg_parser', ['compile_string',
+                                             'parse_string'])
             _load_and_add(built_in_functions,
                           '_xxsubinterpreters', 'channel_list_interpreters')
             _load_and_add(built_in_functions, 'uuid', '_generate_time_safe')
@@ -877,6 +886,11 @@ elif sys.platform == 'darwin':
         _load_and_update(classes, '_collections', ['_deque_iterator',
                                                    '_deque_reverse_iterator'])
         _load_and_add(classes, '_lsprof', 'Profiler')
+        _load_and_update(classes,
+                         '_multibytecodec', ['MultibyteIncrementalDecoder',
+                                             'MultibyteIncrementalEncoder',
+                                             'MultibyteStreamReader',
+                                             'MultibyteStreamWriter'])
         _load_and_add(classes, '_multiprocessing', 'SemLock')
         _load_and_update(
                 classes,
@@ -1251,6 +1265,7 @@ elif sys.platform == 'darwin':
                                                     'ChannelError',
                                                     'ChannelNotEmptyError',
                                                     'ChannelNotFoundError',
+                                                    'InterpreterID',
                                                     'RunFailedError'])
             _load_and_add(classes, 'collections', '_tuplegetter')
             _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
@@ -1262,8 +1277,11 @@ elif sys.platform == 'darwin':
         if sys.version_info < (3, 9):
             _load_and_add(classes, 'dataclasses', '_InitVarMeta')
         else:
-            _load_and_add(built_in_functions, '_xxsubinterpreters',
-                          'channel_list_interpreters')
+            _load_and_update(built_in_functions,
+                             '_peg_parser', ['compile_string',
+                                             'parse_string'])
+            _load_and_add(built_in_functions,
+                          '_xxsubinterpreters', 'channel_list_interpreters')
             _load_and_add(built_in_functions, 'sys', 'breakpointhook')
             _load_and_add(built_in_functions, 'uuid', '_generate_time_safe')
 
