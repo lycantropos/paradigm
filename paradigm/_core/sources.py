@@ -1,6 +1,7 @@
 import inspect
 import os
 import site
+import sys
 import typing as t
 from importlib.machinery import (EXTENSION_SUFFIXES,
                                  SOURCE_SUFFIXES)
@@ -158,7 +159,9 @@ def _is_valid_module_path(module_path: catalog.Path) -> bool:
                     for part in module_path))
 
 
-stdlib_modules_paths = {module_path
-                        for path in _sources_directories
-                        for module_path in _to_modules_paths(path)
-                        if _is_valid_module_path(module_path)}
+stdlib_modules_paths = {*[catalog.path_from_string(module_name)
+                          for module_name in sys.builtin_module_names],
+                        *[module_path
+                          for path in _sources_directories
+                          for module_path in _to_modules_paths(path)
+                          if _is_valid_module_path(module_path)]}
