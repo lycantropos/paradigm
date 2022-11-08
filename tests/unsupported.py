@@ -187,10 +187,28 @@ if sys.platform == 'linux':
             _load_and_add(classes, '_collections_abc', 'EllipsisType')
             _load_and_add(classes, 'unittest.mock', '_AnyComparer')
     else:
+        _load_and_add(built_in_functions, '_codecs_cn', 'getcodec')
+        _load_and_add(built_in_functions, '_codecs_hk', 'getcodec')
+        _load_and_add(built_in_functions, '_codecs_iso2022', 'getcodec')
+        _load_and_add(built_in_functions, '_codecs_jp', 'getcodec')
+        _load_and_add(built_in_functions, '_codecs_kr', 'getcodec')
+        _load_and_add(built_in_functions, '_codecs_tw', 'getcodec')
         _load_and_add(built_in_functions, '_collections', '_count_elements')
+        _load_and_update(built_in_functions, '_ctypes', ['PyObj_FromPtr',
+                                                         'Py_DECREF',
+                                                         'Py_INCREF',
+                                                         '_unpickle',
+                                                         'buffer_info',
+                                                         'call_cdeclfunction',
+                                                         'call_function',
+                                                         'dlclose',
+                                                         'dlsym'])
+        _load_and_add(built_in_functions, '_hashlib', 'new')
         _load_and_update(built_in_functions,
                          '_string', ['formatter_field_name_split',
                                      'formatter_parser'])
+        _load_and_add(built_in_functions, '_uuid', 'generate_time_safe')
+        _load_and_add(built_in_functions, '_xxtestfuzz', 'run')
         _load_and_update(built_in_functions, '_thread', ['allocate',
                                                          'exit_thread',
                                                          'start_new'])
@@ -213,6 +231,7 @@ if sys.platform == 'linux':
                                           'encode_basestring_ascii'])
         _load_and_update(built_in_functions, 'locale', ['_localeconv',
                                                         '_setlocale'])
+        _load_and_add(built_in_functions, 'logging', 'Formatter.converter')
         _load_and_add(built_in_functions,
                       'multiprocessing.synchronize', 'sem_unlink')
         _load_and_add(built_in_functions, 'parser', '_pickler')
@@ -221,6 +240,7 @@ if sys.platform == 'linux':
         _load_and_add(built_in_functions,
                       'selectors', 'PollSelector._selector_cls')
         _load_and_add(built_in_functions, 'threading', '_set_sentinel')
+        _load_and_add(built_in_functions, 'timeit', 'default_timer')
         _load_and_update(built_in_functions, 'tty', ['tcdrain',
                                                      'tcflow',
                                                      'tcflush',
@@ -232,6 +252,12 @@ if sys.platform == 'linux':
 
         _load_and_update(classes, '_collections', ['_deque_iterator',
                                                    '_deque_reverse_iterator'])
+        _load_and_update(classes, '_io', ['_BufferedIOBase',
+                                          '_IOBase',
+                                          '_RawIOBase',
+                                          '_TextIOBase'])
+        _load_and_add(classes, '_lsprof', 'Profiler')
+        _load_and_add(classes, '_multiprocessing', 'SemLock')
         _load_and_update(
                 classes,
                 'asyncio.events', ['BaseDefaultEventLoopPolicy._Local',
@@ -354,10 +380,6 @@ if sys.platform == 'linux':
                                                       'StreamReader',
                                                       'StreamWriter'])
         _load_and_add(classes, 'importlib._bootstrap', '_DeadlockError')
-        _load_and_update(classes, '_io', ['_BufferedIOBase',
-                                          '_IOBase',
-                                          '_RawIOBase',
-                                          '_TextIOBase'])
         _load_and_update(classes, 'itertools', ['_grouper',
                                                 '_tee',
                                                 '_tee_dataobject'])
@@ -443,6 +465,28 @@ if sys.platform == 'linux':
                                                       '_TextIOBase.read',
                                                       '_TextIOBase.readline',
                                                       '_TextIOBase.write'])
+        _load_and_update(methods_descriptors, '_hashlib', ['HASH.copy',
+                                                           'HASH.digest',
+                                                           'HASH.hexdigest',
+                                                           'HASH.update'])
+        _load_and_update(methods_descriptors,
+                         '_lsprof', ['Profiler.clear',
+                                     'Profiler.disable',
+                                     'Profiler.enable',
+                                     'Profiler.getstats',
+                                     'profiler_entry.__reduce__',
+                                     'profiler_subentry.__reduce__'])
+        _load_and_update(methods_descriptors,
+                         '_multiprocessing', ['SemLock.__enter__',
+                                              'SemLock.__exit__',
+                                              'SemLock._after_fork',
+                                              'SemLock._count',
+                                              'SemLock._get_value',
+                                              'SemLock._is_mine',
+                                              'SemLock._is_zero',
+                                              'SemLock.acquire',
+                                              'SemLock.release'])
+        _load_and_add(methods_descriptors, '_ssl', '_SSLSocket.read')
         _load_and_update(methods_descriptors,
                          '_thread', ['LockType.acquire_lock',
                                      'LockType.locked_lock',
@@ -556,9 +600,33 @@ if sys.platform == 'linux':
                              'lzma', ['LZMACompressor.__getstate__',
                                       'LZMADecompressor.__getstate__'])
         else:
+            _load_and_update(built_in_functions,
+                             '_xxsubinterpreters', ['_channel_id',
+                                                    'channel_close',
+                                                    'channel_create',
+                                                    'channel_destroy',
+                                                    'channel_list_all',
+                                                    'channel_recv',
+                                                    'channel_release',
+                                                    'channel_send',
+                                                    'create',
+                                                    'destroy',
+                                                    'get_current',
+                                                    'get_main',
+                                                    'is_running',
+                                                    'is_shareable',
+                                                    'list_all',
+                                                    'run_string'])
             _load_and_add(built_in_functions, 'math', 'hypot')
             _load_and_add(built_in_functions, 'threading', 'excepthook')
 
+            _load_and_update(classes,
+                             '_xxsubinterpreters', ['ChannelClosedError',
+                                                    'ChannelEmptyError',
+                                                    'ChannelError',
+                                                    'ChannelNotEmptyError',
+                                                    'ChannelNotFoundError',
+                                                    'RunFailedError'])
             _load_and_add(classes, 'collections', '_tuplegetter')
             _load_and_add(classes, 'shutil', '_GiveupOnFastCopy')
 
@@ -567,8 +635,21 @@ if sys.platform == 'linux':
         if sys.version_info < (3, 9):
             _load_and_add(classes, 'dataclasses', '_InitVarMeta')
         else:
+            _load_and_add(built_in_functions,
+                          '_xxsubinterpreters', 'channel_list_interpreters')
             _load_and_add(built_in_functions, 'uuid', '_generate_time_safe')
+
             _load_and_add(classes, '_collections_abc', 'EllipsisType')
+            _load_and_update(classes, '_hashlib', ['HASH',
+                                                   'HASHXOF',
+                                                   'HMAC'])
+            _load_and_update(classes, '_sha3', ['sha3_224',
+                                                'sha3_256',
+                                                'sha3_384',
+                                                'sha3_512',
+                                                'shake_128',
+                                                'shake_256'])
+
             _load_and_add(methods_descriptors,
                           '_thread', 'LockType._at_fork_reinit')
             _load_and_update(methods_descriptors,
@@ -580,13 +661,29 @@ if sys.platform == 'linux':
         if sys.version_info < (3, 10):
             _load_and_add(built_in_functions, 'faulthandler', '_fatal_error')
         else:
+            _load_and_update(built_in_functions, 'xxlimited_35', ['foo',
+                                                                  'new',
+                                                                  'roj'])
+
+            _load_and_add(classes, '_hashlib', 'UnsupportedDigestmodError')
+            _load_and_update(classes,
+                             '_multibytecodec', ['MultibyteIncrementalDecoder',
+                                                 'MultibyteIncrementalEncoder',
+                                                 'MultibyteStreamReader',
+                                                 'MultibyteStreamWriter'])
             _load_and_add(classes,
                           'importlib.metadata', 'FreezableDefaultDict')
             _load_and_add(classes, 'importlib.metadata._text', 'FoldedCase')
             _load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
             _load_and_add(classes, 'unittest.mock', 'InvalidSpecError')
+            _load_and_update(classes, 'xxlimited_35', ['Null',
+                                                       'Str',
+                                                       'error'])
+
             _load_and_update(methods_descriptors, '_csv', ['Writer.writerow',
                                                            'Writer.writerows'])
+            _load_and_add(methods_descriptors,
+                          '_ssl', 'Certificate.public_bytes')
             _load_and_update(methods_descriptors,
                              'builtins', ['property.__set_name__',
                                           'zip.__setstate__'])
@@ -595,6 +692,9 @@ if sys.platform == 'linux':
             _load_and_update(methods_descriptors,
                              'types', ['UnionType.__instancecheck__',
                                        'UnionType.__subclasscheck__'])
+            _load_and_add(methods_descriptors, 'xxlimited_35', 'Xxo.demo')
+
+            _load_and_add(wrappers_descriptors, 'xxlimited_35', 'Xxo.__del__')
 elif sys.platform == 'darwin':
     if sys.implementation.name == 'pypy':
         _load_and_update(classes, '_cffi_backend', ['FFI',
@@ -705,10 +805,30 @@ elif sys.platform == 'darwin':
             _load_and_add(classes, '_collections_abc', 'EllipsisType')
             _load_and_add(classes, 'unittest.mock', '_AnyComparer')
     else:
+        _load_and_add(built_in_functions, '_codecs_cn', 'getcodec')
+        _load_and_add(built_in_functions, '_codecs_hk', 'getcodec')
+        _load_and_add(built_in_functions, '_codecs_iso2022', 'getcodec')
+        _load_and_add(built_in_functions, '_codecs_jp', 'getcodec')
+        _load_and_add(built_in_functions, '_codecs_kr', 'getcodec')
+        _load_and_add(built_in_functions, '_codecs_tw', 'getcodec')
+        _load_and_update(built_in_functions, '_ctypes', ['PyObj_FromPtr',
+                                                         'Py_DECREF',
+                                                         'Py_INCREF',
+                                                         '_unpickle',
+                                                         'buffer_info',
+                                                         'call_cdeclfunction',
+                                                         'call_function',
+                                                         'dlclose',
+                                                         'dlsym'])
+        _load_and_add(built_in_functions, '_hashlib', 'new')
+        _load_and_add(built_in_functions, '_uuid', 'generate_time_safe')
+        _load_and_add(built_in_functions, '_xxtestfuzz', 'run')
         _load_and_add(built_in_functions, 'locale', '_localeconv')
+        _load_and_add(built_in_functions, 'logging', 'Formatter.converter')
         _load_and_add(built_in_functions, 'parser', '_pickler')
         _load_and_update(built_in_functions, 'sys', ['__breakpointhook__',
                                                      'breakpointhook'])
+        _load_and_add(built_in_functions, 'timeit', 'default_timer')
         _load_and_update(built_in_functions,
                          'urllib.request', ['_get_proxies',
                                             '_get_proxy_settings'])
@@ -756,6 +876,8 @@ elif sys.platform == 'darwin':
 
         _load_and_update(classes, '_collections', ['_deque_iterator',
                                                    '_deque_reverse_iterator'])
+        _load_and_add(classes, '_lsprof', 'Profiler')
+        _load_and_add(classes, '_multiprocessing', 'SemLock')
         _load_and_update(
                 classes,
                 'asyncio.events', ['_RunningLoop',
@@ -945,6 +1067,10 @@ elif sys.platform == 'darwin':
                                      'tuple_iterator.__reduce__',
                                      'tuple_iterator.__setstate__']
         )
+        _load_and_update(methods_descriptors, '_hashlib', ['HASH.copy',
+                                                           'HASH.digest',
+                                                           'HASH.hexdigest',
+                                                           'HASH.update'])
         _load_and_update(methods_descriptors, '_io', ['_BufferedIOBase.read',
                                                       '_BufferedIOBase.read1',
                                                       '_BufferedIOBase.write',
@@ -962,6 +1088,24 @@ elif sys.platform == 'darwin':
                                                       '_TextIOBase.read',
                                                       '_TextIOBase.readline',
                                                       '_TextIOBase.write'])
+        _load_and_update(methods_descriptors,
+                         '_lsprof', ['Profiler.clear',
+                                     'Profiler.disable',
+                                     'Profiler.enable',
+                                     'Profiler.getstats',
+                                     'profiler_entry.__reduce__',
+                                     'profiler_subentry.__reduce__'])
+        _load_and_update(methods_descriptors,
+                         '_multiprocessing', ['SemLock.__enter__',
+                                              'SemLock.__exit__',
+                                              'SemLock._after_fork',
+                                              'SemLock._count',
+                                              'SemLock._get_value',
+                                              'SemLock._is_mine',
+                                              'SemLock._is_zero',
+                                              'SemLock.acquire',
+                                              'SemLock.release'])
+        _load_and_add(methods_descriptors, '_ssl', '_SSLSocket.read')
         _load_and_update(methods_descriptors,
                          '_thread', ['LockType.acquire_lock',
                                      'LockType.locked_lock',
@@ -1076,6 +1220,23 @@ elif sys.platform == 'darwin':
                              'lzma', ['LZMACompressor.__getstate__',
                                       'LZMADecompressor.__getstate__'])
         else:
+            _load_and_update(built_in_functions,
+                             '_xxsubinterpreters', ['_channel_id',
+                                                    'channel_close',
+                                                    'channel_create',
+                                                    'channel_destroy',
+                                                    'channel_list_all',
+                                                    'channel_recv',
+                                                    'channel_release',
+                                                    'channel_send',
+                                                    'create',
+                                                    'destroy',
+                                                    'get_current',
+                                                    'get_main',
+                                                    'is_running',
+                                                    'is_shareable',
+                                                    'list_all',
+                                                    'run_string'])
             _load_and_add(
                     built_in_functions,
                     'ctypes.macholib.dyld', '_dyld_shared_cache_contains_path'
@@ -1083,6 +1244,14 @@ elif sys.platform == 'darwin':
             _load_and_add(built_in_functions, 'math', 'hypot')
             _load_and_add(built_in_functions, 'threading', 'excepthook')
 
+            _load_and_add(classes, '_gdbm', 'error')
+            _load_and_update(classes,
+                             '_xxsubinterpreters', ['ChannelClosedError',
+                                                    'ChannelEmptyError',
+                                                    'ChannelError',
+                                                    'ChannelNotEmptyError',
+                                                    'ChannelNotFoundError',
+                                                    'RunFailedError'])
             _load_and_add(classes, 'collections', '_tuplegetter')
             _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
             _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
@@ -1093,12 +1262,21 @@ elif sys.platform == 'darwin':
         if sys.version_info < (3, 9):
             _load_and_add(classes, 'dataclasses', '_InitVarMeta')
         else:
+            _load_and_add(built_in_functions, '_xxsubinterpreters',
+                          'channel_list_interpreters')
             _load_and_add(built_in_functions, 'sys', 'breakpointhook')
             _load_and_add(built_in_functions, 'uuid', '_generate_time_safe')
 
             _load_and_add(classes, '_collections_abc', 'EllipsisType')
-            _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
-            _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
+            _load_and_update(classes, '_hashlib', ['HASH',
+                                                   'HASHXOF',
+                                                   'HMAC'])
+            _load_and_update(classes, '_sha3', ['sha3_224',
+                                                'sha3_256',
+                                                'sha3_384',
+                                                'sha3_512',
+                                                'shake_128',
+                                                'shake_256'])
 
             _load_and_add(methods_descriptors,
                           '_thread', 'LockType._at_fork_reinit')
@@ -1112,6 +1290,16 @@ elif sys.platform == 'darwin':
             _load_and_add(built_in_functions, 'faulthandler', '_fatal_error')
             _load_and_add(classes, 'typing_extensions', '_AnyMeta')
         else:
+            _load_and_update(built_in_functions, 'xxlimited_35', ['foo',
+                                                                  'new',
+                                                                  'roj'])
+
+            _load_and_add(classes, '_hashlib', 'UnsupportedDigestmodError')
+            _load_and_update(classes, '_multibytecodec',
+                             ['MultibyteIncrementalDecoder',
+                              'MultibyteIncrementalEncoder',
+                              'MultibyteStreamReader',
+                              'MultibyteStreamWriter'])
             _load_and_add(
                     classes,
                     'importlib.metadata._collections', 'FreezableDefaultDict'
@@ -1119,9 +1307,14 @@ elif sys.platform == 'darwin':
             _load_and_add(classes, 'importlib.metadata._text', 'FoldedCase')
             _load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
             _load_and_add(classes, 'unittest.mock', 'InvalidSpecError')
+            _load_and_update(classes, 'xxlimited_35', ['Null',
+                                                       'Str',
+                                                       'error'])
 
             _load_and_update(methods_descriptors, '_csv', ['Writer.writerow',
                                                            'Writer.writerows'])
+            _load_and_add(methods_descriptors,
+                          '_ssl', 'Certificate.public_bytes')
             _load_and_update(methods_descriptors,
                              'builtins', ['property.__set_name__',
                                           'zip.__setstate__'])
@@ -1130,6 +1323,9 @@ elif sys.platform == 'darwin':
             _load_and_update(methods_descriptors,
                              'types', ['UnionType.__instancecheck__',
                                        'UnionType.__subclasscheck__'])
+            _load_and_add(methods_descriptors, 'xxlimited_35', 'Xxo.demo')
+
+            _load_and_add(wrappers_descriptors, 'xxlimited_35', 'Xxo.__del__')
 elif sys.platform == 'win32':
     if sys.implementation.name == 'pypy':
         _load_and_update(classes, '_cffi_backend', ['FFI',
