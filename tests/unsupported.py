@@ -1460,7 +1460,31 @@ elif sys.platform == 'win32':
         _load_and_add(built_in_functions, '_codecs_jp', 'getcodec')
         _load_and_add(built_in_functions, '_codecs_kr', 'getcodec')
         _load_and_add(built_in_functions, '_codecs_tw', 'getcodec')
+        _load_and_update(built_in_functions, '_ctypes', ['CopyComPointer',
+                                                         'FreeLibrary',
+                                                         'PyObj_FromPtr',
+                                                         'Py_DECREF',
+                                                         'Py_INCREF',
+                                                         '_unpickle',
+                                                         'buffer_info',
+                                                         'call_cdeclfunction',
+                                                         'call_function'])
+        _load_and_add(built_in_functions, '_hashlib', 'new')
         _load_and_add(built_in_functions, '_locale', '_getdefaultlocale')
+        _load_and_add(built_in_functions, '_multiprocessing', 'closesocket')
+        _load_and_update(built_in_functions,
+                         '_overlapped', ['BindLocal',
+                                         'ConnectPipe',
+                                         'CreateEvent',
+                                         'CreateIoCompletionPort',
+                                         'FormatMessage',
+                                         'GetQueuedCompletionStatus',
+                                         'PostQueuedCompletionStatus',
+                                         'RegisterWaitWithQueue',
+                                         'ResetEvent',
+                                         'SetEvent',
+                                         'UnregisterWait',
+                                         'UnregisterWaitEx'])
         _load_and_update(built_in_functions,
                          '_string', ['formatter_field_name_split',
                                      'formatter_parser'])
@@ -1495,6 +1519,7 @@ elif sys.platform == 'win32':
 
         _load_and_update(classes, '_collections', ['_deque_iterator',
                                                    '_deque_reverse_iterator'])
+        _load_and_add(classes, '_ctypes', 'COMError')
         _load_and_update(classes, '_io', ['_BufferedIOBase',
                                           '_IOBase',
                                           '_RawIOBase',
@@ -1505,6 +1530,8 @@ elif sys.platform == 'win32':
                                              'MultibyteIncrementalEncoder',
                                              'MultibyteStreamReader',
                                              'MultibyteStreamWriter'])
+        _load_and_add(classes, '_multiprocessing', 'SemLock')
+        _load_and_add(classes, '_overlapped', 'Overlapped')
         _load_and_update(
                 classes,
                 'asyncio.events', ['_RunningLoop',
@@ -1703,20 +1730,6 @@ elif sys.platform == 'win32':
                                  '_deque_reverse_iterator.__length_hint__',
                                  '_deque_reverse_iterator.__reduce__']
         )
-        _load_and_update(methods_descriptors,
-                         '_lsprof', ['Profiler.clear',
-                                     'Profiler.disable',
-                                     'Profiler.enable',
-                                     'Profiler.getstats',
-                                     'profiler_entry.__reduce__',
-                                     'profiler_subentry.__reduce__'])
-        _load_and_update(methods_descriptors,
-                         '_thread', ['LockType.acquire_lock',
-                                     'LockType.locked_lock',
-                                     'LockType.release_lock'])
-        _load_and_update(methods_descriptors,
-                         'builtins', ['complex.__getnewargs__',
-                                      'reversed.__setstate__'])
         _load_and_update(
                 methods_descriptors,
                 '_collections_abc', ['bytearray_iterator.__length_hint__',
@@ -1751,6 +1764,67 @@ elif sys.platform == 'win32':
                                      'tuple_iterator.__reduce__',
                                      'tuple_iterator.__setstate__']
         )
+        _load_and_update(methods_descriptors, '_hashlib', ['HASH.copy',
+                                                           'HASH.digest',
+                                                           'HASH.hexdigest',
+                                                           'HASH.update'])
+        _load_and_update(methods_descriptors,
+                         '_io', ['_BufferedIOBase.read',
+                                 '_BufferedIOBase.read1',
+                                 '_BufferedIOBase.write',
+                                 '_IOBase.__enter__',
+                                 '_IOBase.__exit__',
+                                 '_IOBase._checkClosed',
+                                 '_IOBase._checkReadable',
+                                 '_IOBase._checkSeekable',
+                                 '_IOBase._checkWritable',
+                                 '_IOBase.seek',
+                                 '_IOBase.truncate',
+                                 '_RawIOBase.readinto',
+                                 '_RawIOBase.write',
+                                 '_TextIOBase.detach',
+                                 '_TextIOBase.read',
+                                 '_TextIOBase.readline',
+                                 '_TextIOBase.write'])
+        _load_and_update(methods_descriptors,
+                         '_lsprof', ['Profiler.clear',
+                                     'Profiler.disable',
+                                     'Profiler.enable',
+                                     'Profiler.getstats',
+                                     'profiler_entry.__reduce__',
+                                     'profiler_subentry.__reduce__'])
+        _load_and_update(methods_descriptors,
+                         '_multiprocessing', ['SemLock.__enter__',
+                                              'SemLock.__exit__',
+                                              'SemLock._after_fork',
+                                              'SemLock._count',
+                                              'SemLock._get_value',
+                                              'SemLock._is_mine',
+                                              'SemLock._is_zero',
+                                              'SemLock.acquire',
+                                              'SemLock.release'])
+        _load_and_update(methods_descriptors,
+                         '_overlapped', ['Overlapped.AcceptEx',
+                                         'Overlapped.ConnectEx',
+                                         'Overlapped.ConnectNamedPipe',
+                                         'Overlapped.DisconnectEx',
+                                         'Overlapped.ReadFile',
+                                         'Overlapped.ReadFileInto',
+                                         'Overlapped.TransmitFile',
+                                         'Overlapped.WSARecv',
+                                         'Overlapped.WSARecvInto',
+                                         'Overlapped.WSASend',
+                                         'Overlapped.WriteFile',
+                                         'Overlapped.cancel',
+                                         'Overlapped.getresult'])
+        _load_and_add(methods_descriptors, '_ssl', '_SSLSocket.read')
+        _load_and_update(methods_descriptors,
+                         '_thread', ['LockType.acquire_lock',
+                                     'LockType.locked_lock',
+                                     'LockType.release_lock'])
+        _load_and_update(methods_descriptors,
+                         'builtins', ['complex.__getnewargs__',
+                                      'reversed.__setstate__'])
         _load_and_add(methods_descriptors,
                       'ctypes', '_SimpleCData.__ctypes_from_outparam__')
         _load_and_update(methods_descriptors,
@@ -1774,24 +1848,6 @@ elif sys.platform == 'win32':
                                 'FileIO._dealloc_warn',
                                 'StringIO.__getstate__',
                                 'StringIO.__setstate__'])
-        _load_and_update(methods_descriptors,
-                         '_io', ['_BufferedIOBase.read',
-                                 '_BufferedIOBase.read1',
-                                 '_BufferedIOBase.write',
-                                 '_IOBase.__enter__',
-                                 '_IOBase.__exit__',
-                                 '_IOBase._checkClosed',
-                                 '_IOBase._checkReadable',
-                                 '_IOBase._checkSeekable',
-                                 '_IOBase._checkWritable',
-                                 '_IOBase.seek',
-                                 '_IOBase.truncate',
-                                 '_RawIOBase.readinto',
-                                 '_RawIOBase.write',
-                                 '_TextIOBase.detach',
-                                 '_TextIOBase.read',
-                                 '_TextIOBase.readline',
-                                 '_TextIOBase.write'])
         _load_and_update(
                 methods_descriptors,
                 'itertools', ['_grouper.__reduce__',
@@ -1887,6 +1943,7 @@ elif sys.platform == 'win32':
                              'lzma', ['LZMACompressor.__getstate__',
                                       'LZMADecompressor.__getstate__'])
         else:
+            _load_and_add(built_in_functions, '_overlapped', 'WSAConnect')
             _load_and_update(built_in_functions,
                              '_xxsubinterpreters', ['_channel_id',
                                                     'channel_close',
@@ -1923,11 +1980,17 @@ elif sys.platform == 'win32':
         if sys.version_info < (3, 9):
             _load_and_add(classes, 'dataclasses', '_InitVarMeta')
         else:
+            _load_and_update(built_in_functions, '_peg_parser',
+                             ['compile_string',
+                              'parse_string'])
             _load_and_add(built_in_functions,
                           '_xxsubinterpreters', 'channel_list_interpreters')
             _load_and_add(built_in_functions, 'uuid', '_UuidCreate')
 
             _load_and_add(classes, '_collections_abc', 'EllipsisType')
+            _load_and_update(classes, '_hashlib', ['HASH',
+                                                   'HASHXOF',
+                                                   'HMAC'])
             _load_and_update(classes, '_sha3', ['sha3_224',
                                                 'sha3_256',
                                                 'sha3_384',
@@ -1948,12 +2011,16 @@ elif sys.platform == 'win32':
             _load_and_add(built_in_functions, 'faulthandler', '_fatal_error')
             _load_and_add(built_in_functions, 'parser', '_pickler')
         else:
+            _load_and_add(classes, '_hashlib', 'UnsupportedDigestmodError')
             _load_and_add(classes,
                           'importlib.metadata', 'FreezableDefaultDict')
             _load_and_add(classes, 'importlib.metadata._text', 'FoldedCase')
             _load_and_add(classes, 'unittest.mock', 'InvalidSpecError')
+
             _load_and_update(methods_descriptors, '_csv', ['Writer.writerow',
                                                            'Writer.writerows'])
+            _load_and_add(methods_descriptors,
+                          '_ssl', 'Certificate.public_bytes')
             _load_and_update(methods_descriptors,
                              'builtins', ['property.__set_name__',
                                           'zip.__setstate__'])
