@@ -143,8 +143,8 @@ except Exception:
 
 
         supported_stdlib_qualified_paths = _to_supported_qualified_paths(
-                _execution.try_in_process(_index_modules,
-                                          _supported_stdlib_modules_paths),
+                _execution.call_in_process(_index_modules,
+                                           _supported_stdlib_modules_paths),
                 _stubs.definitions, _stubs.references, _stubs.sub_scopes
         )
         _exporting.save(

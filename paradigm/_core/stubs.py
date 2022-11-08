@@ -328,7 +328,7 @@ except Exception:
 
 
     if _execution.is_main_process():
-        definitions, references, sub_scopes = _execution.try_in_process(
+        definitions, references, sub_scopes = _execution.call_in_process(
                 _parse_stubs_state, _stdlib_modules_paths
         )
         _exporting.save(_CACHE_PATH, **{_DEFINITIONS_FIELD_NAME: definitions,

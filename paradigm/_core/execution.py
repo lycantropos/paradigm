@@ -10,9 +10,9 @@ def is_main_process() -> bool:
     return multiprocessing.current_process().name == 'MainProcess'
 
 
-def try_in_process(function: t.Callable[..., t.Any],
-                   *args: t.Any,
-                   **kwargs: t.Any) -> t.Any:
+def call_in_process(function: t.Callable[..., t.Any],
+                    *args: t.Any,
+                    **kwargs: t.Any) -> t.Any:
     assert is_main_process()
     with threading.Lock():
         caller_frame = inspect.stack()[1].frame
@@ -24,7 +24,7 @@ def try_in_process(function: t.Callable[..., t.Any],
             queue = context.SimpleQueue()
             process = context.Process(
                     target=_put_result_in_queue,
-                    name=(f'{try_in_process.__qualname__}_'
+                    name=(f'{call_in_process.__qualname__}_'
                           f'{function.__qualname__}'),
                     args=(queue, function, *args),
                     kwargs=kwargs
