@@ -27,7 +27,10 @@ def contains_object_path(
         _builtins_module_path: catalog.Path
         = catalog.module_path_from_module(builtins)
 ) -> bool:
-    module_definitions = modules_definitions[module_path]
+    try:
+        module_definitions = modules_definitions[module_path]
+    except KeyError:
+        return False
     module_sub_scopes = modules_sub_scopes[module_path]
     if object_path and object_path[0] in module_definitions:
         scope = module_definitions[object_path[0]]
