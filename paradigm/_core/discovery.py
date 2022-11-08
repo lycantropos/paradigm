@@ -2,7 +2,7 @@ import sys
 import typing as t
 
 from . import catalog
-from .sources import discoverable_stdlib_modules_paths
+from .sources import stdlib_modules_paths
 
 
 def _recursively_update_modules_paths(
@@ -12,7 +12,7 @@ def _recursively_update_modules_paths(
     paths = [catalog.path_from_string(name) for name in names]
     set_.update({*paths,
                  *[candidate
-                   for candidate in discoverable_stdlib_modules_paths
+                   for candidate in stdlib_modules_paths
                    if any(candidate[:len(path)] == path for path in paths)]})
 
 
@@ -40,7 +40,7 @@ if sys.implementation.name == 'pypy':
                                       'tracemalloc')
     unsupported_stdlib_modules_paths.update(
             [path
-             for path in discoverable_stdlib_modules_paths
+             for path in stdlib_modules_paths
              if path[0].startswith(('__pypy', '_ctypes_', '_pypy', '_test',
                                     'ctypes_'))]
     )
@@ -154,5 +154,5 @@ else:
                         'distutils._msvccompiler',
                 )
 
-supported_stdlib_modules_paths = (discoverable_stdlib_modules_paths
+supported_stdlib_modules_paths = (stdlib_modules_paths
                                   - unsupported_stdlib_modules_paths)

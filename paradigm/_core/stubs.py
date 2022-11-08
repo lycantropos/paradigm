@@ -48,7 +48,7 @@ except Exception:
         flat_module_ast_node_from_path as _flat_module_ast_node_from_path,
         to_parent_module_path as _to_parent_module_path
     )
-    from .sources import stdlib_modules_paths as _stdlib_modules_paths
+    from .sources import stubs_stdlib_modules_paths as _stdlib_modules_paths
 
 
     @_singledispatch
