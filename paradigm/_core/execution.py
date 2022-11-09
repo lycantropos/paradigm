@@ -13,7 +13,7 @@ def is_main_process() -> bool:
 def try_call_in_process(function: t.Callable[..., t.Any],
                         *args: t.Any,
                         **kwargs: t.Any) -> t.Any:
-    if is_main_process():
+    if False:
         with threading.Lock():
             caller_frame = inspect.stack()[1].frame
             caller_module = inspect.getmodule(caller_frame)
