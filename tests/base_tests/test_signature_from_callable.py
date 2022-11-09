@@ -30,7 +30,7 @@ def test_overloaded(callable_: Callable[..., Any]) -> None:
         result = signature_from_callable(callable_)
     except Exception:
         raise ValueError({
-            name: value
+            (module_path, (name,)): catalog.qualified_path_from(value)
             for name, value in vars(
                     sys.modules[catalog.path_to_string(module_path)]
             ).items()
