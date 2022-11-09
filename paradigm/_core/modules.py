@@ -109,14 +109,9 @@ except Exception:
         return result
 
 
-    if _execution.is_main_process():
-        _stdlib_qualified_paths = _execution.call_in_process(
-                _index_modules, _supported_stdlib_modules_paths
-        )
-    else:
-        _stdlib_qualified_paths = _index_modules(
-                _supported_stdlib_modules_paths
-        )
+    _stdlib_qualified_paths = _execution.try_call_in_process(
+            _index_modules, _supported_stdlib_modules_paths
+    )
 
 
     def _to_supported_qualified_paths(
@@ -155,11 +150,12 @@ except Exception:
             _stdlib_qualified_paths,
             _stubs.definitions, _stubs.references, _stubs.sub_scopes
     )
-    _exporting.save(
-            _CACHE_PATH,
-            **{
-                'all_stdlib_qualified_paths': _stdlib_qualified_paths,
-                _STDLIB_QUALIFIED_PATHS_FIELD_NAME:
-                    supported_stdlib_qualified_paths
-            }
-    )
+    if _execution.is_main_process():
+        _exporting.save(
+                _CACHE_PATH,
+                **{
+                    'all_stdlib_qualified_paths': _stdlib_qualified_paths,
+                    _STDLIB_QUALIFIED_PATHS_FIELD_NAME:
+                        supported_stdlib_qualified_paths
+                }
+        )
