@@ -1,3 +1,4 @@
+import sys
 from typing import (Any,
                     Callable)
 
@@ -20,9 +21,20 @@ def test_basic(callable_: Callable[..., Any]) -> None:
 
 @given(strategies.overloaded_callables)
 def test_overloaded(callable_: Callable[..., Any]) -> None:
-    module_path, _ = catalog.qualified_path_from(callable_)
-    assert module_path in stdlib_modules_paths, module_path
+    module_path, object_path = catalog.qualified_path_from(callable_)
+    assert (
+            module_path and object_path and module_path in stdlib_modules_paths
+    ), module_path
 
-    result = signature_from_callable(callable_)
+    try:
+        result = signature_from_callable(callable_)
+    except Exception:
+        raise ValueError({
+            name: value
+            for name, value in vars(
+                    sys.modules[catalog.path_to_string(module_path)]
+            ).items()
+            if callable(value)
+        })
 
     assert isinstance(result, OverloadedSignature)
