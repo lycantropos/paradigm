@@ -67,8 +67,13 @@ jobs:
         run: python -m pip install -r requirements-tests.txt
       - name: 'Run doctests'
         run: >
-          coverage run -m doctest -v README.md
+          coverage run -m doctest README.md
           && coverage run --append -m pytest --doctest-modules --ignore=tests
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.python_version }}-${{ matrix.platform.python_architecture }}
+          path: ${{ env.pythonLocation }}
+          if-no-files-found: error
       - name: 'Run tests'
         run: coverage run --append -m pytest
       - name: 'Collect coverage'
