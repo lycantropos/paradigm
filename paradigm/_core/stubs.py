@@ -327,10 +327,12 @@ except Exception:
         return modules_definitions, modules_references, modules_sub_scopes
 
 
-    definitions, references, sub_scopes = _execution.try_call_in_process(
-            _parse_stubs_state, _stdlib_modules_paths
-    )
     if _execution.is_main_process():
+        definitions, references, sub_scopes = _execution.call_in_process(
+                _parse_stubs_state, _stdlib_modules_paths
+        )
         _exporting.save(_CACHE_PATH, **{_DEFINITIONS_FIELD_NAME: definitions,
                                         _REFERENCES_FIELD_NAME: references,
                                         _SUB_SCOPES_FIELD_NAME: sub_scopes})
+    else:
+        definitions, references, sub_scopes = {}, {}, {}
