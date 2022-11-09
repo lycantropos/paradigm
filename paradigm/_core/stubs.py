@@ -335,4 +335,6 @@ except Exception:
                                         _REFERENCES_FIELD_NAME: references,
                                         _SUB_SCOPES_FIELD_NAME: sub_scopes})
     else:
-        definitions, references, sub_scopes = {}, {}, {}
+        definitions, references, sub_scopes = _parse_stubs_state(
+                _stdlib_modules_paths
+        )

@@ -110,52 +110,56 @@ except Exception:
 
 
     if _execution.is_main_process():
-        def _to_supported_qualified_paths(
-                qualified_paths: _QualifiedPaths,
-                definitions: _t.Dict[_catalog.Path, _scoping.Scope],
-                references: _t.Dict[_catalog.Path, _scoping.ModuleReferences],
-                sub_scopes: _t.Dict[_catalog.Path, _scoping.ModuleSubScopes]
-        ) -> _QualifiedPaths:
-            result = {}
-            for (
-                    module_path, module_qualified_paths
-            ) in qualified_paths.items():
-                supported_module_qualified_paths = {}
-                for (
-                        object_path, object_qualified_paths
-                ) in module_qualified_paths.items():
-                    supported_object_qualified_paths = [
-                        (located_module_path, located_object_path)
-                        for located_module_path, located_object_path
-                        in object_qualified_paths
-                        if _scoping.contains_object_path(
-                                located_module_path, located_object_path,
-                                definitions, references, sub_scopes
-                        )
-                    ]
-                    if supported_object_qualified_paths:
-                        supported_module_qualified_paths[object_path] = (
-                            supported_object_qualified_paths
-                        )
-                if supported_module_qualified_paths:
-                    result[module_path] = supported_module_qualified_paths
-            return result
-
-
         _stdlib_qualified_paths = _execution.call_in_process(
-                _index_modules, sorted(_supported_stdlib_modules_paths)
-        )
-        supported_stdlib_qualified_paths = _to_supported_qualified_paths(
-                _stdlib_qualified_paths,
-                _stubs.definitions, _stubs.references, _stubs.sub_scopes
-        )
-        _exporting.save(
-                _CACHE_PATH,
-                **{
-                    'all_stdlib_qualified_paths': _stdlib_qualified_paths,
-                    _STDLIB_QUALIFIED_PATHS_FIELD_NAME:
-                        supported_stdlib_qualified_paths
-                }
+                _index_modules, _supported_stdlib_modules_paths
         )
     else:
-        supported_stdlib_qualified_paths = {}
+        _stdlib_qualified_paths = _index_modules(
+                _supported_stdlib_modules_paths
+        )
+
+
+    def _to_supported_qualified_paths(
+            qualified_paths: _QualifiedPaths,
+            definitions: _t.Dict[_catalog.Path, _scoping.Scope],
+            references: _t.Dict[_catalog.Path, _scoping.ModuleReferences],
+            sub_scopes: _t.Dict[_catalog.Path, _scoping.ModuleSubScopes]
+    ) -> _QualifiedPaths:
+        result = {}
+        for (
+                module_path, module_qualified_paths
+        ) in qualified_paths.items():
+            supported_module_qualified_paths = {}
+            for (
+                    object_path, object_qualified_paths
+            ) in module_qualified_paths.items():
+                supported_object_qualified_paths = [
+                    (located_module_path, located_object_path)
+                    for located_module_path, located_object_path
+                    in object_qualified_paths
+                    if _scoping.contains_object_path(
+                            located_module_path, located_object_path,
+                            definitions, references, sub_scopes
+                    )
+                ]
+                if supported_object_qualified_paths:
+                    supported_module_qualified_paths[object_path] = (
+                        supported_object_qualified_paths
+                    )
+            if supported_module_qualified_paths:
+                result[module_path] = supported_module_qualified_paths
+        return result
+
+
+    supported_stdlib_qualified_paths = _to_supported_qualified_paths(
+            _stdlib_qualified_paths,
+            _stubs.definitions, _stubs.references, _stubs.sub_scopes
+    )
+    _exporting.save(
+            _CACHE_PATH,
+            **{
+                'all_stdlib_qualified_paths': _stdlib_qualified_paths,
+                _STDLIB_QUALIFIED_PATHS_FIELD_NAME:
+                    supported_stdlib_qualified_paths
+            }
+    )
