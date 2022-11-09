@@ -1590,6 +1590,8 @@ elif sys.platform == 'win32':
                                                       'PWIN32_FIND_DATAA',
                                                       'PWIN32_FIND_DATAW',
                                                       'PWORD'])
+        _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
+        _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
         _load_and_add(classes, 'email._encoded_words', '_QByteMap')
         _load_and_update(classes, 'encodings.big5', ['IncrementalDecoder',
                                                      'IncrementalEncoder',
@@ -1896,10 +1898,6 @@ elif sys.platform == 'win32':
                              'decimal', ['Context._unsafe_setemax',
                                          'Context._unsafe_setemin',
                                          'Context._unsafe_setprec'])
-
-        if sys.maxsize != 0x7fffffff or sys.version_info < (3, 9):
-            _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
-            _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
 
         if sys.byteorder == 'little':
             _load_and_update(classes,
