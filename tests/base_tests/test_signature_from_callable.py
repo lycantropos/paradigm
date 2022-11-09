@@ -1,11 +1,11 @@
 import functools
+import sys
 from typing import (Any,
                     Callable)
 
-from hypothesis import given
+from hypothesis import given, note
 
 from paradigm._core import catalog
-from paradigm._core.sources import stdlib_modules_paths
 from paradigm.base import (OverloadedSignature,
                            PlainSignature,
                            signature_from_callable)
@@ -21,11 +21,7 @@ def test_basic(callable_: Callable[..., Any]) -> None:
 
 @given(strategies.overloaded_callables)
 def test_overloaded(callable_: Callable[..., Any]) -> None:
-    module_path, object_path = catalog.qualified_path_from(callable_)
-    assert (
-            module_path and object_path and module_path in stdlib_modules_paths
-    ), module_path
-
+    note(f'{sys.base_prefix}, {sys.exec_prefix}')
     try:
         result = signature_from_callable(callable_)
     except Exception:
