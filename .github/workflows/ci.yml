@@ -69,11 +69,6 @@ jobs:
         run: >
           coverage run -m doctest -v README.md
           && coverage run --append -m pytest --doctest-modules --ignore=tests
-      - uses: actions/upload-artifact@v3
-        with:
-          name: source
-          path: ${{ github.event.repository.name }}
-          if-no-files-found: error
       - name: 'Run tests'
         run: coverage run --append -m pytest
       - name: 'Collect coverage'
