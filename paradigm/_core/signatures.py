@@ -9,8 +9,7 @@ from itertools import zip_longest as _zip_longest
 from operator import itemgetter as _itemgetter
 
 from . import (arboreal as _arboreal,
-               catalog as _catalog,
-               execution as _execution)
+               catalog as _catalog)
 from .models import (OverloadedSignature as _OverloadedSignature,
                      Parameter as _Parameter,
                      PlainSignature as _PlainSignature)
@@ -73,7 +72,6 @@ class _NodeNotFound(Exception):
 
 
 def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
-    assert _qualified_paths, _execution.is_main_process()
     module_path, object_path = _catalog.qualified_path_from(value)
     try:
         candidates_paths = _qualified_paths[module_path][object_path]
