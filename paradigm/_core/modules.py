@@ -75,7 +75,7 @@ except Exception:
                 qualified_module_path, qualified_object_path = (
                     _catalog.qualified_path_from(value)
                 )
-                if qualified_module_path or qualified_object_path:
+                if qualified_object_path:
                     (paths.setdefault(qualified_module_path, {})
                      .setdefault(qualified_object_path, [])
                      .append((module_path, parent_path + (name,))))
@@ -143,7 +143,7 @@ except Exception:
 
 
         _stdlib_qualified_paths = _execution.call_in_process(
-                _index_modules, _supported_stdlib_modules_paths
+                _index_modules, sorted(_supported_stdlib_modules_paths)
         )
         supported_stdlib_qualified_paths = _to_supported_qualified_paths(
                 _stdlib_qualified_paths,
