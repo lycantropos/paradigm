@@ -1,7 +1,6 @@
 import inspect
-import os
-import site
 import sys
+import sysconfig
 import typing as t
 from importlib.machinery import (EXTENSION_SUFFIXES,
                                  SOURCE_SUFFIXES)
@@ -70,60 +69,9 @@ def _relative_file_path_to_module_path(path: Path) -> catalog.Path:
 
 _stubs_cache = _to_stubs_cache()
 stubs_stdlib_modules_paths = set(_stubs_cache.keys())
-
-
-def _is_module_path_discoverable(module_path: catalog.Path) -> bool:
-    module_name = catalog.path_to_string(module_path)
-    try:
-        return find_spec(module_name) is not None
-    except ImportError:
-        return False
-    except ValueError:
-        return True
-
-
-_discoverable_stubs_stdlib_modules_paths = {
-    module_path
-    for module_path in stubs_stdlib_modules_paths
-    if (_is_module_path_discoverable(module_path)
-        and module_path[-1] != '__main__')
-}
-
-
-def _to_source_path(module_path: catalog.Path) -> t.Optional[Path]:
-    module_name = catalog.path_to_string(module_path)
-    try:
-        spec = find_spec(module_name)
-    except ValueError:
-        return None
-    else:
-        origin = spec.origin
-        if origin is None:
-            return None
-        candidate = Path(origin)
-        if not candidate.exists():
-            return None
-        return (candidate.parent
-                if candidate.stem == file_system.INIT_MODULE_NAME
-                else candidate)
-
-
 _sources_directories = {
-    source_path.parent
-    for source_path in [
-        _to_source_path(module_path)
-        for module_path in _discoverable_stubs_stdlib_modules_paths
-        if len(module_path) == 1
-    ]
-    if source_path is not None and source_path.exists()
-}
-_site_packages_directories = tuple(site.getsitepackages())
-_sources_directories = {
-    path
-    for path in _sources_directories
-    if all((os.path.commonpath([path, candidate_path_string])
-            != candidate_path_string)
-           for candidate_path_string in _site_packages_directories)
+    Path(sysconfig.get_path('platstdlib')),
+    Path(sysconfig.get_path('stdlib')),
 }
 
 
