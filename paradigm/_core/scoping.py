@@ -103,9 +103,9 @@ class ObjectNotFound(Exception):
 def resolve_object_path(
         module_path: catalog.Path,
         object_path: catalog.Path,
-        modules_definitions: t.Dict[catalog.Path, Scope],
-        modules_references: t.Dict[catalog.Path, ModuleReferences],
-        modules_sub_scopes: t.Dict[catalog.Path, ModuleSubScopes],
+        modules_definitions: t.Mapping[catalog.Path, Scope],
+        modules_references: t.Mapping[catalog.Path, ModuleReferences],
+        modules_sub_scopes: t.Mapping[catalog.Path, ModuleSubScopes],
         *visited_modules_paths: catalog.Path,
         _builtins_module_path: catalog.Path
         = catalog.module_path_from_module(builtins)
@@ -114,8 +114,10 @@ def resolve_object_path(
         module_definitions = modules_definitions[module_path]
     except KeyError:
         raise ObjectNotFound((module_path, object_path))
+    if not object_path:
+        return (module_path, object_path)
     module_sub_scopes = modules_sub_scopes[module_path]
-    if object_path and object_path[0] in module_definitions:
+    if object_path[0] in module_definitions:
         scope = module_definitions[object_path[0]]
         for index, sub_name in enumerate(object_path[1:],
                                          start=1):

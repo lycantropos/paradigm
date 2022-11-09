@@ -8,8 +8,9 @@ from functools import (partial as _partial,
 from itertools import zip_longest as _zip_longest
 from operator import itemgetter as _itemgetter
 
-from . import (arboreal as _arboreal,
-               catalog as _catalog)
+from . import catalog as _catalog
+from .arboreal import (nodes as _nodes,
+                       search as _search)
 from .models import (OverloadedSignature as _OverloadedSignature,
                      Parameter as _Parameter,
                      PlainSignature as _PlainSignature)
@@ -89,7 +90,7 @@ def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
         (depth, node)
         for depth, node in [
             _from_node(node)
-            for node in [_arboreal.find_node(module_path, object_path)
+            for node in [_search.node_by(module_path, object_path)
                          for module_path, object_path in qualified_paths]
             if node is not None
         ]
@@ -101,7 +102,7 @@ def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
     except ValueError:
         raise _NodeNotFound(qualified_paths,
                             _qualified_paths.get(module_path, {}))
-    assert node.kind is _arboreal.NodeKind.FUNCTION, (module_path, object_path)
+    assert node.kind is _nodes.NodeKind.FUNCTION, (module_path, object_path)
     return _OverloadedSignature(*[_from_ast(ast_node.args)
                                   for ast_node in node.ast_nodes])
 
@@ -122,11 +123,11 @@ def _value_has_qualified_path(value: _t.Any,
     return candidate is value
 
 
-def _from_node(object_node: _arboreal.Node,
+def _from_node(object_node: _nodes.Node,
                *,
                constructor_name: str = object.__new__.__name__,
                initializer_name: str = object.__init__.__name__):
-    if object_node.kind is _arboreal.NodeKind.CLASS:
+    if object_node.kind is _nodes.NodeKind.CLASS:
         initializer_depth, initializer_node = object_node.locate_name(
                 initializer_name
         )
@@ -136,11 +137,11 @@ def _from_node(object_node: _arboreal.Node,
         return ((constructor_depth, constructor_node)
                 if constructor_depth < initializer_depth
                 else (initializer_depth, initializer_node))
-    elif object_node.kind is _arboreal.NodeKind.FUNCTION:
+    elif object_node.kind is _nodes.NodeKind.FUNCTION:
         return 0, object_node
     else:
         assert (
-                object_node.kind is not _arboreal.NodeKind.UNDEFINED
+                object_node.kind is not _nodes.NodeKind.UNDEFINED
         ), object_node
         return -1, None
 

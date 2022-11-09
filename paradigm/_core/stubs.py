@@ -38,15 +38,19 @@ except Exception:
     import ast as _ast
     import builtins as _builtins
     import warnings as _warnings
-    from functools import singledispatch as _singledispatch
+    from functools import (partial as _partial,
+                           singledispatch as _singledispatch)
 
     from . import (execution as _execution,
                    exporting as _exporting,
-                   pretty as _pretty)
+                   namespacing as _namespacing,
+                   pretty as _pretty,
+                   sources as _sources)
     from .arboreal.importing import (
-        flat_module_ast_node_from_path as _flat_module_ast_node_from_path,
+        evaluate_expression, left_search_within_children,
         to_parent_module_path as _to_parent_module_path
     )
+    from .arboreal import construction as _construction
     from .sources import stubs_stdlib_modules_paths as _stdlib_modules_paths
 
 
@@ -75,6 +79,7 @@ except Exception:
                 self,
                 module_path: _catalog.Path,
                 parent_path: _catalog.Path,
+                source_path: _Path,
                 scope_definitions: _scoping.Scope,
                 module_references: _scoping.ModuleReferences,
                 module_sub_scopes: _scoping.ModuleSubScopes,
@@ -89,12 +94,13 @@ except Exception:
                 self.module_path, self.module_references,
                 self.module_sub_scopes, self.modules_definitions,
                 self.modules_references, self.modules_sub_scopes,
-                self.parent_path, self.scope_definitions,
+                self.parent_path, self.scope_definitions, self.source_path,
                 self.visited_modules_paths
             ) = (
                 module_path, module_references, module_sub_scopes,
                 modules_definitions, modules_references, modules_sub_scopes,
-                parent_path, scope_definitions, visited_modules_paths
+                parent_path, scope_definitions, source_path,
+                visited_modules_paths
             )
 
         def visit_AnnAssign(self, node: _ast.AnnAssign) -> None:
@@ -140,7 +146,7 @@ except Exception:
                 self._add_sub_scope(class_path, base_module_path,
                                     base_object_path)
             parse_child = _StateParser(
-                    self.module_path, class_path,
+                    self.module_path, class_path, self.source_path,
                     self.scope_definitions[class_name], self.module_references,
                     self.module_sub_scopes, self.modules_definitions,
                     self.modules_references, self.modules_sub_scopes,
@@ -148,6 +154,32 @@ except Exception:
             ).visit
             for child in node.body:
                 parse_child(child)
+
+        def visit_If(self, node: _ast.If) -> None:
+            namespace = {}
+            for dependency_name in {
+                child.id
+                for child in left_search_within_children(
+                        node.test,
+                        lambda child: (isinstance(child, _ast.Name)
+                                       and isinstance(child.ctx, _ast.Load))
+                )
+            }:
+                module_path, object_path = _resolve_object_path(
+                        self.module_path, self.parent_path, (dependency_name,),
+                        self.modules_definitions, self.modules_references,
+                        self.modules_sub_scopes, self.visited_modules_paths
+                )
+                module = _import_module(_catalog.path_to_string(module_path))
+                namespace[dependency_name] = (_namespacing.search(vars(module),
+                                                                  object_path)
+                                              if object_path
+                                              else module)
+            condition = evaluate_expression(node.test,
+                                            source_path=self.source_path,
+                                            namespace=namespace)
+            for child in (node.body if condition else node.orelse):
+                self.visit(child)
 
         def visit_FunctionDef(self, node: _ast.FunctionDef) -> None:
             self._add_name_definition(node.name)
@@ -269,9 +301,10 @@ except Exception:
                 return (referent_module_name,
                         (referent_object_path
                          + object_path[len(object_path) - offset:]))
-        if _scoping.scope_contains_path(
-                modules_definitions[_builtins_module_path], object_path
-        ):
+        if (_builtins_module_path in modules_definitions
+                and _scoping.scope_contains_path(
+                        modules_definitions[_builtins_module_path], object_path
+                )):
             return _builtins_module_path, object_path
         raise ObjectNotFound(object_path)
 
@@ -288,8 +321,9 @@ except Exception:
         if module_path in visited_modules_paths:
             return modules_definitions[module_path]
         visited_modules_paths.add(module_path)
+        source_path = _sources.from_module_path(module_path)
         try:
-            ast_node = _flat_module_ast_node_from_path(module_path)
+            ast_node = _construction.from_source_path(source_path)
         except Exception as error:
             _warnings.warn(f'Failed parsing module "{module_path}". '
                            f'Reason:\n{_pretty.format_exception(error)}',
@@ -299,9 +333,10 @@ except Exception:
             module_references = modules_references[module_path] = {}
             module_sub_scopes = modules_sub_scopes[module_path] = {}
             _StateParser(
-                    module_path, (), module_definitions, module_references,
-                    module_sub_scopes, modules_definitions, modules_references,
-                    modules_sub_scopes, visited_modules_paths
+                    module_path, (), source_path, module_definitions,
+                    module_references, module_sub_scopes, modules_definitions,
+                    modules_references, modules_sub_scopes,
+                    visited_modules_paths
             ).generic_visit(ast_node)
             return module_definitions
 

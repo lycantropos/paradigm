@@ -4,13 +4,13 @@ from paradigm._core import (catalog,
                             scoping,
                             sources,
                             stubs)
-from .leveling import (NameLookupError,
-                       Node,
-                       import_module_node)
+from .nodes import (NameLookupError,
+                    Node,
+                    import_module_node)
 
 
-def find_node(module_path: catalog.Path,
-              object_path: catalog.Path) -> Optional[Node]:
+def node_by(module_path: catalog.Path,
+            object_path: catalog.Path) -> Optional[Node]:
     try:
         referent_module_path, referent_object_path = (
             scoping.resolve_object_path(module_path, object_path,

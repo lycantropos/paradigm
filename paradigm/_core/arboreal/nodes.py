@@ -11,9 +11,9 @@ from types import MappingProxyType
 from reprit.base import generate_repr
 
 from paradigm._core import (catalog,
-                            sources)
+                            sources,
+                            stubs)
 from .importing import (flat_module_ast_node_from_path,
-                        to_alias_string,
                         to_parent_module_path)
 from .utils import singledispatchmethod
 
@@ -305,7 +305,12 @@ class Node:
         return result
 
     def _resolve_module_import(self) -> None:
-        ast_node = flat_module_ast_node_from_path(self._resolve_module_path())
+        ast_node = flat_module_ast_node_from_path(
+                self._resolve_module_path(),
+                modules_definitions=stubs.definitions,
+                modules_references=stubs.references,
+                modules_sub_scopes=stubs.sub_scopes
+        )
         self._set_ast_node(ast_node)
         for child_ast_node in ast_node.body:
             self._visit_names(child_ast_node)
@@ -552,7 +557,7 @@ class Node:
                         submodule_node._resolve_kind()
                         in (NodeKind.MODULE_IMPORT, NodeKind.MODULE)
                 ), self
-                self._upsert_name(to_alias_string(alias), submodule_node)
+                self._upsert_name(_to_alias_string(alias), submodule_node)
         else:
             module_node = _import_module_node(module_path)
             for alias in ast_node.names:
@@ -575,7 +580,7 @@ class Node:
                                          NodeKind.IMPORT_FROM, [])
                             )
                         )
-                    self._upsert_name(to_alias_string(alias), imported_node)
+                    self._upsert_name(_to_alias_string(alias), imported_node)
 
     @_visit_names.register(ast.ClassDef)
     def _(
@@ -698,6 +703,13 @@ class Node:
     __repr__ = generate_repr(__init__)
 
 
+def import_module_node(module_path: catalog.Path) -> Node:
+    node = _import_module_node(module_path)
+    node.resolve()
+    assert node.kind is NodeKind.MODULE
+    return node
+
+
 _graph: t.Dict[catalog.Path, Node] = {}
 
 
@@ -767,11 +779,8 @@ def _(ast_node: ast.Attribute) -> catalog.Path:
     return _resolve_assignment_target(ast_node.value) + (ast_node.attr,)
 
 
-def import_module_node(module_path: catalog.Path) -> Node:
-    node = _import_module_node(module_path)
-    node.resolve()
-    assert node.kind is NodeKind.MODULE
-    return node
+def _to_alias_string(node: ast.alias) -> str:
+    return node.asname or node.name
 
 
 _builtins_node = _import_module_node(catalog.BUILTINS_MODULE_PATH)
