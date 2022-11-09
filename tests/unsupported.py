@@ -54,7 +54,7 @@ def _safe_import(name: str) -> Optional[types.ModuleType]:
 
 
 def _search_by_path(module: types.ModuleType, path: catalog.Path) -> Any:
-    return namespacing.search(namespacing.from_module(module), path)
+    return namespacing.search(vars(module), path)
 
 
 def _to_callables(
