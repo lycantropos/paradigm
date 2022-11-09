@@ -71,7 +71,7 @@ jobs:
           && coverage run --append -m pytest --doctest-modules --ignore=tests
       - uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.python_version }}-${{ matrix.platform.python_architecture }}
+          name: ${{ matrix.python_version }}-${{ matrix.platform.python_architecture }}-${{ matrix.platform.os }}
           path: ${{ env.pythonLocation }}
           if-no-files-found: error
       - name: 'Run tests'
