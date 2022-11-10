@@ -21,10 +21,10 @@ def flatten_ifs(
         modules_references: t.Mapping[catalog.Path, scoping.ModuleReferences],
         modules_sub_scopes: t.Mapping[catalog.Path, scoping.ModuleSubScopes]
 ) -> None:
-    ast_nodes = [module_root]
+    ast_nodes: t.List[t.Union[ast.ClassDef, ast.Module]] = [module_root]
     while ast_nodes:
         node = ast_nodes.pop()
-        new_body = []
+        new_body: t.List[ast.stmt] = []
         for child_ast_node in _flatten_ifs(
                 node.body,
                 module_path=module_path,
@@ -40,14 +40,14 @@ def flatten_ifs(
 
 
 def _flatten_ifs(
-        candidates: t.Iterable[ast.AST],
+        candidates: t.Iterable[ast.stmt],
         *,
         module_path: catalog.Path,
         source_path: Path,
         modules_definitions: t.Mapping[catalog.Path, scoping.Scope],
         modules_references: t.Mapping[catalog.Path, scoping.ModuleReferences],
         modules_sub_scopes: t.Mapping[catalog.Path, scoping.ModuleSubScopes]
-) -> t.Iterable[ast.AST]:
+) -> t.Iterable[ast.stmt]:
     for candidate in candidates:
         if isinstance(candidate, ast.If):
             if evaluate_test(candidate.test,
@@ -122,8 +122,16 @@ def left_search_within_children(
             candidates.extend(ast.iter_child_nodes(candidate))
 
 
+def recursively_iterate_children(node: ast.AST) -> t.Iterable[ast.AST]:
+    candidates = deque(ast.iter_child_nodes(node))
+    while candidates:
+        candidate = candidates.popleft()
+        yield candidate
+        candidates.extend(ast.iter_child_nodes(candidate))
+
+
 def evaluate_test(
-        node: ast.AST,
+        node: ast.expr,
         module_path: catalog.Path,
         source_path: Path,
         modules_definitions: t.Mapping[catalog.Path, scoping.Scope],
@@ -133,11 +141,8 @@ def evaluate_test(
     namespace = {}
     for dependency_name in {
         child.id
-        for child in left_search_within_children(
-                node,
-                lambda child: (isinstance(child, ast.Name)
-                               and isinstance(child.ctx, ast.Load))
-        )
+        for child in recursively_iterate_children(node)
+        if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load)
     }:
         dependency_module_path, dependency_object_path = (
             scoping.resolve_object_path(module_path, (dependency_name,),

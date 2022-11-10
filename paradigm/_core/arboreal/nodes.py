@@ -100,7 +100,7 @@ if sys.version_info < (3, 8):
     def _annotations_to_signature(
             ast_nodes: t.List[ast.AnnAssign]
     ) -> ast.arguments:
-        return ast.arguments([ast.arg(ast_node.target.id, ast_node.annotation)
+        return ast.arguments([_ann_assign_to_arg(ast_node)
                               for ast_node in ast_nodes],
                              None, [], [], None,
                              [ast_node.value
@@ -111,12 +111,17 @@ else:
             ast_nodes: t.List[ast.AnnAssign]
     ) -> ast.arguments:
         return ast.arguments([],
-                             [ast.arg(ast_node.target.id, ast_node.annotation)
+                             [_ann_assign_to_arg(ast_node)
                               for ast_node in ast_nodes],
                              None, [], [], None,
                              [ast_node.value
                               for ast_node in ast_nodes
                               if ast_node.value is not None])
+
+
+def _ann_assign_to_arg(ast_node: ast.AnnAssign) -> ast.arg:
+    assert isinstance(ast_node.target, ast.Name)
+    return ast.arg(ast_node.target.id, ast_node.annotation)
 
 
 class Node:
@@ -317,7 +322,7 @@ class Node:
         assert self.kind is NodeKind.MODULE, self
 
     _builtins: 'Node'
-    _constants: t.Dict[str, 'Node']
+    _constants: t.Mapping[str, 'Node']
 
     def _append(self, node: 'Node') -> None:
         assert node is not self, self
@@ -376,7 +381,7 @@ class Node:
         assert not self._sub_nodes, self
         cursor = self._redirect
         while cursor is not None:
-            cursor, cursor._redirect = cursor._redirect, other
+            cursor._redirect, cursor = other, cursor._redirect
         self._redirect = other
 
     @singledispatchmethod
@@ -400,18 +405,20 @@ class Node:
         )
 
     @_resolve_assigning_value.register(ast.Dict)
-    @_resolve_assigning_value.register(ast.Tuple)
-    @_resolve_assigning_value.register(ast.List)
     @_resolve_assigning_value.register(ast.Set)
-    def _(self, ast_node: ast.expr) -> t.Optional['Node']:
+    def _(self, ast_node: t.Union[ast.Dict, ast.Set]) -> t.Optional['Node']:
+        return None
+
+    @_resolve_assigning_value.register(ast.List)
+    @_resolve_assigning_value.register(ast.Tuple)
+    def _(self, ast_node: t.Union[ast.List, ast.Tuple]) -> t.Optional['Node']:
         assert isinstance(ast_node.ctx, ast.Load), ast_node
         return None
 
     @_resolve_assigning_value.register(ast.Subscript)
     def _(self, ast_node: ast.Subscript) -> t.Optional['Node']:
         assert isinstance(ast_node.ctx, ast.Load), ast_node
-        return Node(self._resolve_stub_path(), self._resolve_module_path(),
-                    None,
+        return Node(self._resolve_stub_path(), self._resolve_module_path(), (),
                     NodeKind.SUBSCRIPT, [ast_node])
 
     @_resolve_assigning_value.register(ast.Constant)
@@ -432,9 +439,8 @@ class Node:
             return (None
                     if left_node is None or right_node is None
                     else Node(self._resolve_stub_path(),
-                              self._resolve_module_path(), None,
-                              NodeKind.UNION, [ast_node], left_node,
-                              right_node))
+                              self._resolve_module_path(), (), NodeKind.UNION,
+                              [ast_node], left_node, right_node))
         else:
             return None
 
@@ -455,8 +461,8 @@ class Node:
     @_resolve_annotation.register(ast.Subscript)
     def _(self, ast_node: ast.Subscript) -> 'Node':
         assert isinstance(ast_node.ctx, ast.Load), ast_node
-        return Node(self._resolve_stub_path(), self._resolve_module_path(),
-                    None, NodeKind.SUBSCRIPT, [ast_node],
+        return Node(self._resolve_stub_path(), self._resolve_module_path(), (),
+                    NodeKind.SUBSCRIPT, [ast_node],
                     self._resolve_annotation(ast_node.value))
 
     @_resolve_annotation.register(ast.NameConstant)
@@ -475,8 +481,8 @@ class Node:
         assert isinstance(ast_node.op, ast.BitOr), ast_node
         left_node = self._resolve_annotation(ast_node.left)
         right_node = self._resolve_annotation(ast_node.right)
-        return Node(self._resolve_stub_path(), self._resolve_module_path(),
-                    None, NodeKind.UNION, [ast_node], left_node, right_node)
+        return Node(self._resolve_stub_path(), self._resolve_module_path(), (),
+                    NodeKind.UNION, [ast_node], left_node, right_node)
 
     @singledispatchmethod
     def _visit_names(self, ast_node: ast.AST) -> None:
@@ -500,14 +506,12 @@ class Node:
         target_path = _resolve_assignment_target(ast_node.target)
         if value_ast_node is None:
             value_node = self._resolve_annotation(ast_node.annotation)
-            self._upsert_path(target_path, value_node)
         else:
-            value_node = self._resolve_assigning_value(value_ast_node)
-            if value_node is None:
-                value_node = self._resolve_annotation(ast_node.annotation)
+            value_node = (self._resolve_assigning_value(value_ast_node)
+                          or self._resolve_annotation(ast_node.annotation))
             if value_node._resolve_object_path() is None:
                 value_node._object_path = target_path
-            self._upsert_path(target_path, value_node)
+        self._upsert_path(target_path, value_node)
 
     @_visit_names.register(ast.Assign)
     def _(self, ast_node: ast.Assign) -> None:
@@ -683,20 +687,28 @@ class Node:
             assert cursor is not self, self
         return cursor
 
+    _ast_nodes: t.List[ast.AST]
+    _kind: NodeKind
+    _module_path: catalog.Path
+    _object_path: catalog.Path
+    _redirect: t.Optional['Node']
+    _stub_path: Path
+    _sub_nodes: t.List['Node']
+
     def __init__(self,
                  _stub_path: Path,
                  _module_path: catalog.Path,
-                 _object_path: t.Optional[catalog.Path],
+                 _object_path: catalog.Path,
                  _kind: NodeKind,
                  _ast_nodes: t.List[ast.AST],
                  *_sub_nodes: 'Node') -> None:
         (
             self._ast_nodes, self._kind, self._module_path,
-            self._object_path, self._stub_path, self._sub_nodes
+            self._object_path, self._stub_path
         ) = (
             _ast_nodes, _kind, _module_path, _object_path, _stub_path,
-            [*_sub_nodes]
         )
+        self._sub_nodes = [*_sub_nodes]
         self._locals: t.Dict[str, Node] = {}
         self._redirect = None
 
@@ -726,7 +738,7 @@ def _is_module_path(path: catalog.Path) -> bool:
 
 def _import_module_node(path: catalog.Path) -> Node:
     assert len(path) > 0, path
-    sub_path = ()
+    sub_path: catalog.Path = ()
     for part in path:
         sub_path = sub_path + (part,)
         try:

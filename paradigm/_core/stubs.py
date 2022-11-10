@@ -1,4 +1,3 @@
-import inspect as _inspect
 import sys as _sys
 import typing as _t
 from importlib import import_module as _import_module
@@ -33,7 +32,7 @@ try:
     )(_import_module((''
                       if __name__ in ('__main__', '__mp_main__')
                       else __name__.rsplit('.', maxsplit=1)[0] + '.')
-                     + _inspect.getmodulename(_CACHE_PATH)))
+                     + _CACHE_PATH.stem))
 except Exception:
     import ast as _ast
     import builtins as _builtins
@@ -48,6 +47,7 @@ except Exception:
                    sources as _sources)
     from .arboreal.importing import (
         evaluate_expression, left_search_within_children,
+        recursively_iterate_children,
         to_parent_module_path as _to_parent_module_path
     )
     from .arboreal import construction as _construction
@@ -70,6 +70,28 @@ except Exception:
 
 
     @_ast_node_to_path.register(_ast.Attribute)
+    def _(ast_node: _ast.Attribute) -> _catalog.Path:
+        return (*_ast_node_to_path(ast_node.value), ast_node.attr)
+
+
+    @_singledispatch
+    def _ast_node_to_maybe_path(
+            ast_node: _ast.AST
+    ) -> _t.Optional[_catalog.Path]:
+        return None
+
+
+    @_ast_node_to_maybe_path.register(_ast.Name)
+    def _(ast_node: _ast.Name) -> _catalog.Path:
+        return (ast_node.id,)
+
+
+    @_ast_node_to_maybe_path.register(_ast.Subscript)
+    def _(ast_node: _ast.Subscript) -> _catalog.Path:
+        return _ast_node_to_path(ast_node.value)
+
+
+    @_ast_node_to_maybe_path.register(_ast.Attribute)
     def _(ast_node: _ast.Attribute) -> _catalog.Path:
         return (*_ast_node_to_path(ast_node.value), ast_node.attr)
 
@@ -105,9 +127,11 @@ except Exception:
 
         def visit_AnnAssign(self, node: _ast.AnnAssign) -> None:
             target_path = _ast_node_to_path(node.target)
-            try:
-                value_path = _ast_node_to_path(node.value)
-            except TypeError:
+            value_ast_node = node.value
+            value_path = (None
+                          if value_ast_node is None
+                          else _ast_node_to_maybe_path(value_ast_node))
+            if value_path is None:
                 self._add_path_definition(target_path)
             else:
                 value_module_path, value_object_path = self._to_qualified_path(
@@ -140,8 +164,10 @@ except Exception:
             self._add_name_definition(class_name)
             class_path = self.parent_path + (class_name,)
             for base in node.bases:
+                base_reference_path = _ast_node_to_path(base)
+                assert base_reference_path is not None
                 base_module_path, base_object_path = self._to_qualified_path(
-                        _ast_node_to_path(base)
+                        base_reference_path
                 )
                 self._add_sub_scope(class_path, base_module_path,
                                     base_object_path)
@@ -159,11 +185,9 @@ except Exception:
             namespace = {}
             for dependency_name in {
                 child.id
-                for child in left_search_within_children(
-                        node.test,
-                        lambda child: (isinstance(child, _ast.Name)
-                                       and isinstance(child.ctx, _ast.Load))
-                )
+                for child in recursively_iterate_children(node.test)
+                if (isinstance(child, _ast.Name)
+                    and isinstance(child.ctx, _ast.Load))
             }:
                 module_path, object_path = _resolve_object_path(
                         self.module_path, self.parent_path, (dependency_name,),
@@ -188,7 +212,7 @@ except Exception:
             for alias in node.names:
                 module_path = _catalog.path_from_string(alias.name)
                 if alias.asname is None:
-                    sub_module_path = ()
+                    sub_module_path: _catalog.Path = ()
                     for module_name_part in module_path:
                         sub_module_path += (module_name_part,)
                         self._add_reference(sub_module_path, sub_module_path,
@@ -246,12 +270,12 @@ except Exception:
                         self.modules_definitions, self.modules_references,
                         self.modules_sub_scopes, self.visited_modules_paths
                 )
-            except ObjectNotFound:
+            except _ObjectNotFound:
                 self._add_path_definition(object_path)
                 return (self.module_path, object_path)
 
 
-    class ObjectNotFound(Exception):
+    class _ObjectNotFound(Exception):
         pass
 
 
@@ -286,7 +310,7 @@ except Exception:
                             modules_definitions, modules_references,
                             modules_sub_scopes, visited_modules_paths
                     )
-                except ObjectNotFound:
+                except _ObjectNotFound:
                     continue
         module_references = modules_references[module_path]
         for offset in range(len(object_path)):
@@ -306,7 +330,7 @@ except Exception:
                         modules_definitions[_builtins_module_path], object_path
                 )):
             return _builtins_module_path, object_path
-        raise ObjectNotFound(object_path)
+        raise _ObjectNotFound(object_path)
 
 
     def _parse_stub_scope(
@@ -322,23 +346,17 @@ except Exception:
             return modules_definitions[module_path]
         visited_modules_paths.add(module_path)
         source_path = _sources.from_module_path(module_path)
-        try:
-            ast_node = _construction.from_source_path(source_path)
-        except Exception as error:
-            _warnings.warn(f'Failed parsing module "{module_path}". '
-                           f'Reason:\n{_pretty.format_exception(error)}',
-                           ImportWarning)
-        else:
-            module_definitions = modules_definitions[module_path] = {}
-            module_references = modules_references[module_path] = {}
-            module_sub_scopes = modules_sub_scopes[module_path] = {}
-            _StateParser(
-                    module_path, (), source_path, module_definitions,
-                    module_references, module_sub_scopes, modules_definitions,
-                    modules_references, modules_sub_scopes,
-                    visited_modules_paths
-            ).generic_visit(ast_node)
-            return module_definitions
+        module_definitions = modules_definitions[module_path] = {}
+        module_references = modules_references[module_path] = {}
+        module_sub_scopes = modules_sub_scopes[module_path] = {}
+        ast_node = _construction.from_source_path(source_path)
+        _StateParser(
+                module_path, (), source_path, module_definitions,
+                module_references, module_sub_scopes, modules_definitions,
+                modules_references, modules_sub_scopes,
+                visited_modules_paths
+        ).generic_visit(ast_node)
+        return module_definitions
 
 
     def _parse_stubs_state(

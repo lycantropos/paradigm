@@ -7,8 +7,6 @@ from importlib.machinery import (EXTENSION_SUFFIXES,
 from importlib.util import find_spec
 from pathlib import Path
 
-import mypy
-
 from . import (catalog,
                file_system)
 
@@ -37,8 +35,16 @@ def is_package(module_path: catalog.Path) -> bool:
     return source_path.stem == file_system.INIT_MODULE_NAME
 
 
+def _find_source_path(module_name: str) -> Path:
+    maybe_spec = find_spec(module_name)
+    assert maybe_spec is not None
+    maybe_path_string = maybe_spec.origin
+    assert maybe_path_string is not None
+    return Path(maybe_path_string)
+
+
 def _to_stubs_cache(
-        root: Path = Path(mypy.__spec__.origin).parent / 'typeshed' / 'stdlib'
+        root: Path = _find_source_path('mypy').parent / 'typeshed' / 'stdlib'
 ) -> t.Dict[catalog.Path, Path]:
     assert root.exists(), root
 
@@ -97,7 +103,7 @@ def _to_modules_paths(root: Path) -> t.Iterable[catalog.Path]:
 
 
 def _is_valid_module_path(module_path: catalog.Path) -> bool:
-    return (module_path
+    return (bool(module_path)
             and 'test' not in module_path
             and 'tests' not in module_path
             and module_path[-1] != '__main__'

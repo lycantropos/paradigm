@@ -16,6 +16,7 @@ def call_in_process(function: t.Callable[..., t.Any],
     with threading.Lock():
         caller_frame = inspect.stack()[1].frame
         caller_module = inspect.getmodule(caller_frame)
+        assert caller_module is not None
         main_module = sys.modules.get('__main__')
         try:
             sys.modules['__main__'] = caller_module

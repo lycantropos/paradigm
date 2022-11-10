@@ -1,18 +1,14 @@
 import enum
+import typing as t
 from abc import (ABC,
                  abstractmethod)
 from collections import defaultdict
 from itertools import (chain,
                        takewhile)
-from typing import (Any,
-                    Dict,
-                    Iterable,
-                    List,
-                    Sequence,
-                    Tuple,
-                    TypeVar)
 
 from reprit.base import generate_repr
+
+_MIN_SUB_SIGNATURES_COUNT = 2
 
 
 class Parameter:
@@ -45,12 +41,20 @@ class Parameter:
         self.kind = kind
         self.has_default = has_default
 
+    @t.overload
     def __eq__(self, other: 'Parameter') -> bool:
-        if not isinstance(other, Parameter):
-            return NotImplemented
-        return (self.name == other.name
-                and self.kind is other.kind
-                and self.has_default is other.has_default)
+        ...
+
+    @t.overload
+    def __eq__(self, other: t.Any) -> t.Any:
+        ...
+
+    def __eq__(self, other):
+        return ((self.name == other.name
+                 and self.kind is other.kind
+                 and self.has_default is other.has_default)
+                if isinstance(other, Parameter)
+                else NotImplemented)
 
     def __hash__(self) -> int:
         return hash((self.name, self.kind, self.has_default))
@@ -68,8 +72,8 @@ class Parameter:
 
 
 def to_parameters_by_kind(
-        parameters: Iterable[Parameter]
-) -> Dict[Parameter.Kind, List[Parameter]]:
+        parameters: t.Iterable[Parameter]
+) -> t.Dict[Parameter.Kind, t.List[Parameter]]:
     result = defaultdict(list)
     for parameter in parameters:
         result[parameter.kind].append(parameter)
@@ -77,20 +81,20 @@ def to_parameters_by_kind(
 
 
 def to_parameters_by_name(
-        parameters: Iterable[Parameter]
-) -> Dict[str, Parameter]:
+        parameters: t.Iterable[Parameter]
+) -> t.Dict[str, Parameter]:
     return {parameter.name: parameter for parameter in parameters}
 
 
 def all_parameters_has_defaults(
-        parameters: Iterable[Parameter]
+        parameters: t.Iterable[Parameter]
 ) -> bool:
     return all(parameter.has_default for parameter in parameters)
 
 
-_Self = TypeVar('_Self')
-_Arg = TypeVar('_Arg')
-_KwArg = TypeVar('_KwArg')
+_Self = t.TypeVar('_Self')
+_Arg = t.TypeVar('_Arg')
+_KwArg = t.TypeVar('_KwArg')
 
 
 class _Signature(ABC):
@@ -117,7 +121,7 @@ class PlainSignature(_Signature):
     KEYWORD_ONLY_SEPARATOR = '*'
 
     @property
-    def parameters(self) -> Sequence[Parameter]:
+    def parameters(self) -> t.Sequence[Parameter]:
         return self._parameters
 
     def all_set(self, *args: _Arg, **kwargs: _KwArg) -> bool:
@@ -134,7 +138,7 @@ class PlainSignature(_Signature):
             return False
         rest_positionals = positionals[len(args):]
         rest_positionals_by_kind = to_parameters_by_kind(rest_positionals)
-        rest_keywords = (
+        rest_keywords: t.Iterable[Parameter] = (
                 rest_positionals_by_kind[Parameter.Kind.POSITIONAL_OR_KEYWORD]
                 + parameters_by_kind[Parameter.Kind.KEYWORD_ONLY]
         )
@@ -247,9 +251,17 @@ class PlainSignature(_Signature):
     def __init__(self, *parameters: Parameter) -> None:
         self._parameters = parameters
 
+    @t.overload
     def __eq__(self, other: _Signature) -> bool:
-        return (isinstance(other, PlainSignature)
-                and self._parameters == other._parameters
+        ...
+
+    @t.overload
+    def __eq__(self, other: t.Any) -> t.Any:
+        ...
+
+    def __eq__(self, other):
+        return ((isinstance(other, PlainSignature)
+                 and self._parameters == other._parameters)
                 if isinstance(other, _Signature)
                 else NotImplemented)
 
@@ -281,9 +293,15 @@ class PlainSignature(_Signature):
         return '(' + ', '.join(parts) + ')'
 
 
+def from_signatures(*signatures: _Signature) -> _Signature:
+    return (signatures[0]
+            if len(signatures) == 1
+            else OverloadedSignature(*signatures))
+
+
 class OverloadedSignature(_Signature):
     @property
-    def signatures(self) -> Sequence[_Signature]:
+    def signatures(self) -> t.Sequence[_Signature]:
         return self._signatures
 
     def all_set(self, *args: _Arg, **kwargs: _KwArg) -> bool:
@@ -305,20 +323,24 @@ class OverloadedSignature(_Signature):
 
     __slots__ = '_signatures',
 
-    def __new__(cls, *signatures: _Signature) -> _Signature:
-        return (signatures[0]
-                if len(signatures) == 1
-                else super().__new__(cls))
+    _signatures: t.Sequence[_Signature]
 
-    def __init__(self, *signatures: _Signature) -> None:
-        def flatten(signature: _Signature) -> Sequence[_Signature]:
+    def __new__(cls, *signatures: _Signature) -> 'OverloadedSignature':
+        if len(signatures) < _MIN_SUB_SIGNATURES_COUNT:
+            raise ValueError('Overloaded signature can be constructed '
+                             f'only from at least {_MIN_SUB_SIGNATURES_COUNT} '
+                             f'signatures.')
+        self = super().__new__(cls)
+
+        def flatten(signature: _Signature) -> t.Sequence[_Signature]:
             return (signature._signatures
                     if isinstance(signature, OverloadedSignature)
                     else [signature])
 
         self._signatures = tuple(chain.from_iterable(map(flatten, signatures)))
+        return self
 
-    def __eq__(self, other: Any) -> Any:
+    def __eq__(self, other: t.Any) -> t.Any:
         return ((isinstance(other, OverloadedSignature)
                  and self._signatures == other._signatures)
                 if isinstance(other, _Signature)
@@ -327,17 +349,17 @@ class OverloadedSignature(_Signature):
     def __hash__(self) -> int:
         return hash(self._signatures)
 
-    __repr__ = generate_repr(__init__)
+    __repr__ = generate_repr(__new__)
 
     def __str__(self) -> str:
         return ' or '.join(map(str, self._signatures))
 
 
-def _bind_positionals(parameters: Tuple[Parameter, ...],
-                      args: Tuple[_Arg, ...],
-                      kwargs: Dict[str, _KwArg],
+def _bind_positionals(parameters: t.Tuple[Parameter, ...],
+                      args: t.Tuple[_Arg, ...],
+                      kwargs: t.Dict[str, _KwArg],
                       *,
-                      has_variadic: bool) -> Tuple[Parameter, ...]:
+                      has_variadic: bool) -> t.Tuple[Parameter, ...]:
     def is_positionable(parameter: Parameter) -> bool:
         return (parameter.kind is Parameter.Kind.POSITIONAL_OR_KEYWORD
                 or parameter.kind is Parameter.Kind.POSITIONAL_ONLY)
@@ -361,10 +383,10 @@ def _bind_positionals(parameters: Tuple[Parameter, ...],
     return positionals[len(args):] + parameters[len(positionals):]
 
 
-def _bind_keywords(parameters: Tuple[Parameter, ...],
-                   kwargs: Dict[str, Any],
+def _bind_keywords(parameters: t.Tuple[Parameter, ...],
+                   kwargs: t.Dict[str, t.Any],
                    *,
-                   has_variadic: bool) -> Tuple[Parameter, ...]:
+                   has_variadic: bool) -> t.Tuple[Parameter, ...]:
     kwargs_names = set(kwargs)
     extra_kwargs_names = (
             kwargs_names
