@@ -9,6 +9,7 @@ project_base_url = 'https://github.com/lycantropos/paradigm/'
 
 setup(name=paradigm.__name__,
       packages=find_packages(exclude=('tests', 'tests.*')),
+      package_data={paradigm.__name__: ['py.typed']},
       version=paradigm.__version__,
       description=paradigm.__doc__,
       long_description=Path('README.md').read_text(encoding='utf-8'),
