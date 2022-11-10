@@ -97,7 +97,7 @@ _Arg = t.TypeVar('_Arg')
 _KwArg = t.TypeVar('_KwArg')
 
 
-class _Signature(ABC):
+class BaseSignature(ABC):
     __slots__ = ()
 
     @abstractmethod
@@ -116,7 +116,7 @@ class _Signature(ABC):
         """Binds given arguments to the signature."""
 
 
-class PlainSignature(_Signature):
+class PlainSignature(BaseSignature):
     POSITIONAL_ONLY_SEPARATOR = '/'
     KEYWORD_ONLY_SEPARATOR = '*'
 
@@ -252,7 +252,7 @@ class PlainSignature(_Signature):
         self._parameters = parameters
 
     @t.overload
-    def __eq__(self, other: _Signature) -> bool:
+    def __eq__(self, other: BaseSignature) -> bool:
         ...
 
     @t.overload
@@ -262,7 +262,7 @@ class PlainSignature(_Signature):
     def __eq__(self, other):
         return ((isinstance(other, PlainSignature)
                  and self._parameters == other._parameters)
-                if isinstance(other, _Signature)
+                if isinstance(other, BaseSignature)
                 else NotImplemented)
 
     def __hash__(self) -> int:
@@ -293,15 +293,12 @@ class PlainSignature(_Signature):
         return '(' + ', '.join(parts) + ')'
 
 
-def from_signatures(*signatures: _Signature) -> _Signature:
-    return (signatures[0]
-            if len(signatures) == 1
-            else OverloadedSignature(*signatures))
+Signature = t.Union['OverloadedSignature', PlainSignature]
 
 
-class OverloadedSignature(_Signature):
+class OverloadedSignature(BaseSignature):
     @property
-    def signatures(self) -> t.Sequence[_Signature]:
+    def signatures(self) -> t.Sequence[Signature]:
         return self._signatures
 
     def all_set(self, *args: _Arg, **kwargs: _KwArg) -> bool:
@@ -323,16 +320,16 @@ class OverloadedSignature(_Signature):
 
     __slots__ = '_signatures',
 
-    _signatures: t.Sequence[_Signature]
+    _signatures: t.Sequence[Signature]
 
-    def __new__(cls, *signatures: _Signature) -> 'OverloadedSignature':
+    def __new__(cls, *signatures: Signature) -> 'OverloadedSignature':
         if len(signatures) < _MIN_SUB_SIGNATURES_COUNT:
             raise ValueError('Overloaded signature can be constructed '
                              f'only from at least {_MIN_SUB_SIGNATURES_COUNT} '
                              f'signatures.')
         self = super().__new__(cls)
 
-        def flatten(signature: _Signature) -> t.Sequence[_Signature]:
+        def flatten(signature: Signature) -> t.Sequence[Signature]:
             return (signature._signatures
                     if isinstance(signature, OverloadedSignature)
                     else [signature])
@@ -343,7 +340,7 @@ class OverloadedSignature(_Signature):
     def __eq__(self, other: t.Any) -> t.Any:
         return ((isinstance(other, OverloadedSignature)
                  and self._signatures == other._signatures)
-                if isinstance(other, _Signature)
+                if isinstance(other, BaseSignature)
                 else NotImplemented)
 
     def __hash__(self) -> int:
@@ -353,6 +350,12 @@ class OverloadedSignature(_Signature):
 
     def __str__(self) -> str:
         return ' or '.join(map(str, self._signatures))
+
+
+def from_signatures(*signatures: Signature) -> Signature:
+    return (signatures[0]
+            if len(signatures) == 1
+            else OverloadedSignature(*signatures))
 
 
 def _bind_positionals(parameters: t.Tuple[Parameter, ...],

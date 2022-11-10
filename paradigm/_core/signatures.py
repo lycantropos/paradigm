@@ -11,12 +11,11 @@ from operator import itemgetter as _itemgetter
 from . import catalog as _catalog
 from .arboreal import (nodes as _nodes,
                        search as _search)
-from .models import (OverloadedSignature as _OverloadedSignature,
-                     Parameter as _Parameter,
-                     PlainSignature as _PlainSignature)
+from .models import (Parameter as _Parameter,
+                     PlainSignature as _PlainSignature,
+                     Signature as _Signature,
+                     from_signatures as _from_signatures)
 from .modules import supported_stdlib_qualified_paths as _qualified_paths
-
-_Signature = _t.Union[_OverloadedSignature, _PlainSignature]
 
 
 @_singledispatch
@@ -103,8 +102,8 @@ def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
         raise _NodeNotFound(qualified_paths,
                             _qualified_paths.get(module_path, {}))
     assert node.kind is _nodes.NodeKind.FUNCTION, (module_path, object_path)
-    return _OverloadedSignature(*[_from_ast(ast_node.args)
-                                  for ast_node in node.ast_nodes])
+    return _from_signatures(*[_from_ast(ast_node.args)
+                              for ast_node in node.ast_nodes])
 
 
 def _value_has_qualified_path(value: _t.Any,
