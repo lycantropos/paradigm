@@ -1,22 +1,23 @@
-import types
 from collections import deque
 from functools import (partial,
                        reduce)
+from importlib import import_module
+from types import ModuleType
 from typing import (Any,
+                    Deque,
                     List,
                     Union)
 
 from hypothesis import strategies
 
+from paradigm._core import catalog
+from paradigm._core.discovery import supported_stdlib_modules_paths
 from tests.contracts import is_supported
-from tests.strategies import modules_list
 from tests.utils import to_contents
 
 
-def find_callables_recursively(
-        objects: List[Union[types.ModuleType, type]]
-) -> List[Any]:
-    queue = deque(objects)
+def find_module_callables_recursively(module: ModuleType) -> List[Any]:
+    queue: Deque[Union[ModuleType, type]] = deque([module])
     result = []
     visited_types = set()
     while queue:
@@ -36,7 +37,11 @@ def find_callables_recursively(
     return result
 
 
-callables_list = find_callables_recursively(modules_list)
-callables = strategies.sampled_from(callables_list)
+callables = (strategies.sampled_from(sorted(supported_stdlib_modules_paths))
+             .map(catalog.path_to_string)
+             .map(import_module)
+             .map(find_module_callables_recursively)
+             .filter(bool)
+             .flatmap(strategies.sampled_from))
 callables |= callables.map(partial)
 overloaded_callables = strategies.sampled_from([int, reduce, super, type])
