@@ -7,6 +7,7 @@ from itertools import (chain,
                        takewhile)
 
 from reprit.base import generate_repr
+from typing_extensions import final
 
 _MIN_SUB_SIGNATURES_COUNT = 2
 
@@ -116,6 +117,7 @@ class BaseSignature(ABC):
         """Binds given arguments to the signature."""
 
 
+@final
 class PlainSignature(BaseSignature):
     POSITIONAL_ONLY_SEPARATOR = '/'
     KEYWORD_ONLY_SEPARATOR = '*'
@@ -296,6 +298,7 @@ class PlainSignature(BaseSignature):
 Signature = t.Union['OverloadedSignature', PlainSignature]
 
 
+@final
 class OverloadedSignature(BaseSignature):
     @property
     def signatures(self) -> t.Sequence[Signature]:
