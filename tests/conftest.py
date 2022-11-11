@@ -1,7 +1,15 @@
+import os
+import sys
+
 import pytest
 from hypothesis import (HealthCheck,
                         settings)
 
+is_pypy = sys.implementation.name == 'pypy'
+on_ci = bool(os.getenv('CI', False))
+max_examples = (-(-settings.default.max_examples // (4 if is_pypy else 1))
+                if on_ci
+                else settings.default.max_examples)
 settings.register_profile('default',
                           deadline=None,
                           suppress_health_check=[HealthCheck.data_too_large,
