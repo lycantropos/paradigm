@@ -8,8 +8,6 @@ from itertools import (chain,
 
 from reprit.base import generate_repr
 
-_MIN_SUB_SIGNATURES_COUNT = 2
-
 
 class Parameter:
     class Kind(enum.IntEnum):
@@ -323,10 +321,9 @@ class OverloadedSignature(BaseSignature):
     _signatures: t.Sequence[Signature]
 
     def __new__(cls, *signatures: Signature) -> 'OverloadedSignature':
-        if len(signatures) < _MIN_SUB_SIGNATURES_COUNT:
-            raise ValueError('Overloaded signature can be constructed '
-                             f'only from at least {_MIN_SUB_SIGNATURES_COUNT} '
-                             f'signatures.')
+        if len(signatures) == 1:
+            raise ValueError('Overloaded signature cannot be constructed '
+                             'from a single signature.')
         self = super().__new__(cls)
 
         def flatten(signature: Signature) -> t.Sequence[Signature]:
