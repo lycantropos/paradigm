@@ -6,6 +6,7 @@ from operator import (attrgetter,
 from typing import (Any,
                     Callable,
                     Dict,
+                    Optional,
                     Tuple,
                     TypeVar)
 
@@ -16,14 +17,14 @@ from paradigm._core.models import (to_parameters_by_kind,
 from paradigm.base import (OverloadedSignature,
                            Parameter,
                            PlainSignature)
-from tests.strategies import (identifiers,
-                              to_homogeneous_tuples)
 from tests.utils import (AnySignature,
                          Args,
                          Kwargs,
                          Strategy,
                          negate,
                          pack)
+from .utils import (identifiers,
+                    to_homogeneous_tuples)
 
 _T1 = TypeVar('_T1')
 _T2 = TypeVar('_T2')
@@ -124,7 +125,7 @@ def to_plain_signatures(*,
 def to_overloaded_signatures(bases: Strategy[AnySignature],
                              *,
                              min_size: int = 2,
-                             max_size: int = None) -> Strategy[
+                             max_size: Optional[int] = None) -> Strategy[
     OverloadedSignature]:
     return (strategies.lists(bases,
                              min_size=min_size,

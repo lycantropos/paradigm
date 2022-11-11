@@ -13,7 +13,6 @@ from hypothesis import strategies
 from paradigm._core import catalog
 from paradigm._core.discovery import supported_stdlib_modules_paths
 from tests.contracts import is_supported
-from tests.utils import to_contents
 
 
 def find_module_callables_recursively(module: ModuleType) -> List[Any]:
@@ -28,7 +27,7 @@ def find_module_callables_recursively(module: ModuleType) -> List[Any]:
             else:
                 visited_types.add(container)
         contained_callables = [content
-                               for content in to_contents(container)
+                               for content in vars(container).values()
                                if callable(content) and is_supported(content)]
         result.extend(contained_callables)
         queue.extendleft(content

@@ -38,13 +38,6 @@ def _load_and_update(set_: Set[Any],
         _load_and_add(set_, module_name, name)
 
 
-def _load_and_add_module(set_: Set[Any], module_name: str) -> None:
-    module = _safe_import(module_name)
-    if module is None:
-        return
-    set_.add(module)
-
-
 def _safe_import(name: str) -> Optional[types.ModuleType]:
     try:
         return importlib.import_module(name)
@@ -55,18 +48,6 @@ def _safe_import(name: str) -> Optional[types.ModuleType]:
 
 def _search_by_path(module: types.ModuleType, path: catalog.Path) -> Any:
     return namespacing.search(vars(module), path)
-
-
-def _to_callables(
-        object_: Union[types.ModuleType, type]
-) -> Iterable[Callable]:
-    yield from filter(callable, to_contents(object_))
-
-
-def _load_and_update_modules(set_: Set[Any],
-                             modules_names: Iterable[str]) -> None:
-    for module_name in modules_names:
-        _load_and_add_module(set_, module_name)
 
 
 stdlib_modules: Set[types.ModuleType] = set()
