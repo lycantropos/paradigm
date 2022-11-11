@@ -1,3 +1,4 @@
+import sys
 from functools import singledispatch
 
 from hypothesis import strategies
@@ -5,7 +6,6 @@ from hypothesis import strategies
 from paradigm.base import (OverloadedSignature,
                            Parameter,
                            PlainSignature)
-from tests.configs import MAX_ARGUMENTS_COUNT
 from tests.utils import (AnySignature,
                          negate)
 from .factories import (to_overloaded_signatures,
@@ -15,6 +15,8 @@ from .factories import (to_overloaded_signatures,
                         to_signature_with_expected_kwargs,
                         to_signature_with_unexpected_args,
                         to_signature_with_unexpected_kwargs)
+
+MAX_ARGUMENTS_COUNT = sys.maxsize
 
 positionable_kinds = strategies.sampled_from(
         [Parameter.Kind.POSITIONAL_ONLY, Parameter.Kind.POSITIONAL_OR_KEYWORD]
