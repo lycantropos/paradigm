@@ -112,9 +112,7 @@ def _(ast_node: _ast.Subscript,
                       for index in range(len(arguments_annotations.elts))]
             )
         else:
-            assert (
-                isinstance(arguments_annotations, _ast.Ellipsis)
-            ), ast_node
+            # unspecified parameters case
             return _PlainSignature(
                     _Parameter(name='args',
                                kind=_Parameter.Kind.VARIADIC_POSITIONAL,
@@ -123,7 +121,7 @@ def _(ast_node: _ast.Subscript,
                                kind=_Parameter.Kind.VARIADIC_KEYWORD,
                                has_default=False),
             )
-    raise ValueError(ast_node)
+    raise _SignatureNotFound
 
 
 @_from_ast.register(_ast.Attribute)
@@ -137,12 +135,14 @@ def _(ast_node: _t.Union[_ast.Attribute, _ast.Name],
     )
     node_kind = _NodeKind(_stubs.nodes_kinds[module_path][object_path])
     if node_kind is _NodeKind.CLASS:
-        call_ast_nodes = [
-            _deserialize_raw_annotation(raw)
-            for raw in _stubs.raw_ast_nodes[module_path][
+        try:
+            raw_ast_nodes = _stubs.raw_ast_nodes[module_path][
                 (*object_path, object.__call__.__name__)
             ]
-        ]
+        except KeyError:
+            raise _SignatureNotFound
+        call_ast_nodes = [_deserialize_raw_annotation(raw)
+                          for raw in raw_ast_nodes]
         call_signatures = [_from_ast(ast_node, module_path)
                            for ast_node in call_ast_nodes]
         return _from_signatures(*[signature.bind('self')
@@ -156,7 +156,7 @@ def _(ast_node: _t.Union[_ast.Attribute, _ast.Name],
             annotation_node, = annotation_nodes
             if isinstance(annotation_node, _ast.Assign):
                 return _from_ast(annotation_node.value, module_path)
-    raise ValueError(ast_node)
+    raise _SignatureNotFound
 
 
 @_from_ast.register(_ast.Call)
@@ -184,10 +184,11 @@ def _(ast_node: _ast.Subscript,
                                       if keyword.arg == 'bound'),
                                      None)
         if maybe_bound_type_node is None:
-            _ = 0
+            return _from_signatures(*[_from_ast(argument, module_path)
+                                      for argument in ast_node.args[1:]])
         else:
             return _from_ast(maybe_bound_type_node, module_path)
-    raise ValueError(ast_node)
+    raise _SignatureNotFound
 
 
 @_from_ast.register(_ast.AsyncFunctionDef)

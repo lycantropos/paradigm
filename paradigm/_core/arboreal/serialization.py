@@ -21,6 +21,7 @@ def _(ast_node: ast.Subscript) -> str:
     return repr(Ellipsis)
 
 
+@to_identifier.register(ast.Constant)
 @to_identifier.register(ast.NameConstant)
 def _(ast_node: ast.NameConstant) -> str:
     return repr(ast_node.value)

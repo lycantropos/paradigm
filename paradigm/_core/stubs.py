@@ -263,7 +263,7 @@ except Exception:
                 builtins_module_path: _catalog.Path
                 = _catalog.module_path_from_module(_builtins),
                 generic_object_path: _catalog.Path = ('Generic',),
-                protocol_object_path: _catalog.Path = ('_Protocol',),
+                protocol_object_path: _catalog.Path = ('Protocol',),
                 named_tuple_object_path: _catalog.Path
                 = _catalog.path_from_string(_t.NamedTuple.__qualname__),
                 typing_module_path: _catalog.Path
@@ -765,7 +765,8 @@ except Exception:
             base_object_path = (base_name,)
             if base_name not in specializations_module_scope:
                 specialization_args = _unpack_ast_node(
-                    _subscript_to_item(base))
+                        _subscript_to_item(base)
+                )
                 generic_object_path = _ast_node_to_path(base.value)
                 generic_module_path, generic_object_path = (
                     _scoping.resolve_object_path(
@@ -818,14 +819,17 @@ except Exception:
                                     modules_definitions, modules_references,
                                     modules_sub_scopes
                             )
-                            generic_base_base_parameters_paths = (
-                                generics_parameters_paths[
-                                    (generic_base_base_module_path,
-                                     generic_base_base_object_path)
-                                ]
-                            )
+                            try:
+                                generic_base_base_parameters_paths = (
+                                    generics_parameters_paths[
+                                        (generic_base_base_module_path,
+                                         generic_base_base_object_path)
+                                    ]
+                                )
+                            except KeyError as error:
+                                raise
                             base_base_specialization_args = _unpack_ast_node(
-                                    base_base_node.slice.value
+                                    _subscript_to_item(base_base_node)
                             )
                             _register_generic_specialization(
                                     generic_base_base_module_path,
