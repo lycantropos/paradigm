@@ -57,10 +57,11 @@ except Exception:
                         (located_module_path, located_object_path)
                         for located_module_path, located_object_path
                         in object_qualified_paths
-                        if _scoping.contains_object_path(
-                                located_module_path, located_object_path,
-                                definitions, references, sub_scopes
-                        )
+                        if
+                        _scoping.contains_object_path(located_module_path, (),
+                                                      located_object_path,
+                                                      definitions, references,
+                                                      sub_scopes)
                     ]
                     if supported_object_qualified_paths:
                         supported_module_qualified_paths[object_path] = (

@@ -9,6 +9,7 @@ from mypy.version import __version__ as _mypy_version
 
 from . import (catalog as _catalog,
                scoping as _scoping)
+from .arboreal.kind import NodeKind as _NodeKind
 
 _CACHE_PATH = _Path(__file__).with_name(
         '_' + _mypy.__name__ + '_' + _mypy_version.replace('.', '_')
@@ -18,40 +19,58 @@ _CACHE_PATH = _Path(__file__).with_name(
         + '_' + _Path(__file__).name
 )
 _DEFINITIONS_FIELD_NAME = 'definitions'
+_NODES_KINDS_FIELD_NAME = 'nodes_kinds'
+_RAW_AST_NODES_FIELD_NAME = 'raw_ast_nodes'
 _REFERENCES_FIELD_NAME = 'references'
 _SUB_SCOPES_FIELD_NAME = 'sub_scopes'
 
+RawAstNode = _t.NewType('RawAstNode', str)
+ObjectRawAstNodes = _t.List[RawAstNode]
+_ModuleRawAstNodes = _t.Dict[_catalog.Path, ObjectRawAstNodes]
+
 definitions: _t.Dict[_catalog.Path, _scoping.Scope]
+nodes_kinds: _t.Dict[_catalog.Path, _scoping.ModuleAstNodesKinds]
+raw_ast_nodes: _t.Dict[_catalog.Path, _ModuleRawAstNodes]
 references: _t.Dict[_catalog.Path, _scoping.ModuleReferences]
 sub_scopes: _t.Dict[_catalog.Path, _scoping.ModuleSubScopes]
 
 try:
-    definitions, references, sub_scopes = _attrgetter(
-            _DEFINITIONS_FIELD_NAME, _REFERENCES_FIELD_NAME,
+    (
+        definitions, nodes_kinds, raw_ast_nodes, references, sub_scopes
+    ) = _attrgetter(
+            _DEFINITIONS_FIELD_NAME, _NODES_KINDS_FIELD_NAME,
+            _RAW_AST_NODES_FIELD_NAME, _REFERENCES_FIELD_NAME,
             _SUB_SCOPES_FIELD_NAME
     )(_import_module((''
                       if __name__ in ('__main__', '__mp_main__')
-                      else __name__.rsplit('.', maxsplit=1)[0] + '.')
+                      else __name__.rsplit('.', maxsplit=1)[
+                               0] + '.')
                      + _CACHE_PATH.stem))
 except Exception:
     import ast as _ast
     import builtins as _builtins
     import warnings as _warnings
+    from copy import deepcopy as _deepcopy
     from functools import (partial as _partial,
                            singledispatch as _singledispatch)
+
+    from typing_extensions import Protocol as _Protocol
 
     from . import (execution as _execution,
                    exporting as _exporting,
                    namespacing as _namespacing,
-                   pretty as _pretty,
                    sources as _sources)
-    from .arboreal.importing import (
-        evaluate_expression, left_search_within_children,
-        recursively_iterate_children,
+    from .arboreal.execution import evaluate_expression as _evaluate_expression
+    from .arboreal.utils import (
+        recursively_iterate_children as _recursively_iterate_children,
         to_parent_module_path as _to_parent_module_path
     )
     from .arboreal import construction as _construction
     from .sources import stubs_stdlib_modules_paths as _stdlib_modules_paths
+    from .utils import singledispatchmethod as _singledispatchmethod
+
+    _ObjectAstNodes = _t.List[_ast.AST]
+    _ModuleAstNodes = _t.Dict[_catalog.Path, _ObjectAstNodes]
 
 
     @_singledispatch
@@ -62,11 +81,6 @@ except Exception:
     @_ast_node_to_path.register(_ast.Name)
     def _(ast_node: _ast.Name) -> _catalog.Path:
         return (ast_node.id,)
-
-
-    @_ast_node_to_path.register(_ast.Subscript)
-    def _(ast_node: _ast.Subscript) -> _catalog.Path:
-        return _ast_node_to_path(ast_node.value)
 
 
     @_ast_node_to_path.register(_ast.Attribute)
@@ -86,14 +100,135 @@ except Exception:
         return (ast_node.id,)
 
 
-    @_ast_node_to_maybe_path.register(_ast.Subscript)
-    def _(ast_node: _ast.Subscript) -> _catalog.Path:
-        return _ast_node_to_path(ast_node.value)
-
-
     @_ast_node_to_maybe_path.register(_ast.Attribute)
     def _(ast_node: _ast.Attribute) -> _catalog.Path:
-        return (*_ast_node_to_path(ast_node.value), ast_node.attr)
+        return (*_ast_node_to_maybe_path(ast_node.value), ast_node.attr)
+
+
+    def _named_tuple_to_constructor_ast_node(
+            ast_node: _ast.ClassDef
+    ) -> _ast.FunctionDef:
+        annotations_ast_nodes: _t.List[_ast.AnnAssign] = [
+            ast_child_node
+            for ast_child_node in ast_node.body
+            if isinstance(ast_child_node, _ast.AnnAssign)
+        ]
+        assert all(isinstance(ast_node.target, _ast.Name)
+                   for ast_node in annotations_ast_nodes), ast_node
+        return _ast.FunctionDef(
+                '__new__',
+                _annotations_to_signature(annotations_ast_nodes),
+                [_ast.Expr(_ast.Ellipsis())], [],
+                _ast.Name(ast_node.name, _ast.Load())
+        )
+
+
+    if _sys.version_info < (3, 8):
+        def _annotations_to_signature(
+                ast_nodes: _t.List[_ast.AnnAssign]
+        ) -> _ast.arguments:
+            return _ast.arguments([_ast.arg('cls', None)]
+                                  + [_ann_assign_to_arg(ast_node)
+                                     for ast_node in ast_nodes],
+                                  None, [], [], None,
+                                  [ast_node.value
+                                   for ast_node in ast_nodes
+                                   if ast_node.value is not None])
+    else:
+        def _annotations_to_signature(
+                ast_nodes: _t.List[_ast.AnnAssign]
+        ) -> _ast.arguments:
+            return _ast.arguments([],
+                                  [_ast.arg('cls', None)]
+                                  + [_ann_assign_to_arg(ast_node)
+                                     for ast_node in ast_nodes],
+                                  None, [], [], None,
+                                  [ast_node.value
+                                   for ast_node in ast_nodes
+                                   if ast_node.value is not None])
+
+
+    def _ann_assign_to_arg(ast_node: _ast.AnnAssign) -> _ast.arg:
+        assert isinstance(ast_node.target, _ast.Name), ast_node
+        return _ast.arg(ast_node.target.id, ast_node.annotation)
+
+
+    @_singledispatch
+    def _ast_node_to_identifier(ast_node: _ast.AST) -> str:
+        raise TypeError(type(ast_node))
+
+
+    @_ast_node_to_identifier.register(_ast.Subscript)
+    def _(ast_node: _ast.Subscript) -> str:
+        assert isinstance(ast_node.ctx, _ast.Load), ast_node
+        return (_ast_node_to_identifier(ast_node.value) + '_getitem_'
+                + _ast_node_to_identifier(ast_node.slice))
+
+
+    @_ast_node_to_identifier.register(_ast.Ellipsis)
+    def _(ast_node: _ast.Subscript) -> str:
+        return repr(Ellipsis)
+
+
+    @_ast_node_to_identifier.register(_ast.NameConstant)
+    def _(ast_node: _ast.NameConstant) -> str:
+        return repr(ast_node.value)
+
+
+    @_ast_node_to_identifier.register(_ast.BitAnd)
+    def _(ast_node: _ast.BitAnd) -> str:
+        return 'bitand'
+
+
+    @_ast_node_to_identifier.register(_ast.BitOr)
+    def _(ast_node: _ast.BitOr) -> str:
+        return 'bitor'
+
+
+    @_ast_node_to_identifier.register(_ast.BitXor)
+    def _(ast_node: _ast.BitXor) -> str:
+        return 'bitxor'
+
+
+    @_ast_node_to_identifier.register(_ast.BinOp)
+    def _(ast_node: _ast.BinOp) -> str:
+        return (_ast_node_to_identifier(ast_node.left)
+                + '_' + _ast_node_to_identifier(ast_node.op) + '_'
+                + _ast_node_to_identifier(ast_node.right))
+
+
+    @_ast_node_to_identifier.register(_ast.Tuple)
+    def _(ast_node: _ast.Tuple) -> str:
+        assert isinstance(ast_node.ctx, _ast.Load), ast_node
+        return '_'.join(_ast_node_to_identifier(element)
+                        for element in ast_node.elts)
+
+
+    @_ast_node_to_identifier.register(_ast.Index)
+    def _(ast_node: _ast.Index) -> str:
+        return _ast_node_to_identifier(ast_node.value)
+
+
+    @_ast_node_to_identifier.register(_ast.Name)
+    def _(ast_node: _ast.Name) -> str:
+        assert isinstance(ast_node.ctx, _ast.Load), ast_node
+        return ast_node.id
+
+
+    @_ast_node_to_identifier.register(_ast.Attribute)
+    def _(ast_node: _ast.Attribute) -> str:
+        assert isinstance(ast_node.ctx, _ast.Load), ast_node
+        return _ast_node_to_identifier(ast_node.value) + '_' + ast_node.attr
+
+
+    def _serialize_ast_node(ast_node: _ast.AST) -> RawAstNode:
+        return RawAstNode(_ast.dump(ast_node,
+                                    annotate_fields=False))
+
+
+    def _is_generic_specialization(base: _ast.expr) -> bool:
+        return (isinstance(base, _ast.Subscript)
+                and isinstance(base.slice, _ast.Index))
 
 
     class _StateParser(_ast.NodeVisitor):
@@ -103,25 +238,41 @@ except Exception:
                 parent_path: _catalog.Path,
                 source_path: _Path,
                 scope_definitions: _scoping.Scope,
+                module_ast_nodes: _ModuleAstNodes,
+                module_ast_nodes_kinds: _scoping.ModuleAstNodesKinds,
                 module_references: _scoping.ModuleReferences,
                 module_sub_scopes: _scoping.ModuleSubScopes,
+                modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
+                modules_ast_nodes_kinds: _t.Dict[_catalog.Path,
+                                                 _scoping.ModuleAstNodesKinds],
                 modules_definitions: _t.Dict[_catalog.Path, dict],
                 modules_references: _t.Dict[_catalog.Path,
                                             _scoping.ModuleReferences],
                 modules_sub_scopes: _t.Dict[_catalog.Path,
                                             _scoping.ModuleSubScopes],
-                visited_modules_paths: _t.Set[_catalog.Path]
+                visited_modules_paths: _t.Set[_catalog.Path],
+                classes_bases: _t.Dict[_catalog.QualifiedPath,
+                                       _t.List[_ast.expr]],
+                generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
+                                                   _t.Tuple[
+                                                       _catalog.Path, ...]]
         ) -> None:
             (
-                self.module_path, self.module_references,
-                self.module_sub_scopes, self.modules_definitions,
-                self.modules_references, self.modules_sub_scopes,
-                self.parent_path, self.scope_definitions, self.source_path,
-                self.visited_modules_paths
+                self.generics_parameters_paths, self.module_ast_nodes,
+                self.module_ast_nodes_kinds, self.module_path,
+                self.module_references, self.module_sub_scopes,
+                self.modules_ast_nodes, self.modules_ast_nodes_kinds,
+                self.modules_definitions, self.modules_references,
+                self.modules_sub_scopes, self.parent_path,
+                self.scope_definitions, self.source_path,
+                self.classes_bases, self.visited_modules_paths
             ) = (
+                generics_parameters_paths, module_ast_nodes,
+                module_ast_nodes_kinds,
                 module_path, module_references, module_sub_scopes,
+                modules_ast_nodes, modules_ast_nodes_kinds,
                 modules_definitions, modules_references, modules_sub_scopes,
-                parent_path, scope_definitions, source_path,
+                parent_path, scope_definitions, source_path, classes_bases,
                 visited_modules_paths
             )
 
@@ -132,6 +283,9 @@ except Exception:
                           if value_ast_node is None
                           else _ast_node_to_maybe_path(value_ast_node))
             if value_path is None:
+                self._add_ast_node(target_path, node)
+                self._add_ast_node_kind(target_path,
+                                        _NodeKind.ANNOTATED_ASSIGNMENT)
                 self._add_path_definition(target_path)
             else:
                 value_module_path, value_object_path = self._to_qualified_path(
@@ -141,11 +295,12 @@ except Exception:
                                     value_object_path)
 
         def visit_Assign(self, node: _ast.Assign) -> None:
-            try:
-                value_path = _ast_node_to_path(node.value)
-            except TypeError:
+            value_path = _ast_node_to_maybe_path(node.value)
+            if value_path is None:
                 for target in node.targets:
                     target_path = _ast_node_to_path(target)
+                    self._add_ast_node(target_path, node)
+                    self._add_ast_node_kind(target_path, _NodeKind.ASSIGNMENT)
                     self._add_path_definition(target_path)
             else:
                 value_module_path, value_object_path = self._to_qualified_path(
@@ -157,56 +312,116 @@ except Exception:
                                         value_object_path)
 
         def visit_AsyncFunctionDef(self, node: _ast.AsyncFunctionDef) -> None:
-            self._add_name_definition(node.name)
+            function_name = node.name
+            self._add_ast_node((function_name,), node)
+            self._add_ast_node_kind((function_name,), _NodeKind.ASYNC_FUNCTION)
+            self._add_name_definition(function_name)
 
-        def visit_ClassDef(self, node: _ast.ClassDef) -> None:
+        def visit_ClassDef(
+                self,
+                node: _ast.ClassDef,
+                *,
+                builtins_module_path: _catalog.Path
+                = _catalog.module_path_from_module(_builtins),
+                generic_object_path: _catalog.Path = ('Generic',),
+                protocol_object_path: _catalog.Path
+                = _catalog.path_from_string(_Protocol.__qualname__),
+                named_tuple_object_path: _catalog.Path
+                = _catalog.path_from_string(_t.NamedTuple.__qualname__),
+                typing_module_path: _catalog.Path
+                = _catalog.module_path_from_module(_t)) -> None:
             class_name = node.name
+            self._add_ast_node_kind((class_name,), _NodeKind.CLASS)
             self._add_name_definition(class_name)
-            class_path = self.parent_path + (class_name,)
+            class_path, module_path = (self.parent_path + (class_name,),
+                                       self.module_path)
+            class_bases = self.classes_bases[(module_path, class_path)] = []
+            children = node.body
+            type_vars_local_paths = []
             for base in node.bases:
-                base_reference_path = _ast_node_to_path(base)
-                assert base_reference_path is not None
-                base_module_path, base_object_path = self._to_qualified_path(
-                        base_reference_path
-                )
-                self._add_sub_scope(class_path, base_module_path,
-                                    base_object_path)
+                if _is_generic_specialization(base):
+                    type_args_maybe_objects_paths = [
+                        _ast_node_to_maybe_path(argument)
+                        for argument in _collect_type_args(base)
+                    ]
+                    type_vars_local_paths += [
+                        maybe_object_path
+                        for maybe_object_path in type_args_maybe_objects_paths
+                        if (maybe_object_path is not None
+                            and
+                            self._is_type_var_object_path(maybe_object_path))
+                    ]
+                    base_origin_maybe_object_path = (
+                        _ast_node_to_maybe_path(base.value)
+                    )
+                    if (base_origin_maybe_object_path is not None
+                            and self._resolve_object_path(
+                                    base_origin_maybe_object_path
+                            ) in [(typing_module_path, generic_object_path),
+                                  (typing_module_path, protocol_object_path)]):
+                        continue
+                else:
+                    base_reference_path = _ast_node_to_path(base)
+                    assert base_reference_path is not None
+                    base_module_path, base_object_path = (
+                        self._to_qualified_path(base_reference_path)
+                    )
+                    if (base_module_path == typing_module_path
+                            and base_object_path == named_tuple_object_path):
+                        children = list(children)
+                        children.append(
+                                _named_tuple_to_constructor_ast_node(node)
+                        )
+                        self.module_sub_scopes.setdefault(
+                                class_path, set()
+                        ).add((base_module_path, base_object_path))
+                        continue
+                class_bases.append(base)
+            generic_parameters = tuple(dict.fromkeys(type_vars_local_paths))
+            if generic_parameters:
+                self.generics_parameters_paths[
+                    (module_path, class_path)
+                ] = generic_parameters
             parse_child = _StateParser(
-                    self.module_path, class_path, self.source_path,
-                    self.scope_definitions[class_name], self.module_references,
-                    self.module_sub_scopes, self.modules_definitions,
-                    self.modules_references, self.modules_sub_scopes,
-                    self.visited_modules_paths
+                    module_path, class_path, self.source_path,
+                    self.scope_definitions[class_name],
+                    self.module_ast_nodes, self.module_ast_nodes_kinds,
+                    self.module_references, self.module_sub_scopes,
+                    self.modules_ast_nodes, self.modules_ast_nodes_kinds,
+                    self.modules_definitions, self.modules_references,
+                    self.modules_sub_scopes, self.visited_modules_paths,
+                    self.classes_bases, self.generics_parameters_paths
             ).visit
-            for child in node.body:
+            for child in children:
                 parse_child(child)
+
+        def visit_FunctionDef(self, node: _ast.FunctionDef) -> None:
+            function_name = node.name
+            self._add_ast_node((function_name,), node)
+            self._add_ast_node_kind((function_name,), _NodeKind.FUNCTION)
+            self._add_name_definition(function_name)
 
         def visit_If(self, node: _ast.If) -> None:
             namespace = {}
             for dependency_name in {
                 child.id
-                for child in recursively_iterate_children(node.test)
+                for child in _recursively_iterate_children(node.test)
                 if (isinstance(child, _ast.Name)
                     and isinstance(child.ctx, _ast.Load))
             }:
-                module_path, object_path = _resolve_object_path(
-                        self.module_path, self.parent_path, (dependency_name,),
-                        self.modules_definitions, self.modules_references,
-                        self.modules_sub_scopes, self.visited_modules_paths
+                module_path, object_path = self._resolve_object_path(
+                        (dependency_name,)
                 )
                 module = _import_module(_catalog.path_to_string(module_path))
                 namespace[dependency_name] = (_namespacing.search(vars(module),
                                                                   object_path)
                                               if object_path
                                               else module)
-            condition = evaluate_expression(node.test,
-                                            source_path=self.source_path,
-                                            namespace=namespace)
+            condition = _evaluate_expression(node.test,
+                                             source_path=self.source_path,
+                                             namespace=namespace)
             for child in (node.body if condition else node.orelse):
                 self.visit(child)
-
-        def visit_FunctionDef(self, node: _ast.FunctionDef) -> None:
-            self._add_name_definition(node.name)
 
         def visit_Import(self, node: _ast.Import) -> None:
             for alias in node.names:
@@ -244,6 +459,18 @@ except Exception:
             for part in path:
                 scope_definitions = scope_definitions.setdefault(part, {})
 
+        def _add_ast_node(self,
+                          path: _catalog.Path,
+                          ast_node: _ast.AST) -> None:
+            self.module_ast_nodes.setdefault(
+                    self.parent_path + path, []
+            ).append(ast_node)
+
+        def _add_ast_node_kind(self,
+                               path: _catalog.Path,
+                               node_kind: _NodeKind) -> None:
+            self.module_ast_nodes_kinds[self.parent_path + path] = node_kind
+
         def _add_reference(self,
                            reference_path: _catalog.Path,
                            referent_module_path: _catalog.Path,
@@ -261,18 +488,66 @@ except Exception:
                     reference_path, set()
             ).add((referent_module_path, referent_object_path))
 
+        def _resolve_object_path(
+                self, object_path: _catalog.Path
+        ) -> _catalog.QualifiedPath:
+            return _resolve_object_path(
+                    self.module_path, self.parent_path, object_path,
+                    self.modules_ast_nodes, self.modules_ast_nodes_kinds,
+                    self.modules_definitions, self.modules_references,
+                    self.modules_sub_scopes, self.visited_modules_paths,
+                    self.classes_bases, self.generics_parameters_paths
+            )
+
         def _to_qualified_path(
                 self, object_path: _catalog.Path
         ) -> _catalog.QualifiedPath:
             try:
-                return _resolve_object_path(
-                        self.module_path, self.parent_path, object_path,
-                        self.modules_definitions, self.modules_references,
-                        self.modules_sub_scopes, self.visited_modules_paths
-                )
+                return self._resolve_object_path(object_path)
             except _ObjectNotFound:
                 self._add_path_definition(object_path)
                 return (self.module_path, object_path)
+
+        def _is_type_var_object_path(
+                self, object_path: _catalog.Path,
+                *,
+                type_var_object_path: _catalog.Path
+                = _catalog.path_from_string(_t.TypeVar.__qualname__),
+                typing_module_path: _catalog.Path
+                = _catalog.module_path_from_module(_t),
+        ):
+            module_path, object_path = self._to_qualified_path(object_path)
+            _parse_stub_scope(
+                    module_path, self.modules_ast_nodes,
+                    self.modules_ast_nodes_kinds, self.modules_definitions,
+                    self.modules_references, self.modules_sub_scopes,
+                    self.visited_modules_paths, self.classes_bases,
+                    self.generics_parameters_paths
+            )
+            module_ast_nodes = self.modules_ast_nodes[module_path]
+            ast_nodes = module_ast_nodes.get(object_path, [])
+            if len(ast_nodes) != 1:
+                return False
+            ast_node, = ast_nodes
+            if not (isinstance(ast_node, (_ast.AnnAssign, _ast.Assign))
+                    and isinstance(ast_node.value, _ast.Call)):
+                return False
+            callable_maybe_object_path = _ast_node_to_maybe_path(
+                    ast_node.value.func
+            )
+            if callable_maybe_object_path is None:
+                return False
+            callable_module_path, callable_object_path = (
+                _resolve_object_path(
+                        module_path, (), callable_maybe_object_path,
+                        self.modules_ast_nodes, self.modules_ast_nodes_kinds,
+                        self.modules_definitions, self.modules_references,
+                        self.modules_sub_scopes, self.visited_modules_paths,
+                        self.classes_bases, self.generics_parameters_paths
+                )
+            )
+            return (callable_module_path == typing_module_path
+                    and callable_object_path == type_var_object_path)
 
 
     class _ObjectNotFound(Exception):
@@ -283,32 +558,43 @@ except Exception:
             module_path: _catalog.Path,
             parent_path: _catalog.Path,
             object_path: _catalog.Path,
+            modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
+            modules_ast_nodes_kinds: _t.Dict[_catalog.Path,
+                                             _scoping.ModuleAstNodesKinds],
             modules_definitions: _t.Dict[_catalog.Path, _scoping.Scope],
             modules_references: _t.Dict[_catalog.Path,
                                         _scoping.ModuleReferences],
             modules_sub_scopes: _t.Dict[_catalog.Path,
                                         _scoping.ModuleSubScopes],
             visited_modules_paths: _t.Set[_catalog.Path],
+            classes_bases: _t.Dict[_catalog.QualifiedPath, _t.List[_ast.expr]],
+            generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
+                                               _t.Tuple[_ast.expr, ...]],
             *,
             _builtins_module_path: _catalog.Path
             = _catalog.module_path_from_module(_builtins)
     ) -> _catalog.QualifiedPath:
         first_name = object_path[0]
         module_definitions = _parse_stub_scope(
-                module_path, modules_definitions, modules_references,
-                modules_sub_scopes, visited_modules_paths
+                module_path, modules_ast_nodes, modules_ast_nodes_kinds,
+                modules_definitions, modules_references,
+                modules_sub_scopes, visited_modules_paths,
+                classes_bases, generics_parameters_paths
         )
-        if (_scoping.scope_contains_path(module_definitions,
-                                         parent_path + (first_name,))
-                or first_name in module_definitions):
+        if _scoping.scope_contains_path(module_definitions,
+                                        parent_path + (first_name,)):
+            return module_path, parent_path + object_path
+        elif first_name in module_definitions:
             return module_path, object_path
         elif () in modules_sub_scopes[module_path]:
             for sub_module_path, _ in modules_sub_scopes[module_path][()]:
                 try:
                     return _resolve_object_path(
                             sub_module_path, (), object_path,
+                            modules_ast_nodes, modules_ast_nodes_kinds,
                             modules_definitions, modules_references,
-                            modules_sub_scopes, visited_modules_paths
+                            modules_sub_scopes, visited_modules_paths,
+                            classes_bases, generics_parameters_paths
                     )
                 except _ObjectNotFound:
                     continue
@@ -325,67 +611,373 @@ except Exception:
                 return (referent_module_name,
                         (referent_object_path
                          + object_path[len(object_path) - offset:]))
-        if (_builtins_module_path in modules_definitions
-                and _scoping.scope_contains_path(
-                        modules_definitions[_builtins_module_path], object_path
-                )):
+        if _scoping.scope_contains_path(
+                modules_definitions[_builtins_module_path], object_path
+        ):
             return _builtins_module_path, object_path
         raise _ObjectNotFound(object_path)
 
 
     def _parse_stub_scope(
             module_path: _catalog.Path,
+            modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
+            modules_ast_nodes_kinds: _t.Dict[_catalog.Path,
+                                             _scoping.ModuleAstNodesKinds],
             modules_definitions: _t.Dict[_catalog.Path, _scoping.Scope],
             modules_references: _t.Dict[_catalog.Path,
                                         _scoping.ModuleReferences],
             modules_sub_scopes: _t.Dict[_catalog.Path,
                                         _scoping.ModuleSubScopes],
             visited_modules_paths: _t.Set[_catalog.Path],
+            classes_bases: _t.Dict[_catalog.QualifiedPath, _t.List[_ast.expr]],
+            generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
+                                               _t.Tuple[_catalog.Path, ...]]
     ) -> _scoping.Scope:
         if module_path in visited_modules_paths:
             return modules_definitions[module_path]
         visited_modules_paths.add(module_path)
         source_path = _sources.from_module_path(module_path)
         module_definitions = modules_definitions[module_path] = {}
+        module_ast_nodes_kinds = modules_ast_nodes_kinds[module_path] = {}
+        module_ast_nodes = modules_ast_nodes[module_path] = {}
         module_references = modules_references[module_path] = {}
         module_sub_scopes = modules_sub_scopes[module_path] = {}
         ast_node = _construction.from_source_path(source_path)
         _StateParser(
                 module_path, (), source_path, module_definitions,
-                module_references, module_sub_scopes, modules_definitions,
-                modules_references, modules_sub_scopes,
-                visited_modules_paths
+                module_ast_nodes, module_ast_nodes_kinds, module_references,
+                module_sub_scopes, modules_ast_nodes, modules_ast_nodes_kinds,
+                modules_definitions, modules_references, modules_sub_scopes,
+                visited_modules_paths, classes_bases, generics_parameters_paths
         ).generic_visit(ast_node)
         return module_definitions
+
+
+    @_singledispatch
+    def _unpack_ast_node(ast_node: _ast.expr) -> _t.Tuple[_ast.expr, ...]:
+        return (ast_node,)
+
+
+    @_unpack_ast_node.register(_ast.Tuple)
+    def _(ast_node: _ast.Tuple) -> _t.Tuple[_ast.expr, ...]:
+        assert isinstance(ast_node.ctx, _ast.Load), ast_node
+        return ast_node.elts
+
+
+    def _collect_type_args(ast_node: _ast.expr) -> _t.Tuple[_ast.expr, ...]:
+        if _is_generic_specialization(ast_node):
+            queue = [ast_node.slice.value]
+            args = []
+            while queue:
+                specialization_node = queue.pop()
+                candidates = _unpack_ast_node(specialization_node)
+                for candidate in reversed(candidates):
+                    if _is_generic_specialization(candidate):
+                        queue.append(candidate.slice.value)
+                    else:
+                        args.append(candidate)
+            return args[::-1]
+        else:
+            return ()
+
+
+    @_unpack_ast_node.register(_ast.Tuple)
+    def _(ast_node: _ast.Tuple) -> _t.Tuple[_ast.expr, ...]:
+        assert isinstance(ast_node.ctx, _ast.Load), ast_node
+        return ast_node.elts
+
+
+    class _SpecializeGeneric(_ast.NodeTransformer):
+        def __init__(self, table: _t.Dict[_catalog.Path, _ast.expr]) -> None:
+            self.table = table
+
+        def visit_Name(self, node: _ast.Name) -> _ast.expr:
+            if not isinstance(node.ctx, _ast.Load):
+                return node
+            candidate = self.table.get(_ast_node_to_path(node))
+            return (node
+                    if candidate is None
+                    else _ast.copy_location(_deepcopy(candidate), node))
+
+        def visit_Attribute(self, node: _ast.Attribute) -> _ast.expr:
+            if not isinstance(node.ctx, _ast.Load):
+                return node
+            candidate = self.table.get(_ast_node_to_maybe_path(node))
+            return (node
+                    if candidate is None
+                    else _ast.copy_location(_deepcopy(candidate), node))
 
 
     def _parse_stubs_state(
             modules_paths: _t.Iterable[_catalog.Path]
     ) -> _t.Tuple[_t.Dict[_catalog.Path, _scoping.Scope],
+                  _t.Dict[_catalog.Path, _scoping.ModuleAstNodesKinds],
+                  _t.Dict[_catalog.Path, _ModuleRawAstNodes],
                   _t.Dict[_catalog.Path, _scoping.ModuleReferences],
                   _t.Dict[_catalog.Path, _scoping.ModuleSubScopes]]:
         modules_definitions: _t.Dict[_catalog.Path, _scoping.Scope] = {}
-        visited_modules_paths: _t.Set[_catalog.Path] = set()
+        modules_nodes_kinds: _t.Dict[_catalog.Path,
+                                     _scoping.ModuleAstNodesKinds] = {}
+        modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes] = {}
         modules_references: _t.Dict[_catalog.Path,
                                     _scoping.ModuleReferences] = {}
         modules_sub_scopes: _t.Dict[_catalog.Path,
                                     _scoping.ModuleSubScopes] = {}
+        classes_bases: _t.Dict[_catalog.QualifiedPath, _t.List[_ast.expr]] = {}
+        generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
+                                           _t.Tuple[_catalog.Path, ...]] = {}
+        visited_modules_paths: _t.Set[_catalog.Path] = set()
         _parse_stub_scope(_catalog.module_path_from_module(_builtins),
+                          modules_ast_nodes, modules_nodes_kinds,
                           modules_definitions, modules_references,
-                          modules_sub_scopes, visited_modules_paths)
+                          modules_sub_scopes, visited_modules_paths,
+                          classes_bases, generics_parameters_paths)
         for module_path in modules_paths:
-            _parse_stub_scope(module_path, modules_definitions,
-                              modules_references, modules_sub_scopes,
-                              visited_modules_paths)
-        return modules_definitions, modules_references, modules_sub_scopes
+            _parse_stub_scope(
+                    module_path, modules_ast_nodes, modules_nodes_kinds,
+                    modules_definitions, modules_references,
+                    modules_sub_scopes, visited_modules_paths,
+                    classes_bases, generics_parameters_paths
+            )
+        _process_classes_bases(classes_bases, generics_parameters_paths,
+                               modules_ast_nodes, modules_definitions,
+                               modules_nodes_kinds, modules_references,
+                               modules_sub_scopes)
+        modules_raw_ast_nodes = {
+            module_path: {
+                object_path: [_serialize_ast_node(ast_node)
+                              for ast_node in ast_nodes]
+                for object_path, ast_nodes in module_ast_nodes.items()
+            }
+            for module_path, module_ast_nodes in modules_ast_nodes.items()
+        }
+        return (modules_definitions, modules_nodes_kinds,
+                modules_raw_ast_nodes, modules_references, modules_sub_scopes)
+
+
+    def _process_classes_bases(
+            classes_bases: _t.Dict[_catalog.QualifiedPath, _t.List[_ast.expr]],
+            generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
+                                               _t.Tuple[_catalog.Path, ...]],
+            modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
+            modules_definitions: _t.Dict[_catalog.Path, _scoping.Scope],
+            modules_nodes_kinds: _t.Dict[_catalog.Path,
+                                         _scoping.ModuleAstNodesKinds],
+            modules_references: _t.Dict[_catalog.Path,
+                                        _scoping.ModuleReferences],
+            modules_sub_scopes: _t.Dict[_catalog.Path,
+                                        _scoping.ModuleSubScopes],
+            *,
+            specializations_module_path: _catalog.Path = ('__specializations',)
+    ) -> None:
+        assert specializations_module_path not in modules_ast_nodes
+        specializations_ast_nodes = modules_ast_nodes[
+            specializations_module_path
+        ] = {}
+        assert specializations_module_path not in modules_definitions
+        specializations_module_scope = modules_definitions[
+            specializations_module_path
+        ] = {}
+        assert specializations_module_path not in modules_nodes_kinds
+        specializations_nodes_kinds = modules_nodes_kinds[
+            specializations_module_path
+        ] = {}
+        assert specializations_module_path not in modules_references
+        modules_references[specializations_module_path] = {}
+        assert specializations_module_path not in modules_sub_scopes
+        specializations_sub_scopes = modules_sub_scopes[
+            specializations_module_path
+        ] = {}
+        for (class_module_path, class_object_path), class_bases in (
+                classes_bases.items()
+        ):
+            for base in class_bases:
+                base_module_path, base_object_path = _register_base_ast_node(
+                        base, class_module_path, class_object_path,
+                        classes_bases, generics_parameters_paths,
+                        specializations_ast_nodes, specializations_module_path,
+                        specializations_module_scope,
+                        specializations_nodes_kinds,
+                        specializations_sub_scopes, modules_ast_nodes,
+                        modules_definitions, modules_nodes_kinds,
+                        modules_references, modules_sub_scopes
+                )
+                modules_sub_scopes[class_module_path].setdefault(
+                        class_object_path, set()
+                ).add((base_module_path, base_object_path))
+
+
+    def _register_base_ast_node(
+            base: _ast.expr,
+            child_module_path: _catalog.Path,
+            child_object_path: _catalog.Path,
+            classes_bases: _t.Dict[_catalog.QualifiedPath, _t.List[_ast.expr]],
+            generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
+                                               _t.Tuple[_catalog.Path, ...]],
+            specializations_ast_nodes: _ModuleAstNodes,
+            specializations_module_path: _catalog.Path,
+            specializations_module_scope,
+            specializations_nodes_kinds: _scoping.ModuleAstNodesKinds,
+            specializations_sub_scopes: _scoping.ModuleSubScopes,
+            modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
+            modules_definitions: _t.Dict[_catalog.Path, _scoping.Scope],
+            modules_nodes_kinds: _t.Dict[_catalog.Path,
+                                         _scoping.ModuleAstNodesKinds],
+            modules_references: _t.Dict[_catalog.Path,
+                                        _scoping.ModuleReferences],
+            modules_sub_scopes: _t.Dict[_catalog.Path,
+                                        _scoping.ModuleSubScopes]
+    ) -> _catalog.QualifiedPath:
+        if _is_generic_specialization(base):
+            base_name = _ast_node_to_identifier(base)
+            base_object_path = (base_name,)
+            if base_name not in specializations_module_scope:
+                specialization_args = _unpack_ast_node(base.slice.value)
+                generic_object_path = _ast_node_to_path(base.value)
+                generic_module_path, generic_object_path = (
+                    _scoping.resolve_object_path(
+                            child_module_path, child_object_path[:-1],
+                            generic_object_path, modules_definitions,
+                            modules_references, modules_sub_scopes
+                    )
+                )
+                generic_parameters_paths = generics_parameters_paths[
+                    (generic_module_path, generic_object_path)
+                ]
+                _register_generic_specialization(
+                        generic_module_path, generic_object_path,
+                        base_object_path, generic_parameters_paths,
+                        specialization_args, specializations_ast_nodes,
+                        specializations_module_scope,
+                        specializations_nodes_kinds, modules_ast_nodes,
+                        modules_definitions, modules_nodes_kinds,
+                )
+                assert base_object_path not in specializations_sub_scopes
+                base_sub_scopes = specializations_sub_scopes[
+                    base_object_path
+                ] = set()
+                specialization_table = dict(zip(generic_parameters_paths,
+                                                specialization_args))
+                specialize = _SpecializeGeneric(specialization_table).visit
+                for generic_base in classes_bases[(generic_module_path,
+                                                   generic_object_path)]:
+                    if _is_generic_specialization(generic_base):
+                        base_base_node = specialize(generic_base)
+                        base_base_name = _ast_node_to_identifier(
+                                base_base_node
+                        )
+                        base_base_module_path, base_base_object_path = (
+                            specializations_module_path, (base_base_name,)
+                        )
+                        if base_base_name not in specializations_module_scope:
+                            generic_base_base_object_path = _ast_node_to_path(
+                                    generic_base.value
+                            )
+                            (
+                                generic_base_base_module_path,
+                                generic_base_base_object_path
+                            ) = _scoping.resolve_object_path(
+                                    generic_module_path,
+                                    generic_object_path[:-1],
+                                    generic_base_base_object_path,
+                                    modules_definitions, modules_references,
+                                    modules_sub_scopes
+                            )
+                            generic_base_base_parameters_paths = (
+                                generics_parameters_paths[
+                                    (generic_base_base_module_path,
+                                     generic_base_base_object_path)
+                                ]
+                            )
+                            base_base_specialization_args = _unpack_ast_node(
+                                    base_base_node.slice.value
+                            )
+                            _register_generic_specialization(
+                                    generic_base_base_module_path,
+                                    generic_base_base_object_path,
+                                    base_base_object_path,
+                                    generic_base_base_parameters_paths,
+                                    base_base_specialization_args,
+                                    specializations_ast_nodes,
+                                    specializations_module_scope,
+                                    specializations_nodes_kinds,
+                                    modules_ast_nodes, modules_definitions,
+                                    modules_nodes_kinds,
+                            )
+                    else:
+                        base_base_object_path = _ast_node_to_path(generic_base)
+                        base_base_module_path, base_base_object_path = (
+                            _scoping.resolve_object_path(
+                                    generic_module_path, (),
+                                    base_base_object_path, modules_definitions,
+                                    modules_references, modules_sub_scopes
+                            )
+                        )
+                    base_sub_scopes.add((base_base_module_path,
+                                         base_base_object_path))
+            return specializations_module_path, base_object_path
+        else:
+            base_reference_path = _ast_node_to_path(base)
+            return _scoping.resolve_object_path(
+                    child_module_path, child_object_path[:-1],
+                    base_reference_path, modules_definitions,
+                    modules_references, modules_sub_scopes
+            )
+
+
+    def _register_generic_specialization(
+            generic_module_path: _catalog.Path,
+            generic_object_path: _catalog.Path,
+            specialization_object_path: _catalog.Path,
+            generic_parameters_paths: _t.Sequence[_catalog.Path],
+            specialization_args: _t.Sequence[_ast.expr],
+            specializations_ast_nodes: _ModuleAstNodes,
+            specializations_module_scope: _scoping.Scope,
+            specializations_nodes_kinds: _scoping.ModuleAstNodesKinds,
+            modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
+            modules_definitions: _t.Dict[_catalog.Path, _scoping.Scope],
+            modules_nodes_kinds: _t.Dict[_catalog.Path,
+                                         _scoping.ModuleAstNodesKinds],
+    ) -> None:
+        base_scope = specializations_module_scope
+        for part in specialization_object_path:
+            base_scope = base_scope.setdefault(part, {})
+        generic_scope = modules_definitions[generic_module_path]
+        for part in generic_object_path:
+            generic_scope = generic_scope[part]
+        base_scope.update(generic_scope)
+        generic_module_ast_nodes = modules_ast_nodes[generic_module_path]
+        specializations_nodes_kinds[
+            specialization_object_path
+        ] = _NodeKind.CLASS
+        specialize = _SpecializeGeneric(
+                dict(zip(generic_parameters_paths, specialization_args))
+        ).visit
+        for name in generic_scope.keys():
+            generic_field_path = (*generic_object_path, name)
+            generic_ast_nodes = generic_module_ast_nodes[generic_field_path]
+            specialization_field_path = (*specialization_object_path, name)
+            specializations_ast_nodes[specialization_field_path] = [
+                specialize(_deepcopy(ast_node))
+                for ast_node in generic_ast_nodes
+            ]
+            specializations_nodes_kinds[specialization_field_path] = (
+                modules_nodes_kinds[generic_module_path][generic_field_path]
+            )
 
 
     if _execution.is_main_process():
-        definitions, references, sub_scopes = _execution.call_in_process(
-                _parse_stubs_state, _stdlib_modules_paths
+        definitions, nodes_kinds, raw_ast_nodes, references, sub_scopes = (
+            _execution.call_in_process(_parse_stubs_state,
+                                       _stdlib_modules_paths)
         )
-        _exporting.save(_CACHE_PATH, **{_DEFINITIONS_FIELD_NAME: definitions,
-                                        _REFERENCES_FIELD_NAME: references,
-                                        _SUB_SCOPES_FIELD_NAME: sub_scopes})
+        _exporting.save(_CACHE_PATH,
+                        **{_DEFINITIONS_FIELD_NAME: definitions,
+                           _NODES_KINDS_FIELD_NAME: nodes_kinds,
+                           _RAW_AST_NODES_FIELD_NAME: raw_ast_nodes,
+                           _REFERENCES_FIELD_NAME: references,
+                           _SUB_SCOPES_FIELD_NAME: sub_scopes})
     else:
-        definitions, references, sub_scopes = {}, {}, {}
+        definitions, nodes_kinds, raw_ast_nodes, references, sub_scopes = (
+            {}, {}, {}, {}, {}
+        )

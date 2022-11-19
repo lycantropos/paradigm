@@ -6,8 +6,18 @@ from . import catalog
 Namespace = t.Dict[str, t.Any]
 
 
-def search(namespace: Namespace, path: catalog.Path) -> t.Any:
-    root_object = namespace[path[0]]
-    return (reduce(getattr, path[1:], root_object)
-            if len(path) > 1
-            else root_object)
+class ObjectNotFound(Exception):
+    pass
+
+
+def search(namespace: Namespace, object_path: catalog.Path) -> t.Any:
+    try:
+        root_object = namespace[object_path[0]]
+    except KeyError:
+        raise ObjectNotFound(object_path)
+    try:
+        return (reduce(getattr, object_path[1:], root_object)
+                if len(object_path) > 1
+                else root_object)
+    except AttributeError:
+        raise ObjectNotFound(object_path)

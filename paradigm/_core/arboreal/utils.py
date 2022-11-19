@@ -1,62 +1,34 @@
-import functools
-import sys
+import ast
 import typing as t
+from collections import deque
 
-singledispatchmethod: t.Any
-if sys.version_info < (3, 8):
-    _T1 = t.TypeVar('_T1')
-    _T2 = t.TypeVar('_T2')
-
-
-    class _singledispatchmethod:
-        dispatcher: t.Any
-        func: t.Callable[..., _T1]
-
-        def __new__(cls,
-                    func: t.Callable[
-                        ..., _T1]) -> '_singledispatchmethod':
-            if not callable(func) and not hasattr(func, '__get__'):
-                raise TypeError(f'{func!r} is not callable or a descriptor')
-            self = super().__new__(cls)
-            self.dispatcher, self.func = functools.singledispatch(func), func
-            return self
-
-        @t.overload
-        def register(self,
-                     cls: t.Type,
-                     method: t.Callable[..., _T1]) -> t.Callable[
-            ..., _T1]:
-            return self.dispatcher.register(cls, method)
-
-        @t.overload
-        def register(self, cls: t.Type) -> t.Callable[
-            [t.Callable[..., _T1]], t.Callable[..., _T1]
-        ]:
-            return self.dispatcher.register(cls)
-
-        def register(self, cls, method=None):
-            return self.dispatcher.register(cls, method)
-
-        def __get__(self,
-                    instance: _T2,
-                    cls: t.Optional[_T2] = None) -> t.Callable[
-            ..., _T1]:
-            def dispatchable_method(*args: t.Any,
-                                    **kwargs: t.Any) -> t.Any:
-                method = self.dispatcher.dispatch(args[0].__class__)
-                return method.__get__(instance, cls)(*args, **kwargs)
-
-            result: t.Any = dispatchable_method
-            result.__isabstractmethod__ = self.__isabstractmethod__
-            result.register = self.register
-            functools.update_wrapper(result, self.func)
-            return result
-
-        @property
-        def __isabstractmethod__(self) -> bool:
-            return getattr(self.func, '__isabstractmethod__', False)
+from paradigm._core import (catalog,
+                            sources)
 
 
-    singledispatchmethod = _singledispatchmethod
-else:
-    singledispatchmethod = functools.singledispatchmethod
+def recursively_iterate_children(node: ast.AST) -> t.Iterable[ast.AST]:
+    candidates = deque(ast.iter_child_nodes(node))
+    while candidates:
+        candidate = candidates.popleft()
+        yield candidate
+        candidates.extend(ast.iter_child_nodes(candidate))
+
+
+def to_parent_module_path(
+        ast_node: ast.ImportFrom,
+        *,
+        parent_module_path: catalog.Path
+) -> catalog.Path:
+    level = ast_node.level
+    import_is_relative = level > 0
+    if not import_is_relative:
+        assert ast_node.module is not None, ast_node
+        return catalog.path_from_string(ast_node.module)
+    depth = (len(parent_module_path)
+             + sources.is_package(parent_module_path)
+             - level) or None
+    module_path_parts = (list(parent_module_path[:depth])
+                         + ([]
+                            if ast_node.module is None
+                            else ast_node.module.split('.')))
+    return tuple(module_path_parts)
