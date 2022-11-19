@@ -7,6 +7,7 @@ from pathlib import Path as _Path
 import mypy as _mypy
 from mypy.version import __version__ as _mypy_version
 
+from paradigm import __version__ as _version
 from . import (catalog as _catalog,
                scoping as _scoping)
 from .arboreal.kind import NodeKind as _NodeKind
@@ -23,6 +24,7 @@ _NODES_KINDS_FIELD_NAME = 'nodes_kinds'
 _RAW_AST_NODES_FIELD_NAME = 'raw_ast_nodes'
 _REFERENCES_FIELD_NAME = 'references'
 _SUB_SCOPES_FIELD_NAME = 'sub_scopes'
+_VERSION_FIELD_NAME = 'version'
 
 RawAstNode = _t.NewType('RawAstNode', str)
 ObjectRawAstNodes = _t.List[RawAstNode]
@@ -36,26 +38,28 @@ sub_scopes: _t.Dict[_catalog.Path, _scoping.ModuleSubScopes]
 
 try:
     (
-        definitions, nodes_kinds, raw_ast_nodes, references, sub_scopes
+        definitions, nodes_kinds, raw_ast_nodes, references, sub_scopes,
+        _cached_version
     ) = _attrgetter(
             _DEFINITIONS_FIELD_NAME, _NODES_KINDS_FIELD_NAME,
             _RAW_AST_NODES_FIELD_NAME, _REFERENCES_FIELD_NAME,
-            _SUB_SCOPES_FIELD_NAME
+            _SUB_SCOPES_FIELD_NAME, _VERSION_FIELD_NAME
     )(_import_module((''
                       if __name__ in ('__main__', '__mp_main__')
                       else __name__.rsplit('.', maxsplit=1)[
                                0] + '.')
                      + _CACHE_PATH.stem))
 except Exception:
+    _reload_cache = True
+else:
+    _reload_cache = _cached_version != _version
+if _reload_cache:
     import ast as _ast
     import builtins as _builtins
-    import warnings as _warnings
     from copy import deepcopy as _deepcopy
-    from functools import (partial as _partial,
-                           singledispatch as _singledispatch)
+    from functools import singledispatch as _singledispatch
 
-    from typing_extensions import (Protocol as _Protocol,
-                                   TypeGuard as _TypeGuard)
+    from typing_extensions import TypeGuard as _TypeGuard
 
     from . import (execution as _execution,
                    exporting as _exporting,
@@ -70,7 +74,6 @@ except Exception:
     from .arboreal import (construction as _construction,
                            serialization as _serialization)
     from .sources import stubs_stdlib_modules_paths as _stdlib_modules_paths
-    from .utils import singledispatchmethod as _singledispatchmethod
 
     _ObjectAstNodes = _t.List[_ast.AST]
     _ModuleAstNodes = _t.Dict[_catalog.Path, _ObjectAstNodes]
@@ -819,15 +822,12 @@ except Exception:
                                     modules_definitions, modules_references,
                                     modules_sub_scopes
                             )
-                            try:
-                                generic_base_base_parameters_paths = (
-                                    generics_parameters_paths[
-                                        (generic_base_base_module_path,
-                                         generic_base_base_object_path)
-                                    ]
-                                )
-                            except KeyError as error:
-                                raise
+                            generic_base_base_parameters_paths = (
+                                generics_parameters_paths[
+                                    (generic_base_base_module_path,
+                                     generic_base_base_object_path)
+                                ]
+                            )
                             base_base_specialization_args = _unpack_ast_node(
                                     _subscript_to_item(base_base_node)
                             )
@@ -915,7 +915,8 @@ except Exception:
                            _NODES_KINDS_FIELD_NAME: nodes_kinds,
                            _RAW_AST_NODES_FIELD_NAME: raw_ast_nodes,
                            _REFERENCES_FIELD_NAME: references,
-                           _SUB_SCOPES_FIELD_NAME: sub_scopes})
+                           _SUB_SCOPES_FIELD_NAME: sub_scopes,
+                           _VERSION_FIELD_NAME: _version})
     else:
         definitions, nodes_kinds, raw_ast_nodes, references, sub_scopes = (
             {}, {}, {}, {}, {}
