@@ -54,7 +54,8 @@ except Exception:
     from functools import (partial as _partial,
                            singledispatch as _singledispatch)
 
-    from typing_extensions import Protocol as _Protocol, TypeGuard
+    from typing_extensions import (Protocol as _Protocol,
+                                   TypeGuard as _TypeGuard)
 
     from . import (execution as _execution,
                    exporting as _exporting,
@@ -63,9 +64,11 @@ except Exception:
     from .arboreal.execution import evaluate_expression as _evaluate_expression
     from .arboreal.utils import (
         recursively_iterate_children as _recursively_iterate_children,
+        subscript_to_item as _subscript_to_item,
         to_parent_module_path as _to_parent_module_path
     )
-    from .arboreal import construction as _construction
+    from .arboreal import (construction as _construction,
+                           serialization as _serialization)
     from .sources import stubs_stdlib_modules_paths as _stdlib_modules_paths
     from .utils import singledispatchmethod as _singledispatchmethod
 
@@ -156,83 +159,15 @@ except Exception:
         return _ast.arg(ast_node.target.id, ast_node.annotation)
 
 
-    @_singledispatch
-    def _ast_node_to_identifier(ast_node: _ast.AST) -> str:
-        raise TypeError(type(ast_node))
-
-
-    @_ast_node_to_identifier.register(_ast.Subscript)
-    def _(ast_node: _ast.Subscript) -> str:
-        assert isinstance(ast_node.ctx, _ast.Load), ast_node
-        return (_ast_node_to_identifier(ast_node.value) + '_getitem_'
-                + _ast_node_to_identifier(ast_node.slice))
-
-
-    @_ast_node_to_identifier.register(_ast.Ellipsis)
-    def _(ast_node: _ast.Subscript) -> str:
-        return repr(Ellipsis)
-
-
-    @_ast_node_to_identifier.register(_ast.NameConstant)
-    def _(ast_node: _ast.NameConstant) -> str:
-        return repr(ast_node.value)
-
-
-    @_ast_node_to_identifier.register(_ast.BitAnd)
-    def _(ast_node: _ast.BitAnd) -> str:
-        return 'bitand'
-
-
-    @_ast_node_to_identifier.register(_ast.BitOr)
-    def _(ast_node: _ast.BitOr) -> str:
-        return 'bitor'
-
-
-    @_ast_node_to_identifier.register(_ast.BitXor)
-    def _(ast_node: _ast.BitXor) -> str:
-        return 'bitxor'
-
-
-    @_ast_node_to_identifier.register(_ast.BinOp)
-    def _(ast_node: _ast.BinOp) -> str:
-        return (_ast_node_to_identifier(ast_node.left)
-                + '_' + _ast_node_to_identifier(ast_node.op) + '_'
-                + _ast_node_to_identifier(ast_node.right))
-
-
-    @_ast_node_to_identifier.register(_ast.Tuple)
-    def _(ast_node: _ast.Tuple) -> str:
-        assert isinstance(ast_node.ctx, _ast.Load), ast_node
-        return '_'.join(_ast_node_to_identifier(element)
-                        for element in ast_node.elts)
-
-
-    @_ast_node_to_identifier.register(_ast.Index)
-    def _(ast_node: _ast.Index) -> str:
-        return _ast_node_to_identifier(ast_node.value)
-
-
-    @_ast_node_to_identifier.register(_ast.Name)
-    def _(ast_node: _ast.Name) -> str:
-        assert isinstance(ast_node.ctx, _ast.Load), ast_node
-        return ast_node.id
-
-
-    @_ast_node_to_identifier.register(_ast.Attribute)
-    def _(ast_node: _ast.Attribute) -> str:
-        assert isinstance(ast_node.ctx, _ast.Load), ast_node
-        return _ast_node_to_identifier(ast_node.value) + '_' + ast_node.attr
-
-
     def _serialize_ast_node(ast_node: _ast.AST) -> RawAstNode:
         return RawAstNode(_ast.dump(ast_node,
                                     annotate_fields=False))
 
 
-    def _is_generic_specialization(base: _ast.expr) -> TypeGuard[
-        _ast.Subscript]:
-        return (isinstance(base, _ast.Subscript)
-                and isinstance(base.slice, _ast.Index))
+    def _is_generic_specialization(
+            base: _ast.expr
+    ) -> _TypeGuard[_ast.Subscript]:
+        return isinstance(base, _ast.Subscript)
 
 
     class _StateParser(_ast.NodeVisitor):
@@ -669,16 +604,14 @@ except Exception:
 
     def _collect_type_args(ast_node: _ast.expr) -> _t.List[_ast.expr]:
         if _is_generic_specialization(ast_node):
-            assert isinstance(ast_node.slice, _ast.Index)
-            queue = [ast_node.slice.value]
+            queue = [_subscript_to_item(ast_node)]
             args = []
             while queue:
                 specialization_node = queue.pop()
                 candidates = _unpack_ast_node(specialization_node)
                 for candidate in reversed(candidates):
                     if _is_generic_specialization(candidate):
-                        assert isinstance(candidate.slice, _ast.Index)
-                        queue.append(candidate.slice.value)
+                        queue.append(_subscript_to_item(candidate))
                     else:
                         args.append(candidate)
             return args[::-1]
@@ -828,11 +761,11 @@ except Exception:
                                         _scoping.ModuleSubScopes]
     ) -> _catalog.QualifiedPath:
         if _is_generic_specialization(base):
-            base_name = _ast_node_to_identifier(base)
+            base_name = _serialization.to_identifier(base)
             base_object_path = (base_name,)
             if base_name not in specializations_module_scope:
-                assert isinstance(base.slice, _ast.Index)
-                specialization_args = _unpack_ast_node(base.slice.value)
+                specialization_args = _unpack_ast_node(
+                    _subscript_to_item(base))
                 generic_object_path = _ast_node_to_path(base.value)
                 generic_module_path, generic_object_path = (
                     _scoping.resolve_object_path(
@@ -865,7 +798,7 @@ except Exception:
                     base_base_object_path: _catalog.Path
                     if _is_generic_specialization(generic_base):
                         base_base_node = specialize(generic_base)
-                        base_base_name = _ast_node_to_identifier(
+                        base_base_name = _serialization.to_identifier(
                                 base_base_node
                         )
                         base_base_module_path, base_base_object_path = (

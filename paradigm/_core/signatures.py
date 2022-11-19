@@ -7,12 +7,12 @@ import typing as _t
 from functools import (partial as _partial,
                        singledispatch as _singledispatch)
 from itertools import zip_longest as _zip_longest
-from operator import itemgetter
 
 from . import (catalog as _catalog,
                scoping as _scoping,
                stubs as _stubs)
-from .arboreal.kind import NodeKind
+from .arboreal.kind import NodeKind as _NodeKind
+from .arboreal.utils import subscript_to_item as _subscript_to_item
 from .models import (Parameter as _Parameter,
                      PlainSignature as _PlainSignature,
                      Signature as _Signature,
@@ -101,11 +101,9 @@ def _(ast_node: _ast.Subscript,
     )
     if (value_module_path == typing_module_path
             and value_object_path == callable_object_path):
-        assert isinstance(ast_node.slice, _ast.Index), ast_node
-        assert (
-            isinstance(ast_node.slice.value, _ast.Tuple)
-        ), ast_node
-        arguments_annotations = ast_node.slice.value.elts[0]
+        callable_arguments = _subscript_to_item(ast_node)
+        assert isinstance(callable_arguments, _ast.Tuple)
+        arguments_annotations = callable_arguments.elts[0]
         if isinstance(arguments_annotations, _ast.List):
             return _PlainSignature(
                     *[_Parameter(name='_' + str(index),
@@ -137,8 +135,8 @@ def _(ast_node: _t.Union[_ast.Attribute, _ast.Name],
             module_path, (), object_path, _stubs.definitions,
             _stubs.references, _stubs.sub_scopes
     )
-    node_kind = NodeKind(_stubs.nodes_kinds[module_path][object_path])
-    if node_kind is NodeKind.CLASS:
+    node_kind = _NodeKind(_stubs.nodes_kinds[module_path][object_path])
+    if node_kind is _NodeKind.CLASS:
         call_ast_nodes = [
             _deserialize_raw_annotation(raw)
             for raw in _stubs.raw_ast_nodes[module_path][
@@ -249,7 +247,7 @@ def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
     resolved_module_path, resolved_object_path = resolved_qualified_paths[0]
     if (isinstance(value, type)
             or (_stubs.nodes_kinds[resolved_module_path][resolved_object_path]
-                == NodeKind.CLASS)):
+                == _NodeKind.CLASS)):
         depth, (resolved_module_path, resolved_object_path) = min(
                 _locate_class_builder_qualified_path(module_path, object_path)
                 for module_path, object_path in qualified_paths

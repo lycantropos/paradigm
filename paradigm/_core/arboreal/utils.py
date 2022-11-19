@@ -1,4 +1,5 @@
 import ast
+import sys
 import typing as t
 from collections import deque
 
@@ -32,3 +33,12 @@ def to_parent_module_path(
                             if ast_node.module is None
                             else ast_node.module.split('.')))
     return tuple(module_path_parts)
+
+
+if sys.version_info < (3, 9):
+    def subscript_to_item(ast_node: ast.Subscript) -> ast.expr:
+        assert isinstance(ast_node.slice, ast.Index)
+        return ast_node.slice.value
+else:
+    def subscript_to_item(ast_node: ast.Subscript) -> ast.expr:
+        return ast_node.slice
