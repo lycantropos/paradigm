@@ -3,15 +3,12 @@ import sys
 import types
 import warnings
 from typing import (Any,
-                    Callable,
                     Iterable,
                     Optional,
-                    Set,
-                    Union)
+                    Set)
 
 from paradigm._core import (catalog,
                             namespacing)
-from .utils import to_contents
 
 
 def _load_and_add(set_: Set[Any], module_name: str, object_name: str) -> None:
