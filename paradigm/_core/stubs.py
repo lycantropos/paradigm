@@ -54,7 +54,7 @@ except Exception:
     from functools import (partial as _partial,
                            singledispatch as _singledispatch)
 
-    from typing_extensions import Protocol as _Protocol
+    from typing_extensions import Protocol as _Protocol, TypeGuard
 
     from . import (execution as _execution,
                    exporting as _exporting,
@@ -96,13 +96,16 @@ except Exception:
 
 
     @_ast_node_to_maybe_path.register(_ast.Name)
-    def _(ast_node: _ast.Name) -> _catalog.Path:
+    def _(ast_node: _ast.Name) -> _t.Optional[_catalog.Path]:
         return (ast_node.id,)
 
 
     @_ast_node_to_maybe_path.register(_ast.Attribute)
-    def _(ast_node: _ast.Attribute) -> _catalog.Path:
-        return (*_ast_node_to_maybe_path(ast_node.value), ast_node.attr)
+    def _(ast_node: _ast.Attribute) -> _t.Optional[_catalog.Path]:
+        value_maybe_path = _ast_node_to_maybe_path(ast_node.value)
+        return (None
+                if value_maybe_path is None
+                else (*value_maybe_path, ast_node.attr))
 
 
     def _named_tuple_to_constructor_ast_node(
@@ -226,7 +229,8 @@ except Exception:
                                     annotate_fields=False))
 
 
-    def _is_generic_specialization(base: _ast.expr) -> bool:
+    def _is_generic_specialization(base: _ast.expr) -> TypeGuard[
+        _ast.Subscript]:
         return (isinstance(base, _ast.Subscript)
                 and isinstance(base.slice, _ast.Index))
 
@@ -324,8 +328,7 @@ except Exception:
                 builtins_module_path: _catalog.Path
                 = _catalog.module_path_from_module(_builtins),
                 generic_object_path: _catalog.Path = ('Generic',),
-                protocol_object_path: _catalog.Path
-                = _catalog.path_from_string(_Protocol.__qualname__),
+                protocol_object_path: _catalog.Path = ('_Protocol',),
                 named_tuple_object_path: _catalog.Path
                 = _catalog.path_from_string(_t.NamedTuple.__qualname__),
                 typing_module_path: _catalog.Path
@@ -569,7 +572,7 @@ except Exception:
             visited_modules_paths: _t.Set[_catalog.Path],
             classes_bases: _t.Dict[_catalog.QualifiedPath, _t.List[_ast.expr]],
             generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
-                                               _t.Tuple[_ast.expr, ...]],
+                                               _t.Tuple[_catalog.Path, ...]],
             *,
             _builtins_module_path: _catalog.Path
             = _catalog.module_path_from_module(_builtins)
@@ -661,11 +664,12 @@ except Exception:
     @_unpack_ast_node.register(_ast.Tuple)
     def _(ast_node: _ast.Tuple) -> _t.Tuple[_ast.expr, ...]:
         assert isinstance(ast_node.ctx, _ast.Load), ast_node
-        return ast_node.elts
+        return tuple(ast_node.elts)
 
 
-    def _collect_type_args(ast_node: _ast.expr) -> _t.Tuple[_ast.expr, ...]:
+    def _collect_type_args(ast_node: _ast.expr) -> _t.List[_ast.expr]:
         if _is_generic_specialization(ast_node):
+            assert isinstance(ast_node.slice, _ast.Index)
             queue = [ast_node.slice.value]
             args = []
             while queue:
@@ -673,18 +677,13 @@ except Exception:
                 candidates = _unpack_ast_node(specialization_node)
                 for candidate in reversed(candidates):
                     if _is_generic_specialization(candidate):
+                        assert isinstance(candidate.slice, _ast.Index)
                         queue.append(candidate.slice.value)
                     else:
                         args.append(candidate)
             return args[::-1]
         else:
-            return ()
-
-
-    @_unpack_ast_node.register(_ast.Tuple)
-    def _(ast_node: _ast.Tuple) -> _t.Tuple[_ast.expr, ...]:
-        assert isinstance(ast_node.ctx, _ast.Load), ast_node
-        return ast_node.elts
+            return []
 
 
     class _SpecializeGeneric(_ast.NodeTransformer):
@@ -702,7 +701,7 @@ except Exception:
         def visit_Attribute(self, node: _ast.Attribute) -> _ast.expr:
             if not isinstance(node.ctx, _ast.Load):
                 return node
-            candidate = self.table.get(_ast_node_to_maybe_path(node))
+            candidate = self.table.get(_ast_node_to_path(node))
             return (node
                     if candidate is None
                     else _ast.copy_location(_deepcopy(candidate), node))
@@ -832,6 +831,7 @@ except Exception:
             base_name = _ast_node_to_identifier(base)
             base_object_path = (base_name,)
             if base_name not in specializations_module_scope:
+                assert isinstance(base.slice, _ast.Index)
                 specialization_args = _unpack_ast_node(base.slice.value)
                 generic_object_path = _ast_node_to_path(base.value)
                 generic_module_path, generic_object_path = (
@@ -861,6 +861,8 @@ except Exception:
                 specialize = _SpecializeGeneric(specialization_table).visit
                 for generic_base in classes_bases[(generic_module_path,
                                                    generic_object_path)]:
+                    base_base_module_path: _catalog.Path
+                    base_base_object_path: _catalog.Path
                     if _is_generic_specialization(generic_base):
                         base_base_node = specialize(generic_base)
                         base_base_name = _ast_node_to_identifier(

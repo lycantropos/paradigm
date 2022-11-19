@@ -128,15 +128,10 @@ def _(ast_node: _ast.Subscript,
     raise ValueError(ast_node)
 
 
-@_from_ast.register(_ast.Name)
 @_from_ast.register(_ast.Attribute)
-def _(ast_node: _ast.Subscript,
-      module_path: _catalog.Path,
-      *,
-      type_var_object_path: _catalog.Path
-      = _catalog.path_from_string(_t.TypeVar.__qualname__),
-      typing_module_path: _catalog.Path
-      = _catalog.module_path_from_module(_t)) -> _Signature:
+@_from_ast.register(_ast.Name)
+def _(ast_node: _t.Union[_ast.Attribute, _ast.Name],
+      module_path: _catalog.Path) -> _Signature:
     object_path = _ast_node_to_path(ast_node)
     module_path, object_path = _scoping.resolve_object_path(
             module_path, (), object_path, _stubs.definitions,
@@ -160,8 +155,9 @@ def _(ast_node: _ast.Subscript,
             for raw in _stubs.raw_ast_nodes[module_path][object_path]
         ]
         if len(annotation_nodes) == 1:
-            ast_node, = annotation_nodes
-            return _from_ast(ast_node.value, module_path)
+            annotation_node, = annotation_nodes
+            if isinstance(annotation_node, _ast.Assign):
+                return _from_ast(annotation_node.value, module_path)
     raise ValueError(ast_node)
 
 
