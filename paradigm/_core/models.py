@@ -28,9 +28,10 @@ class Parameter:
 
     def __init__(self,
                  *,
-                 name: str,
+                 annotation: t.Optional[t.Any] = None,
+                 has_default: bool,
                  kind: Kind,
-                 has_default: bool) -> None:
+                 name: str) -> None:
         # performing validation inside of `__init__` instead of `__new__`,
         # because `pickle` does not support keyword only arguments in `__new__`
         if ((kind is self.Kind.VARIADIC_POSITIONAL
@@ -38,9 +39,9 @@ class Parameter:
                 and has_default):
             raise ValueError('Variadic parameters '
                              'can\'t have default arguments.')
-        self.name = name
-        self.kind = kind
-        self.has_default = has_default
+        self.annotation, self.has_default, self.kind, self.name = (
+            annotation, has_default, kind, name
+        )
 
     @t.overload
     def __eq__(self, other: 'Parameter') -> bool:

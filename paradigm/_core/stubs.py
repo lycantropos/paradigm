@@ -10,6 +10,7 @@ from mypy.version import __version__ as _mypy_version
 from paradigm import __version__ as _version
 from . import (catalog as _catalog,
                scoping as _scoping)
+from .arboreal import conversion as _serialization
 from .arboreal.kind import NodeKind as _NodeKind
 
 _CACHE_PATH = _Path(__file__).with_name(
@@ -26,8 +27,7 @@ _REFERENCES_FIELD_NAME = 'references'
 _SUB_SCOPES_FIELD_NAME = 'sub_scopes'
 _VERSION_FIELD_NAME = 'version'
 
-RawAstNode = _t.NewType('RawAstNode', str)
-ObjectRawAstNodes = _t.List[RawAstNode]
+ObjectRawAstNodes = _t.List[_serialization.RawAstNode]
 _ModuleRawAstNodes = _t.Dict[_catalog.Path, ObjectRawAstNodes]
 
 definitions: _t.Dict[_catalog.Path, _scoping.Scope]
@@ -65,7 +65,7 @@ if _reload_cache:
                    exporting as _exporting,
                    namespacing as _namespacing,
                    sources as _sources)
-    from .arboreal.execution import evaluate_expression as _evaluate_expression
+    from .arboreal.execution import execute_statement as _execute_statement
     from .arboreal.utils import (
         is_dependency_name,
         recursively_iterate_children as _recursively_iterate_children,
@@ -73,7 +73,7 @@ if _reload_cache:
         to_parent_module_path as _to_parent_module_path
     )
     from .arboreal import (construction as _construction,
-                           serialization as _serialization)
+                           conversion as _conversion)
     from .sources import stubs_stdlib_modules_paths as _stdlib_modules_paths
 
     _ObjectAstNodes = _t.List[_ast.AST]
@@ -163,9 +163,28 @@ if _reload_cache:
         return _ast.arg(ast_node.target.id, ast_node.annotation)
 
 
-    def _serialize_ast_node(ast_node: _ast.AST) -> RawAstNode:
-        return RawAstNode(_ast.dump(ast_node,
-                                    annotate_fields=False))
+    def _evaluate_expression(node: _ast.expr,
+                             *,
+                             source_path: _Path,
+                             namespace: _namespacing.Namespace) -> _t.Any:
+        # to avoid name conflicts
+        # we're using name that won't be present
+        # because it'll lead to ``SyntaxError`` otherwise
+        # and no AST will be generated
+        temporary_name = '@tmp'
+        assignment = _expression_to_assignment(node,
+                                               name=temporary_name)
+        _execute_statement(assignment,
+                           source_path=source_path,
+                           namespace=namespace)
+        return namespace.pop(temporary_name)
+
+
+    def _expression_to_assignment(node: _ast.expr,
+                                  *,
+                                  name: str) -> _ast.Assign:
+        name_node = _ast.copy_location(_ast.Name(name, _ast.Store()), node)
+        return _ast.copy_location(_ast.Assign([name_node], node), node)
 
 
     def _is_generic_specialization(
@@ -689,7 +708,7 @@ if _reload_cache:
                                modules_sub_scopes)
         modules_raw_ast_nodes = {
             module_path: {
-                object_path: [_serialize_ast_node(ast_node)
+                object_path: [_serialization.to_raw(ast_node)
                               for ast_node in ast_nodes]
                 for object_path, ast_nodes in module_ast_nodes.items()
             }
@@ -940,18 +959,23 @@ if _reload_cache:
                      for ast_node in specialization_ast_nodes
                      for child in _recursively_iterate_children(ast_node)
                      if is_dependency_name(child)}
+                    - {_conversion.to_name(ast_node)
+                       for ast_node in specialization_ast_nodes}
             ):
                 dependency_path = (dependency_name,)
-                dependency_module_path, dependency_object_path = (
-                    _scoping.resolve_object_path(
-                            (specialization_module_path
-                             if dependency_name in args_names
-                             else generic_module_path),
-                            generic_object_path, dependency_path,
-                            modules_definitions, modules_references,
-                            modules_sub_scopes
+                try:
+                    dependency_module_path, dependency_object_path = (
+                        _scoping.resolve_object_path(
+                                (specialization_module_path
+                                 if dependency_name in args_names
+                                 else generic_module_path), (),
+                                dependency_path,
+                                modules_definitions, modules_references,
+                                modules_sub_scopes
+                        )
                     )
-                )
+                except Exception as error:
+                    raise
                 if dependency_module_path != builtins_module_path:
                     specializations_references[dependency_path] = (
                         dependency_module_path, dependency_object_path

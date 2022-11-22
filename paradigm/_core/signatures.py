@@ -1,5 +1,5 @@
 import ast as _ast
-import builtins
+import builtins as _builtins
 import inspect as _inspect
 import sys as _sys
 import types as _types
@@ -11,6 +11,9 @@ from itertools import zip_longest as _zip_longest
 from . import (catalog as _catalog,
                scoping as _scoping,
                stubs as _stubs)
+from .arboreal import (construction as _construction,
+                       conversion as _conversion)
+from .arboreal.evaluation import evaluate_ast_node as _evaluate_ast_node
 from .arboreal.kind import NodeKind as _NodeKind
 from .arboreal.utils import subscript_to_item as _subscript_to_item
 from .models import (Parameter as _Parameter,
@@ -63,21 +66,6 @@ def _from_ast(ast_node: _ast.AST, module_path: _catalog.Path) -> _Signature:
     raise TypeError(ast_node)
 
 
-@_singledispatch
-def _ast_node_to_path(ast_node: _ast.expr) -> _catalog.Path:
-    raise TypeError(type(ast_node))
-
-
-@_ast_node_to_path.register(_ast.Name)
-def _(ast_node: _ast.Name) -> _catalog.Path:
-    return (ast_node.id,)
-
-
-@_ast_node_to_path.register(_ast.Attribute)
-def _(ast_node: _ast.Attribute) -> _catalog.Path:
-    return _ast_node_to_path(ast_node.value) + (ast_node.attr,)
-
-
 @_from_ast.register(_ast.AnnAssign)
 def _(ast_node: _ast.AnnAssign, module_path: _catalog.Path) -> _Signature:
     annotation_node = ast_node.annotation
@@ -94,7 +82,7 @@ def _(ast_node: _ast.Subscript,
       callable_object_path: _catalog.Path = ('Callable',),
       typing_module_path: _catalog.Path
       = _catalog.module_path_from_module(_t)) -> _Signature:
-    value_path = _ast_node_to_path(ast_node.value)
+    value_path = _conversion.to_path(ast_node.value)
     value_module_path, value_object_path = _scoping.resolve_object_path(
             module_path, (), value_path, _stubs.definitions,
             _stubs.references, _stubs.sub_scopes
@@ -128,7 +116,7 @@ def _(ast_node: _ast.Subscript,
 @_from_ast.register(_ast.Name)
 def _(ast_node: _t.Union[_ast.Attribute, _ast.Name],
       module_path: _catalog.Path) -> _Signature:
-    object_path = _ast_node_to_path(ast_node)
+    object_path = _conversion.to_path(ast_node)
     module_path, object_path = _scoping.resolve_object_path(
             module_path, (), object_path, _stubs.definitions,
             _stubs.references, _stubs.sub_scopes
@@ -141,7 +129,7 @@ def _(ast_node: _t.Union[_ast.Attribute, _ast.Name],
             ]
         except KeyError:
             raise _SignatureNotFound
-        call_ast_nodes = [_deserialize_raw_annotation(raw)
+        call_ast_nodes = [_construction.from_raw(raw)
                           for raw in raw_ast_nodes]
         call_signatures = [_from_ast(ast_node, module_path)
                            for ast_node in call_ast_nodes]
@@ -149,7 +137,7 @@ def _(ast_node: _t.Union[_ast.Attribute, _ast.Name],
                                   for signature in call_signatures])
     else:
         annotation_nodes = [
-            _deserialize_raw_annotation(raw)
+            _construction.from_raw(raw)
             for raw in _stubs.raw_ast_nodes[module_path][object_path]
         ]
         if len(annotation_nodes) == 1:
@@ -169,7 +157,7 @@ def _(ast_node: _ast.Subscript,
       typing_module_path: _catalog.Path
       = _catalog.module_path_from_module(_t)) -> _Signature:
     assert isinstance(ast_node, _ast.Call), ast_node
-    callable_object_path = _ast_node_to_path(ast_node.func)
+    callable_object_path = _conversion.to_path(ast_node.func)
     callable_module_path, callable_object_path = (
         _scoping.resolve_object_path(
                 module_path, (), callable_object_path,
@@ -197,10 +185,10 @@ def _(ast_node: _ast.FunctionDef, module_path: _catalog.Path) -> _Signature:
     signature_ast = ast_node.args
     parameters = filter(
             None,
-            (*_to_positional_parameters(signature_ast),
-             _to_variadic_positional_parameter(signature_ast),
-             *_to_keyword_parameters(signature_ast),
-             _to_variadic_keyword_parameter(signature_ast))
+            (*_to_positional_parameters(signature_ast, module_path),
+             _to_variadic_positional_parameter(signature_ast, module_path),
+             *_to_keyword_parameters(signature_ast, module_path),
+             _to_variadic_keyword_parameter(signature_ast, module_path))
     )
     return _PlainSignature(*parameters)
 
@@ -260,18 +248,10 @@ def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
     except KeyError:
         raise _SignatureNotFound(qualified_paths)
     assert raw_ast_nodes, (module_path, object_path)
-    ast_nodes = [_deserialize_raw_annotation(raw_ast_node)
+    ast_nodes = [_construction.from_raw(raw_ast_node)
                  for raw_ast_node in raw_ast_nodes]
     return _from_signatures(*[_from_ast(ast_node, resolved_module_path)
                               for ast_node in ast_nodes])
-
-
-def _deserialize_raw_annotation(
-        raw: _stubs.RawAstNode,
-        *,
-        namespace: _t.Dict[str, _t.Any] = vars(_ast)
-) -> _ast.AST:
-    return eval(raw, namespace)
 
 
 def _locate_class_builder_qualified_path(
@@ -279,7 +259,7 @@ def _locate_class_builder_qualified_path(
         object_path: _catalog.Path,
         *,
         object_builder_qualified_path: _catalog.QualifiedPath
-        = (_catalog.module_path_from_module(builtins),
+        = (_catalog.module_path_from_module(_builtins),
            _catalog.path_from_string(object.__qualname__)
            + _catalog.path_from_string(object.__new__.__name__)),
         constructor_name: str = object.__new__.__name__,
@@ -306,8 +286,9 @@ def _to_mro(module_path: _catalog.Path,
         bases = _stubs.sub_scopes[module_path][object_path]
     except KeyError:
         return
-    for base_module_path, base_object_path in bases:
-        yield from _to_mro(base_module_path, base_object_path)
+    else:
+        for base_module_path, base_object_path in bases:
+            yield from _to_mro(base_module_path, base_object_path)
 
 
 def _value_has_qualified_path(value: _t.Any,
@@ -328,34 +309,44 @@ def _value_has_qualified_path(value: _t.Any,
 
 def _from_raw_signature(object_: _inspect.Signature) -> _Signature:
     return _PlainSignature(*[
-        _Parameter(name=raw.name,
+        _Parameter(annotation=(_t.Any
+                               if raw.annotation is _inspect._empty
+                               else raw.annotation),
+                   name=raw.name,
                    kind=_Parameter.Kind(raw.kind),
                    has_default=raw.default is not _inspect._empty)
         for raw in object_.parameters.values()
     ])
 
 
+def _parameter_from_ast_node(ast_node: _ast.arg,
+                             default_ast: _t.Optional[_ast.expr],
+                             module_path: _catalog.Path,
+                             *,
+                             kind: _Parameter.Kind) -> _Parameter:
+    return _Parameter(annotation=(None
+                                  if ast_node.annotation is None
+                                  else _evaluate_ast_node(ast_node.annotation,
+                                                          module_path, {})),
+                      has_default=default_ast is not None,
+                      kind=kind,
+                      name=ast_node.arg)
+
+
 def _to_keyword_parameters(
-        signature_ast: _ast.arguments
+        signature_ast: _ast.arguments,
+        module_path: _catalog.Path
 ) -> _t.Iterable[_Parameter]:
     kind = _Parameter.Kind.KEYWORD_ONLY
-    return [_to_parameter(parameter_ast, default_ast,
-                          kind=kind)
+    return [_parameter_from_ast_node(parameter_ast, default_ast, module_path,
+                                     kind=kind)
             for parameter_ast, default_ast in zip(signature_ast.kwonlyargs,
                                                   signature_ast.kw_defaults)]
 
 
-def _to_parameter(parameter_ast: _ast.arg,
-                  default_ast: _t.Optional[_ast.expr],
-                  *,
-                  kind: _Parameter.Kind) -> _Parameter:
-    return _Parameter(name=parameter_ast.arg,
-                      kind=kind,
-                      has_default=default_ast is not None)
-
-
 def _to_positional_parameters(
-        signature_ast: _ast.arguments
+        signature_ast: _ast.arguments,
+        module_path: _catalog.Path
 ) -> _t.Iterable[_Parameter]:
     # double-reversing since parameters with default arguments go last
     parameters_with_defaults_ast: _t.List[
@@ -363,28 +354,32 @@ def _to_positional_parameters(
     ] = list(_zip_longest(reversed(signature_ast.args),
                           signature_ast.defaults))[::-1]
     kind = _Parameter.Kind.POSITIONAL_ONLY
-    return [_to_parameter(parameter_ast, default_ast,
-                          kind=kind)
+    return [_parameter_from_ast_node(parameter_ast, default_ast, module_path,
+                                     kind=kind)
             for parameter_ast, default_ast in parameters_with_defaults_ast]
 
 
 def _to_variadic_keyword_parameter(
-        signature_ast: _ast.arguments
+        signature_ast: _ast.arguments,
+        module_path: _catalog.Path
 ) -> _t.Optional[_Parameter]:
-    parameter_ast = signature_ast.kwarg
-    return (None
-            if parameter_ast is None
-            else _Parameter(name=parameter_ast.arg,
-                            kind=_Parameter.Kind.VARIADIC_KEYWORD,
-                            has_default=False))
+    ast_node = signature_ast.kwarg
+    return (
+        None
+        if ast_node is None
+        else _parameter_from_ast_node(ast_node, None, module_path,
+                                      kind=_Parameter.Kind.VARIADIC_KEYWORD)
+    )
 
 
 def _to_variadic_positional_parameter(
-        signature_ast: _ast.arguments
+        signature_ast: _ast.arguments,
+        module_path: _catalog.Path
 ) -> _t.Optional[_Parameter]:
-    parameter_ast = signature_ast.vararg
-    return (None
-            if parameter_ast is None
-            else _Parameter(name=parameter_ast.arg,
-                            kind=_Parameter.Kind.VARIADIC_POSITIONAL,
-                            has_default=False))
+    ast_node = signature_ast.vararg
+    return (
+        None
+        if ast_node is None
+        else _parameter_from_ast_node(ast_node, None, module_path,
+                                      kind=_Parameter.Kind.VARIADIC_POSITIONAL)
+    )
