@@ -5,6 +5,7 @@ from collections import deque
 
 from paradigm._core import (catalog,
                             sources)
+from typing_extensions import TypeGuard
 
 
 def recursively_iterate_children(node: ast.AST) -> t.Iterable[ast.AST]:
@@ -42,3 +43,8 @@ if sys.version_info < (3, 9):
 else:
     def subscript_to_item(ast_node: ast.Subscript) -> ast.expr:
         return ast_node.slice
+
+
+def is_dependency_name(ast_node: ast.AST) -> TypeGuard[ast.Name]:
+    return (isinstance(ast_node, ast.Name)
+            and isinstance(ast_node.ctx, ast.Load))

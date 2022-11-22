@@ -67,6 +67,7 @@ if _reload_cache:
                    sources as _sources)
     from .arboreal.execution import evaluate_expression as _evaluate_expression
     from .arboreal.utils import (
+        is_dependency_name,
         recursively_iterate_children as _recursively_iterate_children,
         subscript_to_item as _subscript_to_item,
         to_parent_module_path as _to_parent_module_path
@@ -303,7 +304,9 @@ if _reload_cache:
                         continue
                 else:
                     base_reference_path = _ast_node_to_path(base)
-                    assert base_reference_path is not None
+                    assert (
+                            base_reference_path is not None
+                    ), (module_path, class_path)
                     base_module_path, base_object_path = (
                         self._to_qualified_path(base_reference_path)
                     )
@@ -317,6 +320,13 @@ if _reload_cache:
                                 class_path, set()
                         ).add((base_module_path, base_object_path))
                         continue
+                    elif (base_module_path == typing_module_path
+                          and base_object_path == protocol_object_path):
+                        continue
+                    assert (
+                        not (base_module_path == typing_module_path
+                             and base_object_path == generic_object_path)
+                    ), (module_path, class_path)
                 class_bases.append(base)
             generic_parameters = tuple(dict.fromkeys(type_vars_local_paths))
             if generic_parameters:
@@ -347,8 +357,7 @@ if _reload_cache:
             for dependency_name in {
                 child.id
                 for child in _recursively_iterate_children(node.test)
-                if (isinstance(child, _ast.Name)
-                    and isinstance(child.ctx, _ast.Load))
+                if is_dependency_name(child)
             }:
                 module_path, object_path = self._resolve_object_path(
                         (dependency_name,)
@@ -456,7 +465,7 @@ if _reload_cache:
                 = _catalog.path_from_string(_t.TypeVar.__qualname__),
                 typing_module_path: _catalog.Path
                 = _catalog.module_path_from_module(_t),
-        ):
+        ) -> bool:
             module_path, object_path = self._to_qualified_path(object_path)
             _parse_stub_scope(
                     module_path, self.modules_ast_nodes,
@@ -608,7 +617,7 @@ if _reload_cache:
     def _collect_type_args(ast_node: _ast.expr) -> _t.List[_ast.expr]:
         if _is_generic_specialization(ast_node):
             queue = [_subscript_to_item(ast_node)]
-            args = []
+            args: _t.List[_ast.expr] = []
             while queue:
                 specialization_node = queue.pop()
                 candidates = _unpack_ast_node(specialization_node)
@@ -718,7 +727,9 @@ if _reload_cache:
             specializations_module_path
         ] = {}
         assert specializations_module_path not in modules_references
-        modules_references[specializations_module_path] = {}
+        specializations_references = modules_references[
+            specializations_module_path
+        ] = {}
         assert specializations_module_path not in modules_sub_scopes
         specializations_sub_scopes = modules_sub_scopes[
             specializations_module_path
@@ -733,9 +744,10 @@ if _reload_cache:
                         specializations_ast_nodes, specializations_module_path,
                         specializations_module_scope,
                         specializations_nodes_kinds,
-                        specializations_sub_scopes, modules_ast_nodes,
-                        modules_definitions, modules_nodes_kinds,
-                        modules_references, modules_sub_scopes
+                        specializations_references, specializations_sub_scopes,
+                        modules_ast_nodes, modules_definitions,
+                        modules_nodes_kinds, modules_references,
+                        modules_sub_scopes
                 )
                 modules_sub_scopes[class_module_path].setdefault(
                         class_object_path, set()
@@ -751,8 +763,9 @@ if _reload_cache:
                                                _t.Tuple[_catalog.Path, ...]],
             specializations_ast_nodes: _ModuleAstNodes,
             specializations_module_path: _catalog.Path,
-            specializations_module_scope,
+            specializations_module_scope: _scoping.Scope,
             specializations_nodes_kinds: _scoping.ModuleAstNodesKinds,
+            specializations_references: _scoping.ModuleReferences,
             specializations_sub_scopes: _scoping.ModuleSubScopes,
             modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
             modules_definitions: _t.Dict[_catalog.Path, _scoping.Scope],
@@ -783,11 +796,14 @@ if _reload_cache:
                 ]
                 _register_generic_specialization(
                         generic_module_path, generic_object_path,
-                        base_object_path, generic_parameters_paths,
+                        child_module_path, base_object_path,
+                        generic_parameters_paths,
                         specialization_args, specializations_ast_nodes,
                         specializations_module_scope,
-                        specializations_nodes_kinds, modules_ast_nodes,
+                        specializations_nodes_kinds,
+                        specializations_references, modules_ast_nodes,
                         modules_definitions, modules_nodes_kinds,
+                        modules_references, modules_sub_scopes
                 )
                 assert base_object_path not in specializations_sub_scopes
                 base_sub_scopes = specializations_sub_scopes[
@@ -834,14 +850,16 @@ if _reload_cache:
                             _register_generic_specialization(
                                     generic_base_base_module_path,
                                     generic_base_base_object_path,
-                                    base_base_object_path,
+                                    child_module_path, base_base_object_path,
                                     generic_base_base_parameters_paths,
                                     base_base_specialization_args,
                                     specializations_ast_nodes,
                                     specializations_module_scope,
                                     specializations_nodes_kinds,
+                                    specializations_references,
                                     modules_ast_nodes, modules_definitions,
-                                    modules_nodes_kinds,
+                                    modules_nodes_kinds, modules_references,
+                                    modules_sub_scopes
                             )
                     else:
                         base_base_object_path = _ast_node_to_path(generic_base)
@@ -867,16 +885,24 @@ if _reload_cache:
     def _register_generic_specialization(
             generic_module_path: _catalog.Path,
             generic_object_path: _catalog.Path,
+            specialization_module_path: _catalog.Path,
             specialization_object_path: _catalog.Path,
             generic_parameters_paths: _t.Sequence[_catalog.Path],
             specialization_args: _t.Sequence[_ast.expr],
             specializations_ast_nodes: _ModuleAstNodes,
             specializations_module_scope: _scoping.Scope,
             specializations_nodes_kinds: _scoping.ModuleAstNodesKinds,
+            specializations_references: _scoping.ModuleReferences,
             modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
             modules_definitions: _t.Dict[_catalog.Path, _scoping.Scope],
             modules_nodes_kinds: _t.Dict[_catalog.Path,
                                          _scoping.ModuleAstNodesKinds],
+            modules_references: _t.Dict[_catalog.Path,
+                                        _scoping.ModuleReferences],
+            modules_sub_scopes: _t.Mapping[_catalog.Path,
+                                           _scoping.ModuleSubScopes],
+            builtins_module_path: _catalog.Path
+            = _catalog.module_path_from_module(_builtins)
     ) -> None:
         base_scope = specializations_module_scope
         for part in specialization_object_path:
@@ -892,14 +918,44 @@ if _reload_cache:
         specialize = _SpecializeGeneric(
                 dict(zip(generic_parameters_paths, specialization_args))
         ).visit
+        args_names = (
+                {arg.id
+                 for arg in specialization_args
+                 if is_dependency_name(arg)}
+                | {child.id
+                   for ast_node in specialization_args
+                   for child in _recursively_iterate_children(ast_node)
+                   if is_dependency_name(child)}
+        )
         for name in generic_scope.keys():
             generic_field_path = (*generic_object_path, name)
             generic_ast_nodes = generic_module_ast_nodes[generic_field_path]
             specialization_field_path = (*specialization_object_path, name)
-            specializations_ast_nodes[specialization_field_path] = [
-                specialize(_deepcopy(ast_node))
-                for ast_node in generic_ast_nodes
-            ]
+            specialization_ast_nodes = specializations_ast_nodes[
+                specialization_field_path
+            ] = [specialize(_deepcopy(ast_node))
+                 for ast_node in generic_ast_nodes]
+            for dependency_name in (
+                    {child.id
+                     for ast_node in specialization_ast_nodes
+                     for child in _recursively_iterate_children(ast_node)
+                     if is_dependency_name(child)}
+            ):
+                dependency_path = (dependency_name,)
+                dependency_module_path, dependency_object_path = (
+                    _scoping.resolve_object_path(
+                            (specialization_module_path
+                             if dependency_name in args_names
+                             else generic_module_path),
+                            generic_object_path, dependency_path,
+                            modules_definitions, modules_references,
+                            modules_sub_scopes
+                    )
+                )
+                if dependency_module_path != builtins_module_path:
+                    specializations_references[dependency_path] = (
+                        dependency_module_path, dependency_object_path
+                    )
             specializations_nodes_kinds[specialization_field_path] = (
                 modules_nodes_kinds[generic_module_path][generic_field_path]
             )
