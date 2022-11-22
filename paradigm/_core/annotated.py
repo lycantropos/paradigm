@@ -65,9 +65,13 @@ else:
 
 
     @are_equal.register(t.NewType)
-    def _(left: t.NewType, right: t.Any) -> bool:
+    def _(left: t.NewType,
+          right: t.Any,
+          *,
+          _sentinel: t.Any = object()) -> bool:
         return (type(left) is type(right)
-                and left.__qualname__ == right.__qualname__
+                and (getattr(left, '__qualname__', _sentinel)
+                     == getattr(right, '__qualname__', _sentinel))
                 and are_equal(left.__supertype__, right.__supertype__))
 
 
