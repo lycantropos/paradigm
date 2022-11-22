@@ -9,6 +9,8 @@ from itertools import (chain,
 from reprit.base import generate_repr
 from typing_extensions import final
 
+from . import annotated
+
 _MIN_SUB_SIGNATURES_COUNT = 2
 
 
@@ -25,6 +27,8 @@ class Parameter:
 
         def __str__(self) -> str:
             return self.name.lower().replace('_', ' ')
+
+    __slots__ = 'annotation', 'has_default', 'kind', 'name'
 
     def __init__(self,
                  *,
@@ -54,14 +58,16 @@ class Parameter:
     def __eq__(self, other):
         return ((self.name == other.name
                  and self.kind is other.kind
-                 and self.has_default is other.has_default)
+                 and self.has_default is other.has_default
+                 and annotated.are_equal(self.annotation, other.annotation))
                 if isinstance(other, Parameter)
                 else NotImplemented)
 
     def __hash__(self) -> int:
         return hash((self.name, self.kind, self.has_default))
 
-    __repr__ = generate_repr(__init__)
+    __repr__ = generate_repr(__init__,
+                             argument_serializer=annotated.to_repr)
 
     def __str__(self) -> str:
         return ''.join(['*'
@@ -70,7 +76,8 @@ class Parameter:
                               if self.kind is self.Kind.VARIADIC_KEYWORD
                               else ''),
                         self.name,
-                        '=...' if self.has_default else ''])
+                        f': {annotated.to_repr(self.annotation)}',
+                        ' = ...' if self.has_default else ''])
 
 
 def to_parameters_by_kind(
@@ -271,7 +278,8 @@ class PlainSignature(BaseSignature):
     def __hash__(self) -> int:
         return hash(self._parameters)
 
-    __repr__ = generate_repr(__init__)
+    __repr__ = generate_repr(__init__,
+                             argument_serializer=annotated.to_repr)
 
     def __str__(self) -> str:
         parameters_by_kind = to_parameters_by_kind(self._parameters)
