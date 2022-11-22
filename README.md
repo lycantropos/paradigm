@@ -47,6 +47,8 @@ Usage
 
 With setup
 ```python
+>>> import builtins
+>>> import typing
 >>> from paradigm.base import (Parameter,
 ...                            PlainSignature,
 ...                            signature_from_callable)
@@ -55,18 +57,21 @@ With setup
 we can obtain a signature of
 - user-defined functions
   ```python
-  >>> def func(foo, bar=None, **kwargs):
+  >>> def func(foo: int, bar: bool = False, **kwargs: str):
   ...     pass
   >>> signature_from_callable(func) == PlainSignature(
-  ...     Parameter(name='foo',
+  ...     Parameter(annotation=int,
+  ...               has_default=False,
   ...               kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
-  ...               has_default=False),
-  ...     Parameter(name='bar',
+  ...               name='foo'),
+  ...     Parameter(annotation=bool,
+  ...               has_default=True,
   ...               kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
-  ...               has_default=True),
-  ...     Parameter(name='kwargs',
+  ...               name='bar'),
+  ...     Parameter(annotation=str,
+  ...               has_default=False,
   ...               kind=Parameter.Kind.VARIADIC_KEYWORD,
-  ...               has_default=False)
+  ...               name='kwargs')
   ... )
   True
   
@@ -74,18 +79,19 @@ we can obtain a signature of
 - user-defined classes
   ```python
   >>> class UpperOut:
-  ...     def __init__(self, outfile):
+  ...     def __init__(self, outfile: typing.IO[typing.AnyStr]) -> None:
   ...         self._outfile = outfile
   ... 
-  ...     def write(self, s):
+  ...     def write(self, s: typing.AnyStr) -> None:
   ...         self._outfile.write(s.upper())
   ... 
-  ...     def __getattr__(self, name):
+  ...     def __getattr__(self, name: str) -> typing.Any:
   ...         return getattr(self._outfile, name)
   >>> signature_from_callable(UpperOut) == PlainSignature(
-  ...     Parameter(name='outfile',
+  ...     Parameter(annotation=typing.IO[typing.AnyStr],
+  ...               has_default=False,
   ...               kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
-  ...               has_default=False)
+  ...               name='outfile')
   ... )
   True
   
@@ -93,12 +99,14 @@ we can obtain a signature of
 - user-defined classes methods
   ```python
   >>> signature_from_callable(UpperOut.write) == PlainSignature(
-  ...     Parameter(name='self',
+  ...     Parameter(annotation=typing.Any,
+  ...               has_default=False,
   ...               kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
-  ...               has_default=False),
-  ...     Parameter(name='s',
+  ...               name='self'),
+  ...     Parameter(annotation=typing.AnyStr,
+  ...               has_default=False,
   ...               kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
-  ...               has_default=False)
+  ...               name='s')
   ... )
   True
   
@@ -106,19 +114,21 @@ we can obtain a signature of
 - built-in functions
   ```python
   >>> signature_from_callable(any) == PlainSignature(
-  ...     Parameter(name='__iterable',
+  ...     Parameter(annotation=typing.Iterable[builtins.object],
+  ...               has_default=False,
   ...               kind=Parameter.Kind.POSITIONAL_ONLY,
-  ...               has_default=False)
+  ...               name='__iterable')
   ... )
   True
   
   ```
 - built-in classes
   ```python
-  >>> signature_from_callable(float) == PlainSignature(
-  ...     Parameter(name='x', 
+  >>> signature_from_callable(bool) == PlainSignature(
+  ...     Parameter(annotation=builtins.object,
+  ...               has_default=True,
   ...               kind=Parameter.Kind.POSITIONAL_ONLY,
-  ...               has_default=True)
+  ...               name='__o')
   ... )
   True
   
