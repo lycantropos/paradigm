@@ -24,8 +24,7 @@ if sys.version_info < (3, 8):
         @t.overload
         def register(self,
                      cls: t.Type,
-                     method: t.Callable[..., _T1]) -> t.Callable[
-            ..., _T1]:
+                     method: t.Callable[..., _T1]) -> t.Callable[..., _T1]:
             return self.dispatcher.register(cls, method)
 
         @t.overload
@@ -39,8 +38,7 @@ if sys.version_info < (3, 8):
 
         def __get__(self,
                     instance: _T2,
-                    cls: t.Optional[_T2] = None) -> t.Callable[
-            ..., _T1]:
+                    cls: t.Optional[_T2] = None) -> t.Callable[..., _T1]:
             def dispatchable_method(*args: t.Any,
                                     **kwargs: t.Any) -> t.Any:
                 method = self.dispatcher.dispatch(args[0].__class__)
