@@ -1,6 +1,7 @@
 import sys as _sys
 import typing as _t
 from importlib import import_module as _import_module
+from itertools import chain
 from operator import attrgetter as _attrgetter
 from pathlib import Path as _Path
 
@@ -954,28 +955,30 @@ if _reload_cache:
                 specialization_field_path
             ] = [specialize(_deepcopy(ast_node))
                  for ast_node in generic_ast_nodes]
+            specialization_definitions_names = set(
+                    chain.from_iterable(
+                            _conversion.to_names(ast_node)
+                            for ast_node in specialization_ast_nodes
+                    )
+            )
             for dependency_name in (
                     {child.id
                      for ast_node in specialization_ast_nodes
                      for child in _recursively_iterate_children(ast_node)
                      if is_dependency_name(child)}
-                    - {_conversion.to_name(ast_node)
-                       for ast_node in specialization_ast_nodes}
+                    - specialization_definitions_names
             ):
                 dependency_path = (dependency_name,)
-                try:
-                    dependency_module_path, dependency_object_path = (
-                        _scoping.resolve_object_path(
-                                (specialization_module_path
-                                 if dependency_name in args_names
-                                 else generic_module_path), (),
-                                dependency_path,
-                                modules_definitions, modules_references,
-                                modules_sub_scopes
-                        )
+                dependency_module_path, dependency_object_path = (
+                    _scoping.resolve_object_path(
+                            (specialization_module_path
+                             if dependency_name in args_names
+                             else generic_module_path), (),
+                            dependency_path,
+                            modules_definitions, modules_references,
+                            modules_sub_scopes
                     )
-                except Exception as error:
-                    raise
+                )
                 if dependency_module_path != builtins_module_path:
                     specializations_references[dependency_path] = (
                         dependency_module_path, dependency_object_path

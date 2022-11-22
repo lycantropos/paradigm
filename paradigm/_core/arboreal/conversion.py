@@ -2,6 +2,7 @@ import ast
 import sys
 import typing as t
 from functools import singledispatch
+from itertools import chain
 
 from paradigm._core import catalog
 
@@ -9,25 +10,31 @@ RawAstNode = t.NewType('RawAstNode', str)
 
 
 @singledispatch
-def to_name(ast_node: ast.AST) -> str:
+def to_names(ast_node: ast.AST) -> t.List[str]:
     raise TypeError(type(ast_node))
 
 
-@to_name.register(ast.AsyncFunctionDef)
-@to_name.register(ast.FunctionDef)
-@to_name.register(ast.ClassDef)
+@to_names.register(ast.AsyncFunctionDef)
+@to_names.register(ast.FunctionDef)
+@to_names.register(ast.ClassDef)
 def _(
         ast_node: t.Union[ast.AsyncFunctionDef, ast.FunctionDef, ast.ClassDef]
-) -> str:
-    return ast_node.name
+) -> t.List[str]:
+    return [ast_node.name]
 
 
-@to_name.register(ast.AnnAssign)
-def _(ast_node: ast.AnnAssign) -> str:
-    return to_name(ast_node.target)
+@to_names.register(ast.AnnAssign)
+def _(ast_node: ast.AnnAssign) -> t.List[str]:
+    return to_names(ast_node.target)
 
 
-@to_name.register(ast.Name)
+@to_names.register(ast.Assign)
+def _(ast_node: ast.Assign) -> t.List[str]:
+    return list(chain.from_iterable(to_names(target)
+                                    for target in ast_node.targets))
+
+
+@to_names.register(ast.Name)
 def _(ast_node: ast.Name) -> str:
     assert isinstance(ast_node.ctx, ast.Store), ast_node
     return ast_node.id
