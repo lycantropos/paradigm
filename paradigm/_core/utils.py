@@ -2,11 +2,18 @@ import functools
 import sys
 import typing as t
 
+_T1 = t.TypeVar('_T1')
+_T2 = t.TypeVar('_T2')
+
+
+def decorate_if(decorator: t.Callable[[_T1], _T2],
+                condition: bool) -> t.Union[t.Callable[[_T1], _T1],
+                                            t.Callable[[_T1], _T2]]:
+    return decorator if condition else _identity
+
+
 singledispatchmethod: t.Any
 if sys.version_info < (3, 8):
-    _T1 = t.TypeVar('_T1')
-    _T2 = t.TypeVar('_T2')
-
 
     class _singledispatchmethod:
         dispatcher: t.Any
@@ -58,3 +65,7 @@ if sys.version_info < (3, 8):
     singledispatchmethod = _singledispatchmethod
 else:
     singledispatchmethod = functools.singledispatchmethod
+
+
+def _identity(value: _T1) -> _T1:
+    return value
