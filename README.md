@@ -52,13 +52,22 @@ With setup
 >>> from paradigm.base import (Parameter,
 ...                            PlainSignature,
 ...                            signature_from_callable)
+>>> class UpperOut:
+...     def __init__(self, outfile: typing.IO[typing.AnyStr]) -> None:
+...         self._outfile = outfile
+... 
+...     def write(self, s: typing.AnyStr) -> None:
+...         self._outfile.write(s.upper())
+... 
+...     def __getattr__(self, name: str) -> typing.Any:
+...         return getattr(self._outfile, name)
+>>> def func(foo: int, bar: bool = False, **kwargs: str):
+...     pass
 
 ```
 we can obtain a signature of
 - user-defined functions
   ```python
-  >>> def func(foo: int, bar: bool = False, **kwargs: str):
-  ...     pass
   >>> signature_from_callable(func) == PlainSignature(
   ...     Parameter(annotation=int,
   ...               has_default=False,
@@ -78,15 +87,6 @@ we can obtain a signature of
   ```
 - user-defined classes
   ```python
-  >>> class UpperOut:
-  ...     def __init__(self, outfile: typing.IO[typing.AnyStr]) -> None:
-  ...         self._outfile = outfile
-  ... 
-  ...     def write(self, s: typing.AnyStr) -> None:
-  ...         self._outfile.write(s.upper())
-  ... 
-  ...     def __getattr__(self, name: str) -> typing.Any:
-  ...         return getattr(self._outfile, name)
   >>> signature_from_callable(UpperOut) == PlainSignature(
   ...     Parameter(annotation=typing.IO[typing.AnyStr],
   ...               has_default=False,
