@@ -272,10 +272,10 @@ def _locate_class_builder_qualified_path(
         base_module_annotations = _stubs.raw_ast_nodes[base_module_path]
         constructor_path = object_path + (constructor_name,)
         initializer_path = object_path + (initializer_name,)
-        if constructor_path in base_module_annotations:
-            return depth, (base_module_path, constructor_path)
-        elif initializer_path in base_module_annotations:
+        if initializer_path in base_module_annotations:
             return depth, (base_module_path, initializer_path)
+        elif constructor_path in base_module_annotations:
+            return depth, (base_module_path, constructor_path)
     return (depth, object_builder_qualified_path)
 
 
