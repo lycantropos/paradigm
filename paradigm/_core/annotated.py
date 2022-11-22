@@ -141,17 +141,21 @@ def _(value: type) -> str:
 def _(value: GenericAlias) -> str:
     origin = to_origin(value)
     arguments = to_arguments(value)
-    assert value._name is not None or origin is t.Union, value
     return (((f'{to_repr(t.Optional)}'
               f'[{to_repr(arguments[arguments[0] is type(None)])}]')
              if len(arguments) == 2 and type(None) in arguments
              else (f'{to_repr(origin)}'
                    f'[{", ".join(map(to_repr, arguments))}]'))
             if origin is t.Union
-            else ((f'{value.__module__}.{value._name}'
-                   f'[{", ".join(map(to_repr, arguments))}]')
-                  if arguments
-                  else f'{value.__module__}.{value._name}'))
+            else (((f'{value.__module__}.{value._name}'
+                    f'[{", ".join(map(to_repr, arguments))}]')
+                   if arguments
+                   else f'{value.__module__}.{value._name}')
+                  if origin is None
+                  else ((f'{to_repr(origin)}'
+                         f'[{", ".join(map(to_repr, arguments))}]')
+                        if arguments
+                        else f'{to_repr(origin)}')))
 
 
 @to_repr.register(t.TypeVar)
