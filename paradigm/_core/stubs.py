@@ -291,7 +291,8 @@ if _reload_cache:
                 named_tuple_object_path: _catalog.Path
                 = _catalog.path_from_string(_t.NamedTuple.__qualname__),
                 typing_module_path: _catalog.Path
-                = _catalog.module_path_from_module(_t)) -> None:
+                = _catalog.module_path_from_module(_t)
+        ) -> None:
             class_name = node.name
             self._add_ast_node_kind((class_name,), _NodeKind.CLASS)
             self._add_name_definition(class_name)
