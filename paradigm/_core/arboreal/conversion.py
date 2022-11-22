@@ -35,9 +35,9 @@ def _(ast_node: ast.Assign) -> t.List[str]:
 
 
 @to_names.register(ast.Name)
-def _(ast_node: ast.Name) -> str:
+def _(ast_node: ast.Name) -> t.List[str]:
     assert isinstance(ast_node.ctx, ast.Store), ast_node
-    return ast_node.id
+    return [ast_node.id]
 
 
 @singledispatch
