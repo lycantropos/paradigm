@@ -209,7 +209,14 @@ def _try_resolve_object_path(
         return (), ()
 
 
-def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
+def _from_callable(
+        value: _t.Callable[..., _t.Any],
+        *,
+        object_builder_qualified_path: _catalog.QualifiedPath
+        = (_catalog.module_path_from_module(_builtins),
+           _catalog.path_from_string(object.__qualname__)
+           + _catalog.path_from_string(object.__new__.__name__))
+) -> _Signature:
     module_path, object_path = _catalog.qualified_path_from(value)
     try:
         candidates_paths = _qualified_paths[module_path][object_path]
@@ -232,21 +239,29 @@ def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
         if module_path and object_path
     })
     if not resolved_qualified_paths:
-        raise _SignatureNotFound(qualified_paths)
+        raise _SignatureNotFound
     resolved_module_path, resolved_object_path = resolved_qualified_paths[0]
     if (isinstance(value, type)
             or (_stubs.nodes_kinds[resolved_module_path][resolved_object_path]
                 == _NodeKind.CLASS)):
-        depth, (resolved_module_path, resolved_object_path) = min(
-                _locate_class_builder_qualified_path(module_path, object_path)
-                for module_path, object_path in qualified_paths
-        )
+        candidates = {
+            _to_class_builder_qualified_path(module_path, object_path)
+            for module_path, object_path in qualified_paths
+        }
+        try:
+            (resolved_module_path, resolved_object_path), = candidates
+        except ValueError:
+            try:
+                candidates.remove(object_builder_qualified_path)
+                (resolved_module_path, resolved_object_path), = candidates
+            except (KeyError, ValueError):
+                raise _SignatureNotFound
     try:
         raw_ast_nodes = _stubs.raw_ast_nodes[resolved_module_path][
             resolved_object_path
         ]
     except KeyError:
-        raise _SignatureNotFound(qualified_paths)
+        raise _SignatureNotFound
     assert raw_ast_nodes, (module_path, object_path)
     ast_nodes = [_construction.from_raw(raw_ast_node)
                  for raw_ast_node in raw_ast_nodes]
@@ -254,7 +269,7 @@ def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
                               for ast_node in ast_nodes])
 
 
-def _locate_class_builder_qualified_path(
+def _to_class_builder_qualified_path(
         module_path: _catalog.Path,
         object_path: _catalog.Path,
         *,
@@ -264,19 +279,17 @@ def _locate_class_builder_qualified_path(
            + _catalog.path_from_string(object.__new__.__name__)),
         constructor_name: str = object.__new__.__name__,
         initializer_name: str = object.__init__.__name__
-) -> _t.Tuple[int, _catalog.QualifiedPath]:
-    depth = 0
-    for depth, (base_module_path, base_object_path) in enumerate(
-            _to_mro(module_path, object_path)
-    ):
+) -> _catalog.QualifiedPath:
+    for base_module_path, base_object_path in _to_mro(module_path,
+                                                      object_path):
         base_module_annotations = _stubs.raw_ast_nodes[base_module_path]
         constructor_path = object_path + (constructor_name,)
         initializer_path = object_path + (initializer_name,)
         if initializer_path in base_module_annotations:
-            return depth, (base_module_path, initializer_path)
+            return (base_module_path, initializer_path)
         elif constructor_path in base_module_annotations:
-            return depth, (base_module_path, constructor_path)
-    return (depth, object_builder_qualified_path)
+            return (base_module_path, constructor_path)
+    return object_builder_qualified_path
 
 
 def _to_mro(module_path: _catalog.Path,
@@ -295,10 +308,10 @@ def _value_has_qualified_path(value: _t.Any,
                               path: _catalog.QualifiedPath) -> bool:
     module_path, object_path = path
     module_name = _catalog.path_to_string(module_path)
-    if module_name not in _sys.modules:
+    candidate = _sys.modules.get(module_name)
+    if candidate is None:
         # undecidable, let's keep it
         return True
-    candidate = _sys.modules[module_name]
     for part in object_path:
         try:
             candidate = getattr(candidate, part)
