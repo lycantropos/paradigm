@@ -352,7 +352,7 @@ def _parameter_from_ast_node(ast_node: _ast.arg,
                              module_path: _catalog.Path,
                              *,
                              kind: _Parameter.Kind) -> _Parameter:
-    return _Parameter(annotation=(None
+    return _Parameter(annotation=(_t.Any
                                   if ast_node.annotation is None
                                   else _evaluate_ast_node(ast_node.annotation,
                                                           module_path, {})),
