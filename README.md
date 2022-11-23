@@ -47,7 +47,6 @@ Usage
 
 With setup
 ```python
->>> import builtins
 >>> import typing
 >>> from paradigm.base import (Parameter,
 ...                            PlainSignature,
@@ -114,7 +113,7 @@ we can obtain a signature of
 - built-in functions
   ```python
   >>> signature_from_callable(any) == PlainSignature(
-  ...     Parameter(annotation=typing.Iterable[builtins.object],
+  ...     Parameter(annotation=typing.Iterable[object],
   ...               has_default=False,
   ...               kind=Parameter.Kind.POSITIONAL_ONLY,
   ...               name='__iterable')
@@ -125,7 +124,7 @@ we can obtain a signature of
 - built-in classes
   ```python
   >>> signature_from_callable(bool) == PlainSignature(
-  ...     Parameter(annotation=builtins.object,
+  ...     Parameter(annotation=object,
   ...               has_default=True,
   ...               kind=Parameter.Kind.POSITIONAL_ONLY,
   ...               name='__o')
@@ -136,9 +135,10 @@ we can obtain a signature of
 - built-in classes methods
   ```python
   >>> signature_from_callable(float.as_integer_ratio) == PlainSignature(
-  ...     Parameter(name='self',
+  ...     Parameter(annotation=typing.Any,
+  ...               has_default=False,
   ...               kind=Parameter.Kind.POSITIONAL_ONLY,
-  ...               has_default=False)
+  ...               name='self')
   ... )
   True
   
