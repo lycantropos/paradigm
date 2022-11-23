@@ -92,23 +92,34 @@ def _(ast_node: _ast.Subscript,
         callable_arguments = _subscript_to_item(ast_node)
         assert isinstance(callable_arguments, _ast.Tuple)
         arguments_annotations = callable_arguments.elts[0]
-        if isinstance(arguments_annotations, _ast.List):
-            return _PlainSignature(
-                    *[_Parameter(name='_' + str(index),
-                                 kind=_Parameter.Kind.POSITIONAL_ONLY,
-                                 has_default=False)
-                      for index in range(len(arguments_annotations.elts))]
+        return (
+            _PlainSignature(
+                    *[
+                        _Parameter(
+                                annotation=_evaluate_ast_node(annotation,
+                                                              module_path, {}),
+                                name='_' + str(index),
+                                kind=_Parameter.Kind.POSITIONAL_ONLY,
+                                has_default=False
+                        )
+                        for index, annotation in enumerate(
+                                arguments_annotations.elts
+                        )
+                    ]
             )
-        else:
+            if isinstance(arguments_annotations, _ast.List)
             # unspecified parameters case
-            return _PlainSignature(
-                    _Parameter(name='args',
+            else _PlainSignature(
+                    _Parameter(annotation=_t.Any,
+                               name='args',
                                kind=_Parameter.Kind.VARIADIC_POSITIONAL,
                                has_default=False),
-                    _Parameter(name='kwargs',
+                    _Parameter(annotation=_t.Any,
+                               name='kwargs',
                                kind=_Parameter.Kind.VARIADIC_KEYWORD,
                                has_default=False),
             )
+        )
     raise _SignatureNotFound
 
 
@@ -217,6 +228,39 @@ def _from_callable(
            _catalog.path_from_string(object.__qualname__)
            + _catalog.path_from_string(object.__new__.__name__))
 ) -> _Signature:
+    qualified_paths = resolve_qualified_paths(value)
+    if not qualified_paths:
+        raise _SignatureNotFound
+    module_path, object_path = qualified_paths[0]
+    if (isinstance(value, type)
+            or (_stubs.nodes_kinds[module_path][object_path]
+                == _NodeKind.CLASS)):
+        builders_qualified_paths = {
+            _to_class_builder_qualified_path(module_path, object_path)
+            for module_path, object_path in qualified_paths
+        }
+        try:
+            (module_path, object_path), = builders_qualified_paths
+        except ValueError:
+            try:
+                builders_qualified_paths.remove(object_builder_qualified_path)
+                (module_path, object_path), = builders_qualified_paths
+            except (KeyError, ValueError):
+                raise _SignatureNotFound
+    try:
+        raw_ast_nodes = _stubs.raw_ast_nodes[module_path][object_path]
+    except KeyError:
+        raise _SignatureNotFound
+    assert raw_ast_nodes, (module_path, object_path)
+    ast_nodes = [_construction.from_raw(raw_ast_node)
+                 for raw_ast_node in raw_ast_nodes]
+    return _from_signatures(*[_from_ast(ast_node, module_path)
+                              for ast_node in ast_nodes])
+
+
+def resolve_qualified_paths(
+        value: _t.Callable[..., _t.Any]
+) -> _t.List[_catalog.QualifiedPath]:
     module_path, object_path = _catalog.qualified_path_from(value)
     try:
         candidates_paths = _qualified_paths[module_path][object_path]
@@ -230,7 +274,7 @@ def _from_callable(
         qualified_paths = [path
                            for path in candidates_paths
                            if _value_has_qualified_path(value, path)]
-    resolved_qualified_paths = sorted({
+    return sorted({
         (module_path, object_path)
         for module_path, object_path in [
             _try_resolve_object_path(module_path, object_path)
@@ -238,35 +282,6 @@ def _from_callable(
         ]
         if module_path and object_path
     })
-    if not resolved_qualified_paths:
-        raise _SignatureNotFound
-    resolved_module_path, resolved_object_path = resolved_qualified_paths[0]
-    if (isinstance(value, type)
-            or (_stubs.nodes_kinds[resolved_module_path][resolved_object_path]
-                == _NodeKind.CLASS)):
-        candidates = {
-            _to_class_builder_qualified_path(module_path, object_path)
-            for module_path, object_path in qualified_paths
-        }
-        try:
-            (resolved_module_path, resolved_object_path), = candidates
-        except ValueError:
-            try:
-                candidates.remove(object_builder_qualified_path)
-                (resolved_module_path, resolved_object_path), = candidates
-            except (KeyError, ValueError):
-                raise _SignatureNotFound
-    try:
-        raw_ast_nodes = _stubs.raw_ast_nodes[resolved_module_path][
-            resolved_object_path
-        ]
-    except KeyError:
-        raise _SignatureNotFound
-    assert raw_ast_nodes, (module_path, object_path)
-    ast_nodes = [_construction.from_raw(raw_ast_node)
-                 for raw_ast_node in raw_ast_nodes]
-    return _from_signatures(*[_from_ast(ast_node, resolved_module_path)
-                              for ast_node in ast_nodes])
 
 
 def _to_class_builder_qualified_path(
