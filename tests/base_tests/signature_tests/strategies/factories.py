@@ -1,3 +1,4 @@
+import sys
 from functools import (partial,
                        reduce,
                        singledispatch)
@@ -12,6 +13,7 @@ from typing import (Any,
 
 from hypothesis import strategies
 
+from paradigm._core import catalog
 from paradigm._core.models import (to_parameters_by_kind,
                                    to_parameters_by_name)
 from paradigm.base import (OverloadedSignature,
@@ -30,7 +32,18 @@ _T1 = TypeVar('_T1')
 _T2 = TypeVar('_T2')
 
 
+def qualified_path_is_valid(value: type) -> bool:
+    module_path, object_path = catalog.qualified_path_from(value)
+    return (module_path
+            and object_path
+            and getattr(sys.modules.get(catalog.path_to_string(module_path)),
+                        catalog.path_to_string(object_path), None) is value)
+
+
 def to_parameters(*,
+                  annotations: Strategy[str] = strategies.from_type(
+                          type
+                  ).filter(qualified_path_is_valid),
                   names: Strategy[str] = identifiers,
                   kinds: Strategy[Parameter.Kind],
                   has_default_flags: Strategy[bool] =
@@ -42,7 +55,8 @@ def to_parameters(*,
                     or kind is Parameter.Kind.VARIADIC_POSITIONAL)
                 else mapping)
 
-    return (strategies.fixed_dictionaries(dict(name=names,
+    return (strategies.fixed_dictionaries(dict(annotation=annotations,
+                                               name=names,
                                                kind=kinds,
                                                has_default=has_default_flags))
             .map(normalize_mapping)
@@ -92,7 +106,8 @@ def to_plain_signatures(*,
             if (kind is Parameter.Kind.POSITIONAL_OR_KEYWORD
                     or kind is Parameter.Kind.POSITIONAL_ONLY):
                 if last_precursor.has_default and not parameter.has_default:
-                    return Parameter(name=parameter.name,
+                    return Parameter(annotation=parameter.annotation,
+                                     name=parameter.name,
                                      kind=kind,
                                      has_default=True)
             return parameter
