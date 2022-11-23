@@ -137,11 +137,12 @@ def to_plain_signatures(*,
     return non_empty
 
 
-def to_overloaded_signatures(bases: Strategy[AnySignature],
-                             *,
-                             min_size: int = 2,
-                             max_size: Optional[int] = None) -> Strategy[
-    OverloadedSignature]:
+def to_overloaded_signatures(
+        bases: Strategy[AnySignature],
+        *,
+        min_size: int = 2,
+        max_size: Optional[int] = None
+) -> Strategy[OverloadedSignature]:
     return (strategies.lists(bases,
                              min_size=min_size,
                              max_size=max_size)
