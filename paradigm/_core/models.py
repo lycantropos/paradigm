@@ -32,7 +32,7 @@ class Parameter:
 
     def __init__(self,
                  *,
-                 annotation: t.Optional[t.Any] = None,
+                 annotation: t.Any,
                  has_default: bool,
                  kind: Kind,
                  name: str) -> None:
@@ -421,6 +421,7 @@ def _bind_keywords(parameters: t.Tuple[Parameter, ...],
     return (parameters[:first_kwarg_index]
             + tuple(
                     Parameter(
+                            annotation=parameter.annotation,
                             name=parameter.name,
                             kind=Parameter.Kind.KEYWORD_ONLY,
                             has_default=(parameter.has_default
