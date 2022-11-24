@@ -4,10 +4,10 @@ import typing as t
 from . import catalog
 from .arboreal.kind import NodeKind
 
-ModuleAstNodesKinds = t.Dict[catalog.Path, NodeKind]
-ModuleReferences = t.Dict[catalog.Path, catalog.QualifiedPath]
-ModuleSubScopes = t.Dict[catalog.Path, t.Set[catalog.QualifiedPath]]
-Scope = t.Dict[str, dict]
+ModuleAstNodesKinds = t.Mapping[catalog.Path, NodeKind]
+ModuleReferences = t.Mapping[catalog.Path, catalog.QualifiedPath]
+ModuleSubScopes = t.Mapping[catalog.Path, t.Collection[catalog.QualifiedPath]]
+Scope = t.Mapping[str, t.Mapping]
 
 
 class ObjectNotFound(Exception):

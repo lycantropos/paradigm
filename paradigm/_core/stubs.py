@@ -39,7 +39,7 @@ sub_scopes: _t.Dict[_catalog.Path, _scoping.ModuleSubScopes]
 
 try:
     (
-        definitions, nodes_kinds, raw_ast_nodes, references, sub_scopes,
+        definitions, _raw_nodes_kinds, raw_ast_nodes, references, sub_scopes,
         _cached_version
     ) = _attrgetter(
             _DEFINITIONS_FIELD_NAME, _NODES_KINDS_FIELD_NAME,
@@ -54,6 +54,14 @@ except Exception:
     _reload_cache = True
 else:
     _reload_cache = _cached_version != _version
+    if not _reload_cache:
+        nodes_kinds = {
+            module_path: {
+                object_path: _NodeKind(raw_node_kind)
+                for object_path, raw_node_kind in objects_kinds.items()
+            }
+            for module_path, objects_kinds in _raw_nodes_kinds.items()
+        }
 if _reload_cache:
     import ast as _ast
     import builtins as _builtins
@@ -79,6 +87,10 @@ if _reload_cache:
 
     _ObjectAstNodes = _t.List[_ast.AST]
     _ModuleAstNodes = _t.Dict[_catalog.Path, _ObjectAstNodes]
+    _ModuleAstNodesKinds = _t.Dict[_catalog.Path, _NodeKind]
+    _ModuleReferences = _t.Dict[_catalog.Path, _catalog.QualifiedPath]
+    _ModuleSubScopes = _t.Dict[_catalog.Path, _t.List[_catalog.QualifiedPath]]
+    _Scope = _t.Dict[str, dict]
 
 
     @_singledispatch
@@ -200,25 +212,23 @@ if _reload_cache:
                 module_path: _catalog.Path,
                 parent_path: _catalog.Path,
                 source_path: _Path,
-                scope_definitions: _scoping.Scope,
+                scope_definitions: _Scope,
                 module_ast_nodes: _ModuleAstNodes,
-                module_ast_nodes_kinds: _scoping.ModuleAstNodesKinds,
-                module_references: _scoping.ModuleReferences,
-                module_sub_scopes: _scoping.ModuleSubScopes,
+                module_ast_nodes_kinds: _ModuleAstNodesKinds,
+                module_references: _ModuleReferences,
+                module_sub_scopes: _ModuleSubScopes,
                 modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
                 modules_ast_nodes_kinds: _t.Dict[_catalog.Path,
-                                                 _scoping.ModuleAstNodesKinds],
-                modules_definitions: _t.Dict[_catalog.Path, dict],
-                modules_references: _t.Dict[_catalog.Path,
-                                            _scoping.ModuleReferences],
-                modules_sub_scopes: _t.Dict[_catalog.Path,
-                                            _scoping.ModuleSubScopes],
+                                                 _ModuleAstNodesKinds],
+                modules_definitions: _t.Dict[_catalog.Path, _Scope],
+                modules_references: _t.Dict[_catalog.Path, _ModuleReferences],
+                modules_sub_scopes: _t.Dict[_catalog.Path, _ModuleSubScopes],
                 visited_modules_paths: _t.Set[_catalog.Path],
                 classes_bases: _t.Dict[_catalog.QualifiedPath,
                                        _t.List[_ast.expr]],
-                generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
-                                                   _t.Tuple[
-                                                       _catalog.Path, ...]]
+                generics_parameters_paths: _t.Dict[
+                    _catalog.QualifiedPath, _t.Tuple[_catalog.Path, ...]
+                ]
         ) -> None:
             (
                 self.generics_parameters_paths, self.module_ast_nodes,
@@ -231,9 +241,8 @@ if _reload_cache:
                 self.classes_bases, self.visited_modules_paths
             ) = (
                 generics_parameters_paths, module_ast_nodes,
-                module_ast_nodes_kinds,
-                module_path, module_references, module_sub_scopes,
-                modules_ast_nodes, modules_ast_nodes_kinds,
+                module_ast_nodes_kinds, module_path, module_references,
+                module_sub_scopes, modules_ast_nodes, modules_ast_nodes_kinds,
                 modules_definitions, modules_references, modules_sub_scopes,
                 parent_path, scope_definitions, source_path, classes_bases,
                 visited_modules_paths
@@ -338,8 +347,8 @@ if _reload_cache:
                                 _named_tuple_to_constructor_ast_node(node)
                         )
                         self.module_sub_scopes.setdefault(
-                                class_path, set()
-                        ).add((base_module_path, base_object_path))
+                                class_path, []
+                        ).append((base_module_path, base_object_path))
                         continue
                     elif (base_module_path == typing_module_path
                           and base_object_path == protocol_object_path):
@@ -446,8 +455,6 @@ if _reload_cache:
                            reference_path: _catalog.Path,
                            referent_module_path: _catalog.Path,
                            referent_object_path: _catalog.Path) -> None:
-            assert isinstance(referent_module_path,
-                              tuple), referent_module_path
             self.module_references[reference_path] = (referent_module_path,
                                                       referent_object_path)
 
@@ -456,8 +463,8 @@ if _reload_cache:
                            referent_module_path: _catalog.Path,
                            referent_object_path: _catalog.Path) -> None:
             self.module_sub_scopes.setdefault(
-                    reference_path, set()
-            ).add((referent_module_path, referent_object_path))
+                    reference_path, []
+            ).append((referent_module_path, referent_object_path))
 
         def _resolve_object_path(
                 self, object_path: _catalog.Path
@@ -531,12 +538,10 @@ if _reload_cache:
             object_path: _catalog.Path,
             modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
             modules_ast_nodes_kinds: _t.Dict[_catalog.Path,
-                                             _scoping.ModuleAstNodesKinds],
-            modules_definitions: _t.Dict[_catalog.Path, _scoping.Scope],
-            modules_references: _t.Dict[_catalog.Path,
-                                        _scoping.ModuleReferences],
-            modules_sub_scopes: _t.Dict[_catalog.Path,
-                                        _scoping.ModuleSubScopes],
+                                             _ModuleAstNodesKinds],
+            modules_definitions: _t.Dict[_catalog.Path, _Scope],
+            modules_references: _t.Dict[_catalog.Path, _ModuleReferences],
+            modules_sub_scopes: _t.Dict[_catalog.Path, _ModuleSubScopes],
             visited_modules_paths: _t.Set[_catalog.Path],
             classes_bases: _t.Dict[_catalog.QualifiedPath, _t.List[_ast.expr]],
             generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
@@ -593,17 +598,15 @@ if _reload_cache:
             module_path: _catalog.Path,
             modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
             modules_ast_nodes_kinds: _t.Dict[_catalog.Path,
-                                             _scoping.ModuleAstNodesKinds],
-            modules_definitions: _t.Dict[_catalog.Path, _scoping.Scope],
-            modules_references: _t.Dict[_catalog.Path,
-                                        _scoping.ModuleReferences],
-            modules_sub_scopes: _t.Dict[_catalog.Path,
-                                        _scoping.ModuleSubScopes],
+                                             _ModuleAstNodesKinds],
+            modules_definitions: _t.Dict[_catalog.Path, _Scope],
+            modules_references: _t.Dict[_catalog.Path, _ModuleReferences],
+            modules_sub_scopes: _t.Dict[_catalog.Path, _ModuleSubScopes],
             visited_modules_paths: _t.Set[_catalog.Path],
             classes_bases: _t.Dict[_catalog.QualifiedPath, _t.List[_ast.expr]],
             generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
                                                _t.Tuple[_catalog.Path, ...]]
-    ) -> _scoping.Scope:
+    ) -> _Scope:
         if module_path in visited_modules_paths:
             return modules_definitions[module_path]
         visited_modules_paths.add(module_path)
@@ -675,19 +678,16 @@ if _reload_cache:
 
     def _parse_stubs_state(
             modules_paths: _t.Iterable[_catalog.Path]
-    ) -> _t.Tuple[_t.Dict[_catalog.Path, _scoping.Scope],
-                  _t.Dict[_catalog.Path, _scoping.ModuleAstNodesKinds],
+    ) -> _t.Tuple[_t.Dict[_catalog.Path, _Scope],
+                  _t.Dict[_catalog.Path, _ModuleAstNodesKinds],
                   _t.Dict[_catalog.Path, _ModuleRawAstNodes],
-                  _t.Dict[_catalog.Path, _scoping.ModuleReferences],
-                  _t.Dict[_catalog.Path, _scoping.ModuleSubScopes]]:
-        modules_definitions: _t.Dict[_catalog.Path, _scoping.Scope] = {}
-        modules_nodes_kinds: _t.Dict[_catalog.Path,
-                                     _scoping.ModuleAstNodesKinds] = {}
+                  _t.Dict[_catalog.Path, _ModuleReferences],
+                  _t.Dict[_catalog.Path, _ModuleSubScopes]]:
+        modules_definitions: _t.Dict[_catalog.Path, _Scope] = {}
+        modules_nodes_kinds: _t.Dict[_catalog.Path, _ModuleAstNodesKinds] = {}
         modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes] = {}
-        modules_references: _t.Dict[_catalog.Path,
-                                    _scoping.ModuleReferences] = {}
-        modules_sub_scopes: _t.Dict[_catalog.Path,
-                                    _scoping.ModuleSubScopes] = {}
+        modules_references: _t.Dict[_catalog.Path, _ModuleReferences] = {}
+        modules_sub_scopes: _t.Dict[_catalog.Path, _ModuleSubScopes] = {}
         classes_bases: _t.Dict[_catalog.QualifiedPath, _t.List[_ast.expr]] = {}
         generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
                                            _t.Tuple[_catalog.Path, ...]] = {}
@@ -725,13 +725,10 @@ if _reload_cache:
             generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
                                                _t.Tuple[_catalog.Path, ...]],
             modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
-            modules_definitions: _t.Dict[_catalog.Path, _scoping.Scope],
-            modules_nodes_kinds: _t.Dict[_catalog.Path,
-                                         _scoping.ModuleAstNodesKinds],
-            modules_references: _t.Dict[_catalog.Path,
-                                        _scoping.ModuleReferences],
-            modules_sub_scopes: _t.Dict[_catalog.Path,
-                                        _scoping.ModuleSubScopes],
+            modules_definitions: _t.Dict[_catalog.Path, _Scope],
+            modules_nodes_kinds: _t.Dict[_catalog.Path, _ModuleAstNodesKinds],
+            modules_references: _t.Dict[_catalog.Path, _ModuleReferences],
+            modules_sub_scopes: _t.Dict[_catalog.Path, _ModuleSubScopes],
             *,
             specializations_module_path: _catalog.Path = ('__specializations',)
     ) -> None:
@@ -771,8 +768,8 @@ if _reload_cache:
                         modules_sub_scopes
                 )
                 modules_sub_scopes[class_module_path].setdefault(
-                        class_object_path, set()
-                ).add((base_module_path, base_object_path))
+                        class_object_path, []
+                ).append((base_module_path, base_object_path))
 
 
     def _register_base_ast_node(
@@ -784,18 +781,15 @@ if _reload_cache:
                                                _t.Tuple[_catalog.Path, ...]],
             specializations_ast_nodes: _ModuleAstNodes,
             specializations_module_path: _catalog.Path,
-            specializations_module_scope: _scoping.Scope,
-            specializations_nodes_kinds: _scoping.ModuleAstNodesKinds,
-            specializations_references: _scoping.ModuleReferences,
-            specializations_sub_scopes: _scoping.ModuleSubScopes,
+            specializations_module_scope: _Scope,
+            specializations_nodes_kinds: _ModuleAstNodesKinds,
+            specializations_references: _ModuleReferences,
+            specializations_sub_scopes: _ModuleSubScopes,
             modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
-            modules_definitions: _t.Dict[_catalog.Path, _scoping.Scope],
-            modules_nodes_kinds: _t.Dict[_catalog.Path,
-                                         _scoping.ModuleAstNodesKinds],
-            modules_references: _t.Dict[_catalog.Path,
-                                        _scoping.ModuleReferences],
-            modules_sub_scopes: _t.Dict[_catalog.Path,
-                                        _scoping.ModuleSubScopes]
+            modules_definitions: _t.Dict[_catalog.Path, _Scope],
+            modules_nodes_kinds: _t.Dict[_catalog.Path, _ModuleAstNodesKinds],
+            modules_references: _t.Dict[_catalog.Path, _ModuleReferences],
+            modules_sub_scopes: _t.Dict[_catalog.Path, _ModuleSubScopes]
     ) -> _catalog.QualifiedPath:
         if _is_generic_specialization(base):
             base_name = _serialization.to_identifier(base)
@@ -829,7 +823,7 @@ if _reload_cache:
                 assert base_object_path not in specializations_sub_scopes
                 base_sub_scopes = specializations_sub_scopes[
                     base_object_path
-                ] = set()
+                ] = []
                 specialization_table = dict(zip(generic_parameters_paths,
                                                 specialization_args))
                 specialize = _SpecializeGeneric(specialization_table).visit
@@ -891,8 +885,8 @@ if _reload_cache:
                                     modules_references, modules_sub_scopes
                             )
                         )
-                    base_sub_scopes.add((base_base_module_path,
-                                         base_base_object_path))
+                    base_sub_scopes.append((base_base_module_path,
+                                            base_base_object_path))
             return specializations_module_path, base_object_path
         else:
             base_reference_path = _ast_node_to_path(base)
@@ -911,17 +905,14 @@ if _reload_cache:
             generic_parameters_paths: _t.Sequence[_catalog.Path],
             specialization_args: _t.Sequence[_ast.expr],
             specializations_ast_nodes: _ModuleAstNodes,
-            specializations_module_scope: _scoping.Scope,
-            specializations_nodes_kinds: _scoping.ModuleAstNodesKinds,
-            specializations_references: _scoping.ModuleReferences,
+            specializations_module_scope: _Scope,
+            specializations_nodes_kinds: _ModuleAstNodesKinds,
+            specializations_references: _ModuleReferences,
             modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
-            modules_definitions: _t.Dict[_catalog.Path, _scoping.Scope],
-            modules_nodes_kinds: _t.Dict[_catalog.Path,
-                                         _scoping.ModuleAstNodesKinds],
-            modules_references: _t.Dict[_catalog.Path,
-                                        _scoping.ModuleReferences],
-            modules_sub_scopes: _t.Mapping[_catalog.Path,
-                                           _scoping.ModuleSubScopes],
+            modules_definitions: _t.Dict[_catalog.Path, _Scope],
+            modules_nodes_kinds: _t.Dict[_catalog.Path, _ModuleAstNodesKinds],
+            modules_references: _t.Dict[_catalog.Path, _ModuleReferences],
+            modules_sub_scopes: _t.Mapping[_catalog.Path, _ModuleSubScopes],
             builtins_module_path: _catalog.Path
             = _catalog.module_path_from_module(_builtins)
     ) -> None:
