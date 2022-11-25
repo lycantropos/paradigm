@@ -49,9 +49,13 @@ if _reload_cache:
 
         def _to_supported_qualified_paths(
                 qualified_paths: _index.QualifiedPaths,
-                definitions: _t.Dict[_catalog.Path, _scoping.Scope],
-                references: _t.Dict[_catalog.Path, _scoping.ModuleReferences],
-                sub_scopes: _t.Dict[_catalog.Path, _scoping.ModuleSubScopes]
+                definitions: _t.Mapping[_catalog.Path, _scoping.Scope],
+                references: _t.Mapping[_catalog.Path,
+                                       _scoping.ModuleReferences],
+                submodules: _t.Mapping[_catalog.Path,
+                                       _scoping.ModuleSubmodules],
+                superclasses: _t.Mapping[_catalog.Path,
+                                         _scoping.ModuleSuperclasses]
         ) -> _index.QualifiedPaths:
             result = {}
             for (
@@ -65,11 +69,11 @@ if _reload_cache:
                         (located_module_path, located_object_path)
                         for located_module_path, located_object_path
                         in object_qualified_paths
-                        if
-                        _scoping.contains_object_path(located_module_path, (),
-                                                      located_object_path,
-                                                      definitions, references,
-                                                      sub_scopes)
+                        if _scoping.contains_object_path(
+                                located_module_path, (), located_object_path,
+                                definitions, references, submodules,
+                                superclasses
+                        )
                     ]
                     if supported_object_qualified_paths:
                         supported_module_qualified_paths[object_path] = (
@@ -83,7 +87,8 @@ if _reload_cache:
         supported_stdlib_qualified_paths = _to_supported_qualified_paths(
                 _execution.call_in_process(_index.from_modules,
                                            _supported_stdlib_modules_paths),
-                _stubs.definitions, _stubs.references, _stubs.sub_scopes
+                _stubs.definitions, _stubs.references, _stubs.submodules,
+                _stubs.superclasses
         )
         _exporting.save(_CACHE_PATH,
                         **{

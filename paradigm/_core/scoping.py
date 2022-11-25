@@ -6,7 +6,9 @@ from .arboreal.kind import NodeKind
 
 ModuleAstNodesKinds = t.Mapping[catalog.Path, NodeKind]
 ModuleReferences = t.Mapping[catalog.Path, catalog.QualifiedPath]
-ModuleSubScopes = t.Mapping[catalog.Path, t.Collection[catalog.QualifiedPath]]
+ModuleSubmodules = t.Collection[catalog.Path]
+ModuleSuperclasses = t.Mapping[catalog.Path,
+                               t.Collection[catalog.QualifiedPath]]
 Scope = t.Mapping[str, t.Mapping]
 
 
@@ -27,14 +29,16 @@ def contains_object_path(
         module_path: catalog.Path,
         parent_path: catalog.Path,
         object_path: catalog.Path,
-        modules_definitions: t.Dict[catalog.Path, Scope],
-        modules_references: t.Dict[catalog.Path, ModuleReferences],
-        modules_sub_scopes: t.Dict[catalog.Path, ModuleSubScopes]
+        modules_definitions: t.Mapping[catalog.Path, Scope],
+        modules_references: t.Mapping[catalog.Path, ModuleReferences],
+        modules_submodules: t.Mapping[catalog.Path, ModuleSubmodules],
+        modules_superclasses: t.Mapping[catalog.Path, ModuleSuperclasses]
 ) -> bool:
     try:
-        resolve_object_path(module_path, parent_path, object_path,
-                            modules_definitions, modules_references,
-                            modules_sub_scopes)
+        resolve_object_path(
+                module_path, parent_path, object_path, modules_definitions,
+                modules_references, modules_submodules, modules_superclasses
+        )
     except ObjectNotFound:
         return False
     else:
@@ -47,7 +51,8 @@ def resolve_object_path(
         object_path: catalog.Path,
         modules_definitions: t.Mapping[catalog.Path, Scope],
         modules_references: t.Mapping[catalog.Path, ModuleReferences],
-        modules_sub_scopes: t.Mapping[catalog.Path, ModuleSubScopes],
+        modules_submodules: t.Mapping[catalog.Path, ModuleSubmodules],
+        modules_superclasses: t.Mapping[catalog.Path, ModuleSuperclasses],
         *visited_modules_paths: catalog.Path,
         _builtins_module_path: catalog.Path
         = catalog.module_path_from_module(builtins)
@@ -58,17 +63,19 @@ def resolve_object_path(
         raise ObjectNotFound((module_path, object_path))
     if not object_path:
         return (module_path, object_path)
-    module_sub_scopes = modules_sub_scopes[module_path]
     assert scope_contains_path(module_definitions, parent_path)
     if (parent_path and scope_contains_path(module_definitions,
                                             (*parent_path, object_path[0]))):
         return resolve_object_path(
                 module_path, (), parent_path + object_path,
-                modules_definitions, modules_references, modules_sub_scopes,
-                *visited_modules_paths
+                modules_definitions, modules_references, modules_submodules,
+                modules_superclasses, *visited_modules_paths
         )
     elif object_path[0] in module_definitions:
-        scope = module_definitions[object_path[0]]
+        module_superclasses, scope = (
+            modules_superclasses.get(module_path, {}),
+            module_definitions[object_path[0]]
+        )
         for index, sub_name in enumerate(object_path[1:],
                                          start=1):
             if sub_name in scope:
@@ -76,21 +83,21 @@ def resolve_object_path(
             else:
                 sub_path = object_path[:index]
                 try:
-                    sub_path_sub_scopes = module_sub_scopes[sub_path]
+                    sub_path_superclasses = module_superclasses[sub_path]
                 except KeyError:
                     pass
                 else:
                     for (
-                            sub_scope_module_path, sub_scope_object_path
-                    ) in sub_path_sub_scopes:
+                            superclass_module_path, superclass_object_path
+                    ) in sub_path_superclasses:
                         try:
                             return resolve_object_path(
-                                    sub_scope_module_path, (),
-                                    sub_scope_object_path
+                                    superclass_module_path, (),
+                                    superclass_object_path
                                     + object_path[index:],
                                     modules_definitions, modules_references,
-                                    modules_sub_scopes, *visited_modules_paths,
-                                    module_path
+                                    modules_submodules, modules_superclasses,
+                                    *visited_modules_paths, module_path
                             )
                         except ObjectNotFound:
                             continue
@@ -99,24 +106,24 @@ def resolve_object_path(
                             _builtins_module_path, (),
                             (object.__name__,) + object_path[index:],
                             modules_definitions, modules_references,
-                            modules_sub_scopes, *visited_modules_paths
+                            modules_submodules, modules_superclasses,
+                            *visited_modules_paths
                     )
                 else:
                     raise ObjectNotFound((module_path, object_path))
         return (module_path, object_path)
     else:
-        if () in module_sub_scopes:
-            for sub_module_path, _ in module_sub_scopes[()]:
-                if sub_module_path not in visited_modules_paths:
-                    try:
-                        return resolve_object_path(
-                                sub_module_path, (), object_path,
-                                modules_definitions, modules_references,
-                                modules_sub_scopes, *visited_modules_paths,
-                                module_path
-                        )
-                    except ObjectNotFound:
-                        continue
+        for sub_module_path in modules_submodules.get(module_path, []):
+            if sub_module_path not in visited_modules_paths:
+                try:
+                    return resolve_object_path(
+                            sub_module_path, (), object_path,
+                            modules_definitions, modules_references,
+                            modules_submodules, modules_superclasses,
+                            *visited_modules_paths, module_path
+                    )
+                except ObjectNotFound:
+                    continue
         module_references = modules_references[module_path]
         for offset in range(len(object_path)):
             sub_object_path = object_path[:len(object_path) - offset]
@@ -132,14 +139,13 @@ def resolve_object_path(
                         resolve_object_path(
                                 referent_module_path, (), referent_object_path,
                                 modules_definitions, modules_references,
-                                modules_sub_scopes, *visited_modules_paths,
-                                module_path
+                                modules_submodules, modules_superclasses,
+                                *visited_modules_paths, module_path
                         )
                     )
                 except ObjectNotFound:
-                    assert (
-                            len(referent_object_path) == 1
-                    ), (module_path, object_path)
+                    assert (len(referent_object_path) == 1), (module_path,
+                                                              object_path)
                     referent_module_path += referent_object_path
                     referent_object_path = ()
                     assert (
@@ -150,7 +156,8 @@ def resolve_object_path(
                         referent_object_path
                         + object_path[len(object_path) - offset:],
                         modules_definitions, modules_references,
-                        modules_sub_scopes, *visited_modules_paths, module_path
+                        modules_submodules, modules_superclasses,
+                        *visited_modules_paths, module_path
                 )
         if scope_contains_path(modules_definitions[_builtins_module_path],
                                object_path):

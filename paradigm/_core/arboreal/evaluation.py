@@ -233,7 +233,7 @@ def _(ast_node: ast.Name,
     object_name = ast_node.id
     module_path, object_path = scoping.resolve_object_path(
             module_path, parent_path, (object_name,), stubs.definitions,
-            stubs.references, stubs.sub_scopes
+            stubs.references, stubs.submodules, stubs.superclasses
     )
     return _evaluate_qualified_path(module_path, object_path,
                                     parent_namespace)
@@ -252,7 +252,8 @@ def _(ast_node: ast.Attribute,
     except AttributeError:
         module_path, object_path = scoping.resolve_object_path(
                 module_path, parent_path, conversion.to_path(ast_node),
-                stubs.definitions, stubs.references, stubs.sub_scopes
+                stubs.definitions, stubs.references, stubs.submodules,
+                stubs.superclasses
         )
         return _evaluate_qualified_path(module_path, object_path,
                                         parent_namespace)
@@ -338,7 +339,8 @@ def _evaluate_qualified_path(
                             scoping.resolve_object_path(
                                     module_path, object_path,
                                     (dependency_name,), stubs.definitions,
-                                    stubs.references, stubs.sub_scopes
+                                    stubs.references, stubs.submodules,
+                                    stubs.superclasses
                             )
                         )
                         if dependency_module_path != builtins_module_path:
@@ -356,11 +358,14 @@ def _evaluate_qualified_path(
                 if definitions_nodes:
                     class_raw_namespace[name] = value
             bases = tuple(
-                    _evaluate_qualified_path(sub_module_path, sub_object_path,
+                    _evaluate_qualified_path(superclass_module_path,
+                                             superclass_object_path,
                                              class_raw_namespace)
-                    for sub_module_path, sub_object_path in stubs.sub_scopes[
-                        module_path
-                    ].get(object_path, [])
+                    for (
+                        superclass_module_path, superclass_object_path
+                    ) in stubs.superclasses.get(module_path, {}).get(
+                            object_path, []
+                    )
             )
             if annotations_nodes:
                 class_raw_namespace['__annotations__'] = {}

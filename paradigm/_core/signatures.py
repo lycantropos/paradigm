@@ -145,7 +145,7 @@ def _(ast_node: _t.Union[_ast.Attribute, _ast.Name],
     object_path = _conversion.to_path(ast_node)
     module_path, object_path = _scoping.resolve_object_path(
             module_path, parent_path, object_path, _stubs.definitions,
-            _stubs.references, _stubs.sub_scopes
+            _stubs.references, _stubs.submodules, _stubs.superclasses
     )
     node_kind = _stubs.nodes_kinds[module_path][object_path]
     if node_kind is _NodeKind.CLASS:
@@ -183,7 +183,7 @@ def _(ast_node: _ast.Call,
     callable_object_path = _conversion.to_path(ast_node.func)
     callable_module_path, callable_object_path = _scoping.resolve_object_path(
             module_path, parent_path, callable_object_path, _stubs.definitions,
-            _stubs.references, _stubs.sub_scopes
+            _stubs.references, _stubs.submodules, _stubs.superclasses
     )
     if (callable_module_path == typing_module_path
             and callable_object_path == type_var_object_path):
@@ -216,7 +216,7 @@ def _(ast_node: _ast.Subscript,
     value_path = _conversion.to_path(ast_node.value)
     value_module_path, value_object_path = _scoping.resolve_object_path(
             module_path, parent_path, value_path, _stubs.definitions,
-            _stubs.references, _stubs.sub_scopes
+            _stubs.references, _stubs.submodules, _stubs.superclasses
     )
     if (value_module_path == typing_module_path
             and value_object_path == callable_object_path):
@@ -350,7 +350,7 @@ def _is_classmethod(
     return (maybe_path is not None
             and _scoping.resolve_object_path(
                     module_path, parent_path, maybe_path, _stubs.definitions,
-                    _stubs.references, _stubs.sub_scopes
+                    _stubs.references, _stubs.submodules, _stubs.superclasses
             ) == classmethod_qualified_path)
 
 
@@ -364,7 +364,7 @@ def _try_resolve_object_path(
     try:
         return _scoping.resolve_object_path(
                 module_path, (), object_path, _stubs.definitions,
-                _stubs.references, _stubs.sub_scopes
+                _stubs.references, _stubs.submodules, _stubs.superclasses
         )
     except _scoping.ObjectNotFound:
         return (), ()
@@ -484,7 +484,7 @@ def _to_mro(module_path: _catalog.Path,
             object_path: _catalog.Path) -> _t.Iterable[_catalog.QualifiedPath]:
     yield (module_path, object_path)
     try:
-        bases = _stubs.sub_scopes[module_path][object_path]
+        bases = _stubs.superclasses[module_path][object_path]
     except KeyError:
         return
     else:
