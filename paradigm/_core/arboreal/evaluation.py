@@ -274,22 +274,27 @@ def _evaluate_qualified_path(
     try:
         module = import_module(module_name)
     except ImportError:
-        try:
-            module = modules_cache[module_path]
-        except KeyError:
-            modules_cache[module_path] = module = types.ModuleType(module_name)
-            module_raw_namespace = module.__dict__
-            for name in stubs.definitions[module_path].keys():
-                module_raw_namespace[name] = parent_namespace[name] = (
-                    _evaluate_qualified_path(module_path, (name,),
-                                             parent_namespace)
+        if not object_path:
+            try:
+                return modules_cache[module_path]
+            except KeyError:
+                modules_cache[module_path] = module = types.ModuleType(
+                        module_name
                 )
-    try:
-        return (namespacing.search(module, object_path)
-                if object_path
-                else module)
-    except namespacing.ObjectNotFound:
-        pass
+                module_raw_namespace = module.__dict__
+                for name in stubs.definitions[module_path].keys():
+                    module_raw_namespace[name] = parent_namespace[name] = (
+                        _evaluate_qualified_path(module_path, (name,),
+                                                 parent_namespace)
+                    )
+                return module
+    else:
+        try:
+            return (namespacing.search(module, object_path)
+                    if object_path
+                    else module)
+        except namespacing.ObjectNotFound:
+            pass
     try:
         return objects_cache[(module_path, object_path)]
     except KeyError:
