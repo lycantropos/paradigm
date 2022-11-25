@@ -51,6 +51,7 @@ With setup
 >>> from paradigm.base import (Parameter,
 ...                            PlainSignature,
 ...                            signature_from_callable)
+>>> from typing_extensions import Self
 >>> class UpperOut:
 ...     def __init__(self, outfile: typing.IO[typing.AnyStr]) -> None:
 ...         self._outfile = outfile
@@ -60,7 +61,7 @@ With setup
 ... 
 ...     def __getattr__(self, name: str) -> typing.Any:
 ...         return getattr(self._outfile, name)
->>> def func(foo: int, bar: bool = False, **kwargs: str):
+>>> def func(foo: int, bar: bool = False, **kwargs: str) -> None:
 ...     pass
 
 ```
@@ -79,7 +80,8 @@ we can obtain a signature of
   ...     Parameter(annotation=str,
   ...               has_default=False,
   ...               kind=Parameter.Kind.VARIADIC_KEYWORD,
-  ...               name='kwargs')
+  ...               name='kwargs'),
+  ...     returns=None
   ... )
   True
   
@@ -90,7 +92,8 @@ we can obtain a signature of
   ...     Parameter(annotation=typing.IO[typing.AnyStr],
   ...               has_default=False,
   ...               kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
-  ...               name='outfile')
+  ...               name='outfile'),
+  ...     returns=Self
   ... )
   True
   
@@ -105,7 +108,8 @@ we can obtain a signature of
   ...     Parameter(annotation=typing.AnyStr,
   ...               has_default=False,
   ...               kind=Parameter.Kind.POSITIONAL_OR_KEYWORD,
-  ...               name='s')
+  ...               name='s'),
+  ...     returns=None
   ... )
   True
   
@@ -116,7 +120,8 @@ we can obtain a signature of
   ...     Parameter(annotation=typing.Iterable[object],
   ...               has_default=False,
   ...               kind=Parameter.Kind.POSITIONAL_ONLY,
-  ...               name='__iterable')
+  ...               name='__iterable'),
+  ...     returns=bool
   ... )
   True
   
@@ -127,18 +132,20 @@ we can obtain a signature of
   ...     Parameter(annotation=object,
   ...               has_default=True,
   ...               kind=Parameter.Kind.POSITIONAL_ONLY,
-  ...               name='__o')
+  ...               name='__o'),
+  ...     returns=Self
   ... )
   True
   
   ```
 - built-in classes methods
   ```python
-  >>> signature_from_callable(float.as_integer_ratio) == PlainSignature(
+  >>> signature_from_callable(float.hex) == PlainSignature(
   ...     Parameter(annotation=typing.Any,
   ...               has_default=False,
   ...               kind=Parameter.Kind.POSITIONAL_ONLY,
-  ...               name='self')
+  ...               name='self'),
+  ...     returns=str
   ... )
   True
   
