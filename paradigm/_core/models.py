@@ -309,7 +309,7 @@ class PlainSignature(BaseSignature):
                 else NotImplemented)
 
     def __hash__(self) -> int:
-        return hash(self._parameters)
+        return hash((self._parameters, self.returns))
 
     __repr__ = generate_repr(__init__,
                              argument_serializer=annotated.to_repr)
