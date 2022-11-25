@@ -23,7 +23,7 @@ def are_equal(left: t.Any, right: t.Any) -> bool:
 @are_equal.register(type)
 def _(left: t.Union[GenericAlias, t.Type[t.Any]], right: t.Any) -> bool:
     left_args, right_args = to_arguments(left), to_arguments(right)
-    return (type(left) is type(right)
+    return ((to_origin(left) or left) is (to_origin(right) or right)
             and len(left_args) == len(right_args)
             and all(map(are_equal, left_args, right_args)))
 
