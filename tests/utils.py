@@ -4,6 +4,7 @@ from typing import (Any,
                     Callable,
                     Dict,
                     List,
+                    Optional,
                     Tuple,
                     TypeVar,
                     Union)
@@ -38,8 +39,9 @@ def negate(predicate: Predicate) -> Predicate:
 
 
 def pack(function: Callable[..., _T2]) -> Callable[[Tuple[_T1, ...]], _T2]:
-    def packed(args: Tuple[_T1, ...]) -> _T2:
-        return function(*args)
+    def packed(args: Tuple[_T1, ...],
+               kwargs: Optional[Dict[str, Any]] = None) -> _T2:
+        return function(*args, **({} if kwargs is None else kwargs))
 
     return packed
 

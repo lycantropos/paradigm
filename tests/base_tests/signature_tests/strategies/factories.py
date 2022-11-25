@@ -40,10 +40,13 @@ def qualified_path_is_valid(value: type) -> bool:
                         catalog.path_to_string(object_path), None) is value)
 
 
+annotations_strategy = strategies.from_type(
+        type
+).filter(qualified_path_is_valid)
+
+
 def to_parameters(*,
-                  annotations: Strategy[str] = strategies.from_type(
-                          type
-                  ).filter(qualified_path_is_valid),
+                  annotations: Strategy[str] = annotations_strategy,
                   names: Strategy[str] = identifiers,
                   kinds: Strategy[Parameter.Kind],
                   has_default_flags: Strategy[bool] =
@@ -80,7 +83,8 @@ def to_plain_signatures(*,
                          'than max size, '
                          f'but found {min_size} > {max_size}.')
 
-    empty = strategies.builds(PlainSignature)
+    empty = strategies.builds(PlainSignature,
+                              returns=annotations_strategy)
     if max_size == 0:
         return empty
 
@@ -126,12 +130,15 @@ def to_plain_signatures(*,
 
     base_parameters = to_parameters(names=parameters_names,
                                     kinds=parameters_kinds,
-                                    has_default_flags=
-                                    parameters_has_default_flags)
-    non_empty = (strategies.recursive(strategies.tuples(base_parameters),
-                                      extend,
-                                      max_leaves=max_size)
-                 .map(pack(PlainSignature)))
+                                    has_default_flags
+                                    =parameters_has_default_flags)
+    non_empty = strategies.builds(
+            pack(PlainSignature),
+            strategies.recursive(strategies.tuples(base_parameters),
+                                 extend,
+                                 max_leaves=max_size),
+            strategies.fixed_dictionaries({'returns': annotations_strategy})
+    )
     if min_size == 0:
         return empty | non_empty
     return non_empty

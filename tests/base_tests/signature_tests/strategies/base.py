@@ -36,7 +36,8 @@ overloaded_signatures = to_overloaded_signatures(plain_signatures,
 signatures = plain_signatures | overloaded_signatures
 plain_non_variadic_signatures = to_plain_signatures(
         parameters_kinds=non_variadic_kinds,
-        max_size=MAX_ARGUMENTS_COUNT)
+        max_size=MAX_ARGUMENTS_COUNT
+)
 non_variadic_signatures = (
         plain_non_variadic_signatures
         | to_overloaded_signatures(plain_non_variadic_signatures,
