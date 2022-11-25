@@ -261,7 +261,7 @@ def _evaluate_qualified_path(
         builtins_module_path: catalog.Path
         = catalog.module_path_from_module(builtins),
         cache: t.MutableMapping[catalog.QualifiedPath, t.Any]
-        = weakref.WeakValueDictionary({(('_typeshed',), ('Self',)): Self})
+        = weakref.WeakValueDictionary([((('_typeshed',), ('Self',)), Self)])
 ) -> t.Any:
     module_name = catalog.path_to_string(module_path)
     try:
