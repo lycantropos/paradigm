@@ -1,7 +1,7 @@
 from hypothesis import given
 
 from tests.utils import (AnySignature,
-                         equivalence)
+                         implication)
 from . import strategies
 
 
@@ -11,6 +11,5 @@ def test_relation_with_equality(signature: AnySignature,
     signature_hash = hash(signature)
     other_signature_hash = hash(other_signature)
 
-    assert equivalence(type(signature) is type(other_signature)
-                       and signature_hash == other_signature_hash,
-                       signature == other_signature)
+    assert implication(signature == other_signature,
+                       signature_hash == other_signature_hash)
