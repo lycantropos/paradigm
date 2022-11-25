@@ -141,7 +141,7 @@ we can obtain a signature of
 - built-in classes methods
   ```python
   >>> signature_from_callable(float.hex) == PlainSignature(
-  ...     Parameter(annotation=typing.Any,
+  ...     Parameter(annotation=Self,
   ...               has_default=False,
   ...               kind=Parameter.Kind.POSITIONAL_ONLY,
   ...               name='self'),
