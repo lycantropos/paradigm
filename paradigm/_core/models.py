@@ -51,24 +51,22 @@ class Parameter:
     _kind: Kind
     _name: str
 
-    def __new__(cls,
-                *,
-                annotation: t.Any,
-                has_default: bool,
-                kind: Kind,
-                name: str) -> 'Parameter':
+    def __init__(self,
+                 *,
+                 annotation: t.Any,
+                 has_default: bool,
+                 kind: Kind,
+                 name: str) -> None:
         # performing validation inside of `__init__` instead of `__new__`,
         # because `pickle` does not support keyword only arguments in `__new__`
-        if ((kind is cls.Kind.VARIADIC_POSITIONAL
-             or kind is cls.Kind.VARIADIC_KEYWORD)
+        if ((kind is self.Kind.VARIADIC_POSITIONAL
+             or kind is self.Kind.VARIADIC_KEYWORD)
                 and has_default):
             raise ValueError('Variadic parameters '
                              'can\'t have default arguments.')
-        self = super().__new__(cls)
         self._annotation, self._has_default, self._kind, self._name = (
             annotation, has_default, kind, name
         )
-        return self
 
     @t.overload
     def __eq__(self, other: 'Parameter') -> bool:
@@ -89,7 +87,7 @@ class Parameter:
     def __hash__(self) -> int:
         return hash((self.name, self.kind, self.has_default))
 
-    __repr__ = generate_repr(__new__,
+    __repr__ = generate_repr(__init__,
                              argument_serializer=annotated.to_repr)
 
     def __str__(self) -> str:
@@ -245,9 +243,7 @@ class PlainSignature(BaseSignature):
 
     __slots__ = '_parameters', '_returns'
 
-    def __new__(cls,
-                *parameters: Parameter,
-                returns: t.Any) -> 'PlainSignature':
+    def __init__(self, *parameters: Parameter, returns: t.Any) -> None:
         try:
             prior, *rest = parameters
         except ValueError:
@@ -288,9 +284,6 @@ class PlainSignature(BaseSignature):
                 prior = parameter
                 visited_names.add(name)
                 visited_kinds.add(kind)
-        return super().__new__(cls)
-
-    def __init__(self, *parameters: Parameter, returns: t.Any) -> None:
         self._parameters, self._returns = parameters, returns
 
     @t.overload
