@@ -347,7 +347,7 @@ if _reload_cache:
             self._add_name_definition(function_name)
 
         def visit_If(self, node: _ast.If) -> None:
-            namespace = {}
+            namespace: _namespacing.Namespace = {}
             for dependency_name in {
                 child.id
                 for child in _recursively_iterate_children(node.test)
@@ -357,7 +357,7 @@ if _reload_cache:
                         (dependency_name,)
                 )
                 module = _import_module(_catalog.path_to_string(module_path))
-                namespace[dependency_name] = (_namespacing.search(vars(module),
+                namespace[dependency_name] = (_namespacing.search(module,
                                                                   object_path)
                                               if object_path
                                               else module)

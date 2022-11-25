@@ -19,13 +19,13 @@ def from_modules(modules_paths: t.Iterable[catalog.Path]) -> QualifiedPaths:
     return result
 
 
-def _index_namespace(namespace: namespacing.Namespace,
-                     *,
-                     paths: QualifiedPaths,
-                     module_path: catalog.Path,
-                     parent_path: catalog.Path,
-                     visited_classes: t.Set[type]) -> None:
-    for name, value in namespace.items():
+def _index_module_or_type(namespace: namespacing.ModuleOrType,
+                          *,
+                          paths: QualifiedPaths,
+                          module_path: catalog.Path,
+                          parent_path: catalog.Path,
+                          visited_classes: t.Set[type]) -> None:
+    for name, value in vars(namespace).items():
         if isinstance(value, type):
             if value not in visited_classes:
                 object_path = parent_path + (name,)
@@ -38,11 +38,13 @@ def _index_namespace(namespace: namespacing.Namespace,
                 (paths.setdefault(qualified_module_path, {})
                  .setdefault(qualified_object_path, [])
                  .append((module_path, object_path)))
-                _index_namespace(vars(value),
-                                 paths=paths,
-                                 module_path=module_path,
-                                 parent_path=object_path,
-                                 visited_classes={*visited_classes, value})
+                _index_module_or_type(
+                        value,
+                        paths=paths,
+                        module_path=module_path,
+                        parent_path=object_path,
+                        visited_classes={*visited_classes, value}
+                )
         else:
             qualified_module_path, qualified_object_path = (
                 catalog.qualified_path_from(value)
@@ -64,8 +66,8 @@ def _index_module_path(module_path: catalog.Path,
                       f'Reason:\n{pretty.format_exception(error)}',
                       ImportWarning)
     else:
-        _index_namespace(vars(module),
-                         paths=paths,
-                         module_path=module_path,
-                         parent_path=(),
-                         visited_classes=set())
+        _index_module_or_type(module,
+                              paths=paths,
+                              module_path=module_path,
+                              parent_path=(),
+                              visited_classes=set())

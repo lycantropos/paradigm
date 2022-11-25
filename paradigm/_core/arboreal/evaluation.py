@@ -135,6 +135,11 @@ class _LazyEvaluator(ast.NodeTransformer):
                            node.type_comment)
 
 
+_AstNode = t.TypeVar('_AstNode',
+                     bound=ast.AST)
+_to_lazy_statement: t.Callable[[_AstNode], _AstNode] = _LazyEvaluator().visit
+
+
 @evaluate_statement_node.register(ast.AsyncFunctionDef)
 @evaluate_statement_node.register(ast.FunctionDef)
 def _(ast_node: t.Union[ast.AsyncFunctionDef, ast.FunctionDef],
@@ -146,14 +151,12 @@ def _(ast_node: t.Union[ast.AsyncFunctionDef, ast.FunctionDef],
         source_path = sources.from_module_path(module_path)
     except sources.NotFound:
         source_path = sources.Path(*module_path)
-    execute_statement(
-            ast.fix_missing_locations(
-                    _LazyEvaluator().visit(ast_node)
-            ),
-            source_path=source_path,
-            namespace=namespace
-    )
-    return namespace.pop(ast_node.name)
+    execute_statement(ast.fix_missing_locations(_to_lazy_statement(ast_node)),
+                      source_path=source_path,
+                      namespace=namespace)
+    name = ast_node.name
+    result = parent_namespace[name] = namespace.pop(name)
+    return result
 
 
 @evaluate_expression_node.register(ast.Constant)
@@ -228,15 +231,12 @@ def _(ast_node: ast.Name,
       parent_namespace: namespacing.Namespace) -> t.Any:
     assert isinstance(ast_node.ctx, ast.Load), ast_node
     object_name = ast_node.id
-    try:
-        return parent_namespace[object_name]
-    except KeyError:
-        module_path, object_path = scoping.resolve_object_path(
-                module_path, parent_path, (object_name,), stubs.definitions,
-                stubs.references, stubs.sub_scopes
-        )
-        return _evaluate_qualified_path(module_path, object_path,
-                                        parent_namespace)
+    module_path, object_path = scoping.resolve_object_path(
+            module_path, parent_path, (object_name,), stubs.definitions,
+            stubs.references, stubs.sub_scopes
+    )
+    return _evaluate_qualified_path(module_path, object_path,
+                                    parent_namespace)
 
 
 @evaluate_expression_node.register(ast.Attribute)
@@ -265,37 +265,33 @@ def _evaluate_qualified_path(
         *,
         builtins_module_path: catalog.Path
         = catalog.module_path_from_module(builtins),
-        cache: t.MutableMapping[catalog.QualifiedPath, t.Any]
+        modules_cache: t.MutableMapping[catalog.Path, types.ModuleType]
+        = weakref.WeakValueDictionary(),
+        objects_cache: t.MutableMapping[catalog.QualifiedPath, t.Any]
         = weakref.WeakValueDictionary([((('_typeshed',), ('Self',)), Self)])
 ) -> t.Any:
     module_name = catalog.path_to_string(module_path)
     try:
         module = import_module(module_name)
     except ImportError:
-        if not object_path:
-            try:
-                return cache[(module_path, object_path)]
-            except KeyError:
-                cache[(module_path, object_path)] = module = types.ModuleType(
-                        module_name
-                )
-                module_namespace = module.__dict__
-                module_namespace.update({
-                    name: _evaluate_qualified_path(module_path, (name,),
-                                                   parent_namespace)
-                    for name in stubs.definitions[module_path].keys()
-                })
-                return module
-    else:
-        if not object_path:
-            return module
-        module_namespace = {**parent_namespace, **vars(module)}
         try:
-            return namespacing.search(module_namespace, object_path)
-        except namespacing.ObjectNotFound:
-            pass
+            module = modules_cache[module_path]
+        except KeyError:
+            modules_cache[module_path] = module = types.ModuleType(module_name)
+            module_raw_namespace = module.__dict__
+            for name in stubs.definitions[module_path].keys():
+                module_raw_namespace[name] = parent_namespace[name] = (
+                    _evaluate_qualified_path(module_path, (name,),
+                                             parent_namespace)
+                )
     try:
-        return cache[(module_path, object_path)]
+        return (namespacing.search(module, object_path)
+                if object_path
+                else module)
+    except namespacing.ObjectNotFound:
+        pass
+    try:
+        return objects_cache[(module_path, object_path)]
     except KeyError:
         module_raw_ast_nodes = stubs.raw_ast_nodes[module_path]
         try:
@@ -308,7 +304,9 @@ def _evaluate_qualified_path(
             scope = stubs.definitions[module_path]
             for part in object_path:
                 scope = scope[part]
-            class_namespace: t.Dict[str, t.Any] = {'__module__': module_name}
+            class_raw_namespace: namespacing.Namespace = {
+                '__module__': module_name
+            }
             annotations_nodes = {}
             for name in scope.keys():
                 raw_ast_nodes = module_raw_ast_nodes[(*object_path, name)]
@@ -323,12 +321,11 @@ def _evaluate_qualified_path(
                         assert isinstance(ast_node, ast.stmt), (module_path,
                                                                 object_path)
                         definitions_nodes.append(ast_node)
-                to_lazy = _LazyEvaluator().visit
                 for definition_node in definitions_nodes:
                     for dependency_name in {
                         child.id
                         for child in recursively_iterate_children(
-                                to_lazy(definition_node)
+                                _to_lazy_statement(definition_node)
                         )
                         if is_dependency_name(child)
                     }:
@@ -340,33 +337,36 @@ def _evaluate_qualified_path(
                             )
                         )
                         if dependency_module_path != builtins_module_path:
-                            class_namespace[dependency_name] = (
+                            class_raw_namespace[dependency_name] = (
                                 _evaluate_qualified_path(
                                         dependency_module_path,
-                                        dependency_object_path, class_namespace
+                                        dependency_object_path,
+                                        class_raw_namespace
                                 )
                             )
                     value = evaluate_statement_node(
                             definition_node, module_path, object_path,
-                            class_namespace
+                            class_raw_namespace
                     )
                 if definitions_nodes:
-                    class_namespace[name] = value
+                    class_raw_namespace[name] = value
             bases = tuple(
                     _evaluate_qualified_path(sub_module_path, sub_object_path,
-                                             class_namespace)
+                                             class_raw_namespace)
                     for sub_module_path, sub_object_path in stubs.sub_scopes[
                         module_path
                     ].get(object_path, [])
             )
             if annotations_nodes:
-                class_namespace['__annotations__'] = {}
-            result = parent_namespace[object_path[-1]] = cache[
+                class_raw_namespace['__annotations__'] = {}
+            result = parent_namespace[object_path[-1]] = objects_cache[
                 (module_path, object_path)
-            ] = types.new_class(object_path[-1], bases,
-                                exec_body=lambda namespace: namespace.update(
-                                        class_namespace
-                                ))
+            ] = types.new_class(
+                    object_path[-1], bases,
+                    exec_body=lambda raw_namespace: raw_namespace.update(
+                            class_raw_namespace
+                    )
+            )
             if annotations_nodes:
                 result.__annotations__.update({
                     name: evaluate_expression_node(annotation_node,
@@ -376,12 +376,15 @@ def _evaluate_qualified_path(
                 })
             return result
         else:
-            assert len(raw_ast_nodes) == 1, (module_path, object_path)
-            raw_ast_node, = raw_ast_nodes
-            ast_node = construction.from_raw(raw_ast_node)
-            assert isinstance(ast_node, ast.stmt), (module_path, object_path)
-            return evaluate_statement_node(ast_node, module_path,
-                                           object_path[:-1], parent_namespace)
+            for raw_ast_node in raw_ast_nodes:
+                ast_node = construction.from_raw(raw_ast_node)
+                assert isinstance(ast_node, ast.stmt), (module_path,
+                                                        object_path)
+                value = evaluate_statement_node(
+                        ast_node, module_path, object_path[:-1],
+                        parent_namespace
+                )
+            return value
 
 
 if sys.version_info < (3, 8):
@@ -459,11 +462,9 @@ else:
           parent_namespace: namespacing.Namespace) -> t.Any:
         assert isinstance(ast_node.ctx, ast.Load), ast_node
         value = evaluate_expression_node(ast_node.value, module_path,
-                                         parent_path,
-                                         parent_namespace)
+                                         parent_path, parent_namespace)
         item = evaluate_expression_node(ast_node.slice, module_path,
-                                        parent_path,
-                                        parent_namespace)
+                                        parent_path, parent_namespace)
         try:
             return value[item]
         except TypeError:
