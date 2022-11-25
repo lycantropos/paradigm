@@ -51,22 +51,24 @@ class Parameter:
     _kind: Kind
     _name: str
 
-    def __init__(self,
-                 *,
-                 annotation: t.Any,
-                 has_default: bool,
-                 kind: Kind,
-                 name: str) -> None:
+    def __new__(cls,
+                *,
+                annotation: t.Any,
+                has_default: bool,
+                kind: Kind,
+                name: str) -> 'Parameter':
         # performing validation inside of `__init__` instead of `__new__`,
         # because `pickle` does not support keyword only arguments in `__new__`
-        if ((kind is self.Kind.VARIADIC_POSITIONAL
-             or kind is self.Kind.VARIADIC_KEYWORD)
+        if ((kind is cls.Kind.VARIADIC_POSITIONAL
+             or kind is cls.Kind.VARIADIC_KEYWORD)
                 and has_default):
             raise ValueError('Variadic parameters '
                              'can\'t have default arguments.')
+        self = super().__new__(cls)
         self._annotation, self._has_default, self._kind, self._name = (
             annotation, has_default, kind, name
         )
+        return self
 
     @t.overload
     def __eq__(self, other: 'Parameter') -> bool:
@@ -84,10 +86,17 @@ class Parameter:
                 if isinstance(other, Parameter)
                 else NotImplemented)
 
-    def __hash__(self) -> int:
-        return hash((self.name, self.kind, self.has_default))
+    def __getnewargs_ex__(self) -> t.Tuple[t.Tuple[()], t.Dict[str, t.Any]]:
+        return (), {'annotation': self._annotation,
+                    'has_default': self._has_default,
+                    'kind': self._kind,
+                    'name': self._name}
 
-    __repr__ = generate_repr(__init__,
+    def __hash__(self) -> int:
+        return hash((self._annotation, self._has_default, self._kind,
+                     self._name))
+
+    __repr__ = generate_repr(__new__,
                              argument_serializer=annotated.to_repr)
 
     def __str__(self) -> str:
@@ -243,7 +252,9 @@ class PlainSignature(BaseSignature):
 
     __slots__ = '_parameters', '_returns'
 
-    def __init__(self, *parameters: Parameter, returns: t.Any) -> None:
+    def __new__(cls,
+                *parameters: Parameter,
+                returns: t.Any) -> 'PlainSignature':
         try:
             prior, *rest = parameters
         except ValueError:
@@ -284,7 +295,9 @@ class PlainSignature(BaseSignature):
                 prior = parameter
                 visited_names.add(name)
                 visited_kinds.add(kind)
+        self = super().__new__(cls)
         self._parameters, self._returns = parameters, returns
+        return self
 
     @t.overload
     def __eq__(self, other: BaseSignature) -> bool:
@@ -301,10 +314,14 @@ class PlainSignature(BaseSignature):
                 if isinstance(other, BaseSignature)
                 else NotImplemented)
 
+    def __getnewargs_ex__(self) -> t.Tuple[t.Tuple[Parameter, ...],
+                                           t.Dict[str, t.Any]]:
+        return self._parameters, {'returns': self._returns}
+
     def __hash__(self) -> int:
         return hash((self._parameters, self.returns))
 
-    __repr__ = generate_repr(__init__,
+    __repr__ = generate_repr(__new__,
                              argument_serializer=annotated.to_repr)
 
     def __str__(self) -> str:
@@ -361,7 +378,7 @@ class OverloadedSignature(BaseSignature):
 
     _signatures: t.Sequence[Signature]
 
-    def __init__(self, *signatures: Signature) -> None:
+    def __new__(cls, *signatures: Signature) -> 'OverloadedSignature':
         if len(signatures) < _MIN_SUB_SIGNATURES_COUNT:
             raise ValueError('Overloaded signature can be constructed '
                              f'only from at least {_MIN_SUB_SIGNATURES_COUNT} '
@@ -372,7 +389,9 @@ class OverloadedSignature(BaseSignature):
                     if isinstance(signature, OverloadedSignature)
                     else [signature])
 
+        self = super().__new__(cls)
         self._signatures = tuple(chain.from_iterable(map(flatten, signatures)))
+        return self
 
     def __eq__(self, other: t.Any) -> t.Any:
         return ((isinstance(other, OverloadedSignature)
@@ -380,10 +399,13 @@ class OverloadedSignature(BaseSignature):
                 if isinstance(other, BaseSignature)
                 else NotImplemented)
 
+    def __getnewargs__(self) -> t.Tuple[Signature, ...]:
+        return self._signatures
+
     def __hash__(self) -> int:
         return hash(self._signatures)
 
-    __repr__ = generate_repr(__init__)
+    __repr__ = generate_repr(__new__)
 
     def __str__(self) -> str:
         return ' | '.join(map(str, self._signatures))
