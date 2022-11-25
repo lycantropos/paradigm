@@ -250,6 +250,9 @@ class PlainSignature(BaseSignature):
                 returns=self._returns
         )
 
+    _parameters: t.Tuple[Parameter, ...]
+    _returns: t.Any
+
     __slots__ = '_parameters', '_returns'
 
     def __new__(cls,
@@ -376,7 +379,7 @@ class OverloadedSignature(BaseSignature):
 
     __slots__ = '_signatures',
 
-    _signatures: t.Sequence[Signature]
+    _signatures: t.Tuple[Signature, ...]
 
     def __new__(cls, *signatures: Signature) -> 'OverloadedSignature':
         if len(signatures) < _MIN_SUB_SIGNATURES_COUNT:
