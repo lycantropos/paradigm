@@ -22,9 +22,14 @@ from .kind import NodeKind
 from .utils import (is_dependency_name,
                     recursively_iterate_children)
 
+if sys.version_info < (3, 9):
+    AstExpression = t.Union[ast.expr, ast.slice]
+else:
+    AstExpression = ast.expr
+
 
 @singledispatch
-def evaluate_expression_node(ast_node: ast.expr,
+def evaluate_expression_node(ast_node: AstExpression,
                              module_path: catalog.Path,
                              parent_path: catalog.Path,
                              parent_namespace: namespacing.Namespace) -> t.Any:
@@ -92,8 +97,7 @@ def _(ast_node: ast.Call,
             for arg in ast_node.args]
     kwargs = {
         keyword.arg: evaluate_expression_node(keyword.value, module_path,
-                                              parent_path,
-                                              parent_namespace)
+                                              parent_path, parent_namespace)
         for keyword in ast_node.keywords
     }
     return evaluate_expression_node(
@@ -131,8 +135,9 @@ class _LazyEvaluator(ast.NodeTransformer):
                            node.type_comment)
 
 
+@evaluate_statement_node.register(ast.AsyncFunctionDef)
 @evaluate_statement_node.register(ast.FunctionDef)
-def _(ast_node: ast.FunctionDef,
+def _(ast_node: t.Union[ast.AsyncFunctionDef, ast.FunctionDef],
       module_path: catalog.Path,
       parent_path: catalog.Path,
       parent_namespace: namespacing.Namespace) -> t.Any:
