@@ -93,41 +93,6 @@ if _reload_cache:
     _Scope = _t.Dict[str, dict]
 
 
-    @_singledispatch
-    def _ast_node_to_path(ast_node: _ast.AST) -> _catalog.Path:
-        raise TypeError(type(ast_node))
-
-
-    @_ast_node_to_path.register(_ast.Name)
-    def _(ast_node: _ast.Name) -> _catalog.Path:
-        return (ast_node.id,)
-
-
-    @_ast_node_to_path.register(_ast.Attribute)
-    def _(ast_node: _ast.Attribute) -> _catalog.Path:
-        return (*_ast_node_to_path(ast_node.value), ast_node.attr)
-
-
-    @_singledispatch
-    def _ast_node_to_maybe_path(
-            ast_node: _ast.AST
-    ) -> _t.Optional[_catalog.Path]:
-        return None
-
-
-    @_ast_node_to_maybe_path.register(_ast.Name)
-    def _(ast_node: _ast.Name) -> _t.Optional[_catalog.Path]:
-        return (ast_node.id,)
-
-
-    @_ast_node_to_maybe_path.register(_ast.Attribute)
-    def _(ast_node: _ast.Attribute) -> _t.Optional[_catalog.Path]:
-        value_maybe_path = _ast_node_to_maybe_path(ast_node.value)
-        return (None
-                if value_maybe_path is None
-                else (*value_maybe_path, ast_node.attr))
-
-
     def _named_tuple_to_constructor_ast_node(
             ast_node: _ast.ClassDef
     ) -> _ast.FunctionDef:
@@ -249,11 +214,11 @@ if _reload_cache:
             )
 
         def visit_AnnAssign(self, node: _ast.AnnAssign) -> None:
-            target_path = _ast_node_to_path(node.target)
+            target_path = _conversion.to_path(node.target)
             value_ast_node = node.value
             value_path = (None
                           if value_ast_node is None
-                          else _ast_node_to_maybe_path(value_ast_node))
+                          else _conversion.to_maybe_path(value_ast_node))
             if value_path is None:
                 self._add_ast_node(target_path, node)
                 self._add_ast_node_kind(target_path,
@@ -267,10 +232,10 @@ if _reload_cache:
                                     value_object_path)
 
         def visit_Assign(self, node: _ast.Assign) -> None:
-            value_path = _ast_node_to_maybe_path(node.value)
+            value_path = _conversion.to_maybe_path(node.value)
             if value_path is None:
                 for target in node.targets:
-                    target_path = _ast_node_to_path(target)
+                    target_path = _conversion.to_path(target)
                     self._add_ast_node(target_path, node)
                     self._add_ast_node_kind(target_path, _NodeKind.ASSIGNMENT)
                     self._add_path_definition(target_path)
@@ -279,7 +244,7 @@ if _reload_cache:
                         value_path
                 )
                 for target in node.targets:
-                    target_path = _ast_node_to_path(target)
+                    target_path = _conversion.to_path(target)
                     self._add_reference(target_path, value_module_path,
                                         value_object_path)
 
@@ -308,12 +273,11 @@ if _reload_cache:
             class_path, module_path = (self.parent_path + (class_name,),
                                        self.module_path)
             class_bases = self.classes_bases[(module_path, class_path)] = []
-            children = node.body
             type_vars_local_paths = []
             for base in node.bases:
                 if _is_generic_specialization(base):
                     type_args_maybe_objects_paths = [
-                        _ast_node_to_maybe_path(argument)
+                        _conversion.to_maybe_path(argument)
                         for argument in _collect_type_args(base)
                     ]
                     type_vars_local_paths += [
@@ -324,7 +288,7 @@ if _reload_cache:
                             self._is_type_var_object_path(maybe_object_path))
                     ]
                     base_origin_maybe_object_path = (
-                        _ast_node_to_maybe_path(base.value)
+                        _conversion.to_maybe_path(base.value)
                     )
                     if (base_origin_maybe_object_path is not None
                             and self._resolve_object_path(
@@ -333,7 +297,7 @@ if _reload_cache:
                                   (typing_module_path, protocol_object_path)]):
                         continue
                 else:
-                    base_reference_path = _ast_node_to_path(base)
+                    base_reference_path = _conversion.to_path(base)
                     assert (
                             base_reference_path is not None
                     ), (module_path, class_path)
@@ -342,10 +306,10 @@ if _reload_cache:
                     )
                     if (base_module_path == typing_module_path
                             and base_object_path == named_tuple_object_path):
-                        children = list(children)
-                        children.append(
-                                _named_tuple_to_constructor_ast_node(node)
+                        constructor_node = (
+                            _named_tuple_to_constructor_ast_node(node)
                         )
+                        self._add_ast_node((class_name,), constructor_node)
                         self.module_sub_scopes.setdefault(
                                 class_path, []
                         ).append((base_module_path, base_object_path))
@@ -373,7 +337,7 @@ if _reload_cache:
                     self.modules_sub_scopes, self.visited_modules_paths,
                     self.classes_bases, self.generics_parameters_paths
             ).visit
-            for child in children:
+            for child in node.body:
                 parse_child(child)
 
         def visit_FunctionDef(self, node: _ast.FunctionDef) -> None:
@@ -510,7 +474,7 @@ if _reload_cache:
             if not (isinstance(ast_node, (_ast.AnnAssign, _ast.Assign))
                     and isinstance(ast_node.value, _ast.Call)):
                 return False
-            callable_maybe_object_path = _ast_node_to_maybe_path(
+            callable_maybe_object_path = _conversion.to_maybe_path(
                     ast_node.value.func
             )
             if callable_maybe_object_path is None:
@@ -662,7 +626,7 @@ if _reload_cache:
         def visit_Name(self, node: _ast.Name) -> _ast.expr:
             if not isinstance(node.ctx, _ast.Load):
                 return node
-            candidate = self.table.get(_ast_node_to_path(node))
+            candidate = self.table.get(_conversion.to_path(node))
             return (node
                     if candidate is None
                     else _ast.copy_location(_deepcopy(candidate), node))
@@ -670,7 +634,7 @@ if _reload_cache:
         def visit_Attribute(self, node: _ast.Attribute) -> _ast.expr:
             if not isinstance(node.ctx, _ast.Load):
                 return node
-            candidate = self.table.get(_ast_node_to_path(node))
+            candidate = self.table.get(_conversion.to_path(node))
             return (node
                     if candidate is None
                     else _ast.copy_location(_deepcopy(candidate), node))
@@ -798,7 +762,7 @@ if _reload_cache:
                 specialization_args = _unpack_ast_node(
                         _subscript_to_item(base)
                 )
-                generic_object_path = _ast_node_to_path(base.value)
+                generic_object_path = _conversion.to_path(base.value)
                 generic_module_path, generic_object_path = (
                     _scoping.resolve_object_path(
                             child_module_path, child_object_path[:-1],
@@ -840,7 +804,7 @@ if _reload_cache:
                             specializations_module_path, (base_base_name,)
                         )
                         if base_base_name not in specializations_module_scope:
-                            generic_base_base_object_path = _ast_node_to_path(
+                            generic_base_base_object_path = _conversion.to_path(
                                     generic_base.value
                             )
                             (
@@ -877,7 +841,9 @@ if _reload_cache:
                                     modules_sub_scopes
                             )
                     else:
-                        base_base_object_path = _ast_node_to_path(generic_base)
+                        base_base_object_path = _conversion.to_path(
+                                generic_base
+                        )
                         base_base_module_path, base_base_object_path = (
                             _scoping.resolve_object_path(
                                     generic_module_path, (),
@@ -889,7 +855,7 @@ if _reload_cache:
                                             base_base_object_path))
             return specializations_module_path, base_object_path
         else:
-            base_reference_path = _ast_node_to_path(base)
+            base_reference_path = _conversion.to_path(base)
             return _scoping.resolve_object_path(
                     child_module_path, child_object_path[:-1],
                     base_reference_path, modules_definitions,

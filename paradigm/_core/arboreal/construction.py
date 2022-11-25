@@ -19,7 +19,7 @@ else:
 
 def from_raw(raw: RawAstNode,
              *,
-             namespace: t.Dict[str, t.Any] = _AST_NAMESPACE) -> ast.expr:
+             namespace: t.Dict[str, t.Any] = _AST_NAMESPACE) -> ast.AST:
     return eval(raw, namespace)
 
 

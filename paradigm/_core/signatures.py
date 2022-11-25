@@ -8,12 +8,16 @@ from functools import (partial as _partial,
                        singledispatch as _singledispatch)
 from itertools import zip_longest as _zip_longest
 
+from typing_extensions import Self as _Self
+
 from . import (catalog as _catalog,
                scoping as _scoping,
                stubs as _stubs)
 from .arboreal import (construction as _construction,
                        conversion as _conversion)
-from .arboreal.evaluation import evaluate_ast_node as _evaluate_ast_node
+from .arboreal.evaluation import (
+    evaluate_expression_node as _evaluate_expression_node
+)
 from .arboreal.kind import NodeKind as _NodeKind
 from .arboreal.utils import subscript_to_item as _subscript_to_item
 from .models import (Parameter as _Parameter,
@@ -21,6 +25,7 @@ from .models import (Parameter as _Parameter,
                      Signature as _Signature,
                      from_signatures as _from_signatures)
 from .modules import supported_stdlib_qualified_paths as _qualified_paths
+from .utils import decorate_if as _decorate_if
 
 
 @_singledispatch
@@ -29,30 +34,90 @@ def from_callable(_callable: _t.Callable[..., _t.Any]) -> _Signature:
 
 
 @from_callable.register(_types.BuiltinFunctionType)
-@from_callable.register(_types.BuiltinMethodType)
-@from_callable.register(_types.FunctionType)
-@from_callable.register(_types.MethodType)
-@from_callable.register(_types.MethodDescriptorType)
-@from_callable.register(_types.MethodWrapperType)
-@from_callable.register(_types.WrapperDescriptorType)
-@from_callable.register(type)
-def _(_callable: _t.Callable[..., _t.Any]) -> _Signature:
+@_decorate_if(from_callable.register(_types.BuiltinMethodType),
+              _sys.implementation.name != 'pypy')
+def _(
+        _callable: _t.Union[_types.BuiltinFunctionType,
+                            _types.BuiltinMethodType]
+) -> _Signature:
     try:
         return ((_from_callable(_callable)
                  if isinstance(_callable.__self__, type)
                  else (_from_callable(getattr(type(_callable.__self__),
                                               _callable.__name__))
                        .bind(_callable.__self__)))
-                if (isinstance(_callable, _types.BuiltinMethodType)
-                    and _callable.__self__ is not None
-                    and not isinstance(_callable.__self__, _types.ModuleType)
-                    or isinstance(_callable, (_types.MethodType,
-                                              _types.MethodWrapperType)))
-                else (_from_callable(_callable).bind(_callable)
-                      if isinstance(_callable, type)
-                      else _from_callable(_callable)))
+                if (_callable.__self__ is not None
+                    and not isinstance(_callable.__self__, _types.ModuleType))
+                else _from_callable(_callable))
     except _SignatureNotFound:
         return _from_raw_signature(_inspect.signature(_callable))
+
+
+@from_callable.register(_types.FunctionType)
+def _(_callable: _types.FunctionType) -> _Signature:
+    try:
+        return _from_callable(_callable)
+    except _SignatureNotFound:
+        return _from_raw_signature(_inspect.signature(_callable))
+
+
+@from_callable.register(_types.MethodType)
+def _(_callable: _types.MethodType) -> _Signature:
+    try:
+        return (_from_callable(_callable)
+                if isinstance(_callable.__self__, type)
+                else (_from_callable(getattr(type(_callable.__self__),
+                                             _callable.__name__))
+                      .bind(_callable.__self__)))
+    except _SignatureNotFound:
+        return _from_raw_signature(_inspect.signature(_callable))
+
+
+@_decorate_if(from_callable.register(_types.MethodWrapperType),
+              _sys.implementation.name != 'pypy')
+def _(_callable: _types.MethodWrapperType) -> _Signature:
+    self = _callable.__self__
+    assert not isinstance(self, type), _callable
+    try:
+        return (_from_callable(getattr(type(self), _callable.__name__))
+                .bind(self))
+    except _SignatureNotFound:
+        return _from_raw_signature(_inspect.signature(_callable))
+
+
+@_decorate_if(from_callable.register(_types.MethodDescriptorType),
+              _sys.implementation.name != 'pypy')
+@_decorate_if(from_callable.register(_types.WrapperDescriptorType),
+              _sys.implementation.name != 'pypy')
+def _(_callable: _t.Union[_types.MethodDescriptorType,
+                          _types.WrapperDescriptorType]) -> _Signature:
+    cls = _callable.__objclass__
+    assert isinstance(cls, type), _callable
+    try:
+        return _from_callable(_callable)
+    except _SignatureNotFound:
+        return _from_raw_signature(_inspect.signature(_callable))
+
+
+@from_callable.register(type)
+def _(_callable: _t.Callable[..., _t.Any]) -> _Signature:
+    try:
+        qualified_paths = resolve_qualified_paths(_callable)
+        if not qualified_paths:
+            raise _SignatureNotFound
+        module_path, object_path = _resolve_builder_qualified_path(
+                qualified_paths
+        )
+        ast_nodes = _load_ast_nodes(module_path, object_path)
+        class_path, builder_name = object_path[:-1], object_path[-1]
+        return _from_signatures(*[_from_statement_node(ast_node, _callable,
+                                                       module_path, class_path)
+                                  for ast_node in ast_nodes])
+    except _SignatureNotFound:
+        raw_signature = _inspect.signature(_callable)
+        return _from_raw_signature(
+                raw_signature.replace(return_annotation=_Self)
+        )
 
 
 @from_callable.register(_partial)
@@ -62,42 +127,110 @@ def _(_callable: _partial) -> _Signature:
 
 
 @_singledispatch
-def _from_ast(ast_node: _ast.AST, module_path: _catalog.Path) -> _Signature:
+def _from_expression_node(ast_node: _ast.expr,
+                          callable_: _t.Callable[..., _t.Any],
+                          module_path: _catalog.Path,
+                          parent_path: _catalog.Path) -> _Signature:
     raise TypeError(ast_node)
 
 
-@_from_ast.register(_ast.AnnAssign)
-def _(ast_node: _ast.AnnAssign, module_path: _catalog.Path) -> _Signature:
-    annotation_node = ast_node.annotation
-    if ast_node.value is None:
-        return _from_ast(annotation_node, module_path)
-    else:
-        raise ValueError(ast_node)
-
-
-@_from_ast.register(_ast.Subscript)
-def _(ast_node: _ast.Subscript,
+@_from_expression_node.register(_ast.Attribute)
+@_from_expression_node.register(_ast.Name)
+def _(ast_node: _t.Union[_ast.Attribute, _ast.Name],
+      callable_: _t.Callable[..., _t.Any],
       module_path: _catalog.Path,
+      parent_path: _catalog.Path,
+      *,
+      call_name: str = object.__call__.__name__) -> _Signature:
+    object_path = _conversion.to_path(ast_node)
+    module_path, object_path = _scoping.resolve_object_path(
+            module_path, parent_path, object_path, _stubs.definitions,
+            _stubs.references, _stubs.sub_scopes
+    )
+    node_kind = _stubs.nodes_kinds[module_path][object_path]
+    if node_kind is _NodeKind.CLASS:
+        call_ast_nodes = _load_ast_nodes(module_path,
+                                         (*object_path, call_name))
+        call_signatures = [_from_statement_node(ast_node, callable_,
+                                                module_path, ())
+                           for ast_node in call_ast_nodes]
+        return _from_signatures(*[signature.bind(callable_)
+                                  for signature in call_signatures])
+    else:
+        annotation_nodes = [
+            _construction.from_raw(raw)
+            for raw in _stubs.raw_ast_nodes[module_path][object_path]
+        ]
+        if len(annotation_nodes) == 1:
+            annotation_node, = annotation_nodes
+            assert isinstance(annotation_node, _ast.stmt), (module_path,
+                                                            object_path)
+            return _from_statement_node(annotation_node, callable_,
+                                        module_path, ())
+    raise _SignatureNotFound
+
+
+@_from_expression_node.register(_ast.Call)
+def _(ast_node: _ast.Call,
+      callable_: _t.Callable[..., _t.Any],
+      module_path: _catalog.Path,
+      parent_path: _catalog.Path,
+      *,
+      type_var_object_path: _catalog.Path
+      = _catalog.path_from_string(_t.TypeVar.__qualname__),
+      typing_module_path: _catalog.Path
+      = _catalog.module_path_from_module(_t)) -> _Signature:
+    callable_object_path = _conversion.to_path(ast_node.func)
+    callable_module_path, callable_object_path = _scoping.resolve_object_path(
+            module_path, parent_path, callable_object_path, _stubs.definitions,
+            _stubs.references, _stubs.sub_scopes
+    )
+    if (callable_module_path == typing_module_path
+            and callable_object_path == type_var_object_path):
+        maybe_bound_type_node = next((keyword.value
+                                      for keyword in ast_node.keywords
+                                      if keyword.arg == 'bound'),
+                                     None)
+        return (
+            _from_signatures(
+                    *[_from_expression_node(argument, callable_, module_path,
+                                            parent_path)
+                      for argument in ast_node.args[1:]]
+            )
+            if maybe_bound_type_node is None
+            else _from_expression_node(maybe_bound_type_node, callable_,
+                                       module_path, parent_path)
+        )
+    raise _SignatureNotFound
+
+
+@_from_expression_node.register(_ast.Subscript)
+def _(ast_node: _ast.Subscript,
+      callable_: _t.Callable[..., _t.Any],
+      module_path: _catalog.Path,
+      parent_path: _catalog.Path,
       *,
       callable_object_path: _catalog.Path = ('Callable',),
       typing_module_path: _catalog.Path
       = _catalog.module_path_from_module(_t)) -> _Signature:
     value_path = _conversion.to_path(ast_node.value)
     value_module_path, value_object_path = _scoping.resolve_object_path(
-            module_path, (), value_path, _stubs.definitions,
+            module_path, parent_path, value_path, _stubs.definitions,
             _stubs.references, _stubs.sub_scopes
     )
     if (value_module_path == typing_module_path
             and value_object_path == callable_object_path):
         callable_arguments = _subscript_to_item(ast_node)
         assert isinstance(callable_arguments, _ast.Tuple)
-        arguments_annotations = callable_arguments.elts[0]
+        arguments_annotations, returns_annotation = callable_arguments.elts
         return (
             _PlainSignature(
                     *[
                         _Parameter(
-                                annotation=_evaluate_ast_node(annotation,
-                                                              module_path, {}),
+                                annotation=_evaluate_expression_node(
+                                        annotation, module_path, parent_path,
+                                        {}
+                                ),
                                 name='_' + str(index),
                                 kind=_Parameter.Kind.POSITIONAL_ONLY,
                                 has_default=False
@@ -105,7 +238,10 @@ def _(ast_node: _ast.Subscript,
                         for index, annotation in enumerate(
                                 arguments_annotations.elts
                         )
-                    ]
+                    ],
+                    returns=_evaluate_expression_node(
+                            returns_annotation, module_path, parent_path, {}
+                    )
             )
             if isinstance(arguments_annotations, _ast.List)
             # unspecified parameters case
@@ -118,90 +254,99 @@ def _(ast_node: _ast.Subscript,
                                name='kwargs',
                                kind=_Parameter.Kind.VARIADIC_KEYWORD,
                                has_default=False),
+                    returns=_evaluate_expression_node(
+                            returns_annotation, module_path, parent_path, {}
+                    )
             )
         )
     raise _SignatureNotFound
 
 
-@_from_ast.register(_ast.Attribute)
-@_from_ast.register(_ast.Name)
-def _(ast_node: _t.Union[_ast.Attribute, _ast.Name],
-      module_path: _catalog.Path) -> _Signature:
-    object_path = _conversion.to_path(ast_node)
-    module_path, object_path = _scoping.resolve_object_path(
-            module_path, (), object_path, _stubs.definitions,
-            _stubs.references, _stubs.sub_scopes
-    )
-    node_kind = _NodeKind(_stubs.nodes_kinds[module_path][object_path])
-    if node_kind is _NodeKind.CLASS:
-        try:
-            raw_ast_nodes = _stubs.raw_ast_nodes[module_path][
-                (*object_path, object.__call__.__name__)
-            ]
-        except KeyError:
-            raise _SignatureNotFound
-        call_ast_nodes = [_construction.from_raw(raw)
-                          for raw in raw_ast_nodes]
-        call_signatures = [_from_ast(ast_node, module_path)
-                           for ast_node in call_ast_nodes]
-        return _from_signatures(*[signature.bind('self')
-                                  for signature in call_signatures])
-    else:
-        annotation_nodes = [
-            _construction.from_raw(raw)
-            for raw in _stubs.raw_ast_nodes[module_path][object_path]
-        ]
-        if len(annotation_nodes) == 1:
-            annotation_node, = annotation_nodes
-            if isinstance(annotation_node, _ast.Assign):
-                return _from_ast(annotation_node.value, module_path)
-    raise _SignatureNotFound
+@_singledispatch
+def _from_statement_node(ast_node: _ast.stmt,
+                         callable_: _t.Callable[..., _t.Any],
+                         module_path: _catalog.Path,
+                         parent_path: _catalog.Path) -> _Signature:
+    raise TypeError(ast_node)
 
 
-@_from_ast.register(_ast.Call)
-@_from_ast.register(_ast.Attribute)
-def _(ast_node: _ast.Subscript,
+@_from_statement_node.register(_ast.AnnAssign)
+def _(ast_node: _ast.AnnAssign,
+      callable_: _t.Callable[..., _t.Any],
       module_path: _catalog.Path,
-      *,
-      type_var_object_path: _catalog.Path
-      = _catalog.path_from_string(_t.TypeVar.__qualname__),
-      typing_module_path: _catalog.Path
-      = _catalog.module_path_from_module(_t)) -> _Signature:
-    assert isinstance(ast_node, _ast.Call), ast_node
-    callable_object_path = _conversion.to_path(ast_node.func)
-    callable_module_path, callable_object_path = (
-        _scoping.resolve_object_path(
-                module_path, (), callable_object_path,
-                _stubs.definitions, _stubs.references,
-                _stubs.sub_scopes
-        )
-    )
-    if (callable_module_path == typing_module_path
-            and callable_object_path == type_var_object_path):
-        maybe_bound_type_node = next((keyword.value
-                                      for keyword in ast_node.keywords
-                                      if keyword.arg == 'bound'),
-                                     None)
-        if maybe_bound_type_node is None:
-            return _from_signatures(*[_from_ast(argument, module_path)
-                                      for argument in ast_node.args[1:]])
-        else:
-            return _from_ast(maybe_bound_type_node, module_path)
-    raise _SignatureNotFound
+      parent_path: _catalog.Path) -> _Signature:
+    return _from_expression_node((ast_node.annotation
+                                  if ast_node.value is None
+                                  else ast_node.value), callable_, module_path,
+                                 parent_path)
 
 
-@_from_ast.register(_ast.AsyncFunctionDef)
-@_from_ast.register(_ast.FunctionDef)
-def _(ast_node: _ast.FunctionDef, module_path: _catalog.Path) -> _Signature:
+@_from_statement_node.register(_ast.Assign)
+def _(ast_node: _ast.Assign,
+      callable_: _t.Callable[..., _t.Any],
+      module_path: _catalog.Path,
+      parent_path: _catalog.Path) -> _Signature:
+    return _from_expression_node(ast_node.value, callable_, module_path,
+                                 parent_path)
+
+
+@_from_statement_node.register(_ast.AsyncFunctionDef)
+@_from_statement_node.register(_ast.FunctionDef)
+def _(
+        ast_node: _t.Union[_ast.AsyncFunctionDef, _ast.FunctionDef],
+        callable_: _t.Callable[..., _t.Any],
+        module_path: _catalog.Path,
+        parent_path: _catalog.Path,
+        *,
+        initializer_name: str = object.__init__.__name__,
+) -> _Signature:
     signature_ast = ast_node.args
-    parameters = filter(
+    parameters = list(filter(
             None,
-            (*_to_positional_parameters(signature_ast, module_path),
-             _to_variadic_positional_parameter(signature_ast, module_path),
-             *_to_keyword_parameters(signature_ast, module_path),
-             _to_variadic_keyword_parameter(signature_ast, module_path))
-    )
-    return _PlainSignature(*parameters)
+            (*_to_positional_parameters(signature_ast, module_path,
+                                        parent_path),
+             _to_variadic_positional_parameter(signature_ast, module_path,
+                                               parent_path),
+             *_to_keyword_parameters(signature_ast, module_path, parent_path),
+             _to_variadic_keyword_parameter(signature_ast, module_path,
+                                            parent_path))
+    ))
+    returns_node = ast_node.returns
+    returns = (_t.Any
+               if returns_node is None
+               else _evaluate_expression_node(returns_node, module_path,
+                                              parent_path, {}))
+    if isinstance(callable_, type):
+        del parameters[0]
+        if ast_node.name == initializer_name:
+            assert returns is None, (module_path,
+                                     (*parent_path, ast_node.name))
+            returns = _Self
+    elif any(_is_classmethod(decorator_node, module_path, parent_path)
+             for decorator_node in ast_node.decorator_list):
+        parameters[0] = _Parameter(annotation=_t.Type[_Self],
+                                   has_default=False,
+                                   kind=_Parameter.Kind.POSITIONAL_ONLY,
+                                   name=parameters[0].name)
+    return _PlainSignature(*parameters,
+                           returns=returns)
+
+
+def _is_classmethod(
+        expression_node: _ast.expr,
+        module_path: _catalog.Path,
+        parent_path: _catalog.Path,
+        *,
+        classmethod_qualified_path: _catalog.QualifiedPath
+        = (_catalog.module_path_from_module(_builtins),
+           _catalog.path_from_string(classmethod.__qualname__)),
+) -> bool:
+    maybe_path = _conversion.to_maybe_path(expression_node)
+    return (maybe_path is not None
+            and _scoping.resolve_object_path(
+                    module_path, parent_path, maybe_path, _stubs.definitions,
+                    _stubs.references, _stubs.sub_scopes
+            ) == classmethod_qualified_path)
 
 
 class _SignatureNotFound(Exception):
@@ -220,42 +365,66 @@ def _try_resolve_object_path(
         return (), ()
 
 
-def _from_callable(
+def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
+    module_path, object_path = _resolve_qualified_path(value)
+    ast_nodes = _load_ast_nodes(module_path, object_path)
+    parent_path = object_path[:-1]
+    return _from_signatures(*[_from_statement_node(ast_node, value,
+                                                   module_path, parent_path)
+                              for ast_node in ast_nodes])
+
+
+def _resolve_qualified_path(
         value: _t.Callable[..., _t.Any],
+) -> _catalog.QualifiedPath:
+    qualified_paths = resolve_qualified_paths(value)
+    if not qualified_paths:
+        raise _SignatureNotFound
+    module_path, object_path = qualified_paths[0]
+    if _stubs.nodes_kinds[module_path][object_path] is _NodeKind.CLASS:
+        module_path, object_path = _resolve_builder_qualified_path(
+                qualified_paths
+        )
+    return module_path, object_path
+
+
+def _resolve_builder_qualified_path(
+        qualified_paths: _t.Sequence[_catalog.QualifiedPath],
         *,
         object_builder_qualified_path: _catalog.QualifiedPath
         = (_catalog.module_path_from_module(_builtins),
            _catalog.path_from_string(object.__qualname__)
            + _catalog.path_from_string(object.__new__.__name__))
-) -> _Signature:
-    qualified_paths = resolve_qualified_paths(value)
-    if not qualified_paths:
-        raise _SignatureNotFound
-    module_path, object_path = qualified_paths[0]
-    if (isinstance(value, type)
-            or (_stubs.nodes_kinds[module_path][object_path]
-                == _NodeKind.CLASS)):
-        builders_qualified_paths = {
-            _to_class_builder_qualified_path(module_path, object_path)
-            for module_path, object_path in qualified_paths
-        }
+) -> _catalog.QualifiedPath:
+    candidates = {_to_class_builder_qualified_path(module_path, object_path)
+                  for module_path, object_path in qualified_paths}
+    try:
+        (module_path, object_path), = candidates
+    except ValueError:
         try:
-            (module_path, object_path), = builders_qualified_paths
-        except ValueError:
-            try:
-                builders_qualified_paths.remove(object_builder_qualified_path)
-                (module_path, object_path), = builders_qualified_paths
-            except (KeyError, ValueError):
-                raise _SignatureNotFound
+            candidates.remove(object_builder_qualified_path)
+            (module_path, object_path), = candidates
+        except (KeyError, ValueError):
+            raise _SignatureNotFound
+    return module_path, object_path
+
+
+def _load_ast_nodes(module_path: _catalog.Path,
+                    object_path: _catalog.Path) -> _t.List[_ast.stmt]:
     try:
         raw_ast_nodes = _stubs.raw_ast_nodes[module_path][object_path]
     except KeyError:
         raise _SignatureNotFound
-    assert raw_ast_nodes, (module_path, object_path)
-    ast_nodes = [_construction.from_raw(raw_ast_node)
-                 for raw_ast_node in raw_ast_nodes]
-    return _from_signatures(*[_from_ast(ast_node, module_path)
-                              for ast_node in ast_nodes])
+    else:
+        assert raw_ast_nodes, (module_path, object_path)
+        return [_statement_node_from_raw(raw_ast_node)
+                for raw_ast_node in raw_ast_nodes]
+
+
+def _statement_node_from_raw(raw: _conversion.RawAstNode) -> _ast.stmt:
+    result = _construction.from_raw(raw)
+    assert isinstance(result, _ast.stmt), raw
+    return result
 
 
 def resolve_qualified_paths(
@@ -265,11 +434,10 @@ def resolve_qualified_paths(
     try:
         candidates_paths = _qualified_paths[module_path][object_path]
     except KeyError:
-        if module_path:
-            assert object_path, value
-            qualified_paths = [(module_path, object_path)]
-        else:
-            qualified_paths = []
+        assert not module_path or object_path, value
+        qualified_paths = ([(module_path, object_path)]
+                           if module_path
+                           else [])
     else:
         qualified_paths = [path
                            for path in candidates_paths
@@ -298,8 +466,8 @@ def _to_class_builder_qualified_path(
     for base_module_path, base_object_path in _to_mro(module_path,
                                                       object_path):
         base_module_annotations = _stubs.raw_ast_nodes[base_module_path]
-        constructor_path = object_path + (constructor_name,)
-        initializer_path = object_path + (initializer_name,)
+        constructor_path = (*object_path, constructor_name)
+        initializer_path = (*object_path, initializer_name)
         if initializer_path in base_module_annotations:
             return (base_module_path, initializer_path)
         elif constructor_path in base_module_annotations:
@@ -335,47 +503,59 @@ def _value_has_qualified_path(value: _t.Any,
     return candidate is value
 
 
+def _parameter_from_raw(raw: _inspect.Parameter) -> _Parameter:
+    return _Parameter(annotation=(_t.Any
+                                  if raw.annotation is _inspect._empty
+                                  else raw.annotation),
+                      name=raw.name,
+                      kind=_Parameter.Kind(raw.kind),
+                      has_default=raw.default is not _inspect._empty)
+
+
 def _from_raw_signature(object_: _inspect.Signature) -> _Signature:
-    return _PlainSignature(*[
-        _Parameter(annotation=(_t.Any
-                               if raw.annotation is _inspect._empty
-                               else raw.annotation),
-                   name=raw.name,
-                   kind=_Parameter.Kind(raw.kind),
-                   has_default=raw.default is not _inspect._empty)
-        for raw in object_.parameters.values()
-    ])
+    return _PlainSignature(
+            *[_parameter_from_raw(raw) for raw in object_.parameters.values()],
+            returns=(_t.Any
+                     if object_.return_annotation is _inspect._empty
+                     else object_.return_annotation)
+    )
 
 
 def _parameter_from_ast_node(ast_node: _ast.arg,
                              default_ast: _t.Optional[_ast.expr],
                              module_path: _catalog.Path,
-                             *,
+                             parent_path: _catalog.Path,
                              kind: _Parameter.Kind) -> _Parameter:
-    return _Parameter(annotation=(_t.Any
-                                  if ast_node.annotation is None
-                                  else _evaluate_ast_node(ast_node.annotation,
-                                                          module_path, {})),
-                      has_default=default_ast is not None,
-                      kind=kind,
-                      name=ast_node.arg)
+    return _Parameter(
+            annotation=(_t.Any
+                        if ast_node.annotation is None
+                        else _evaluate_expression_node(ast_node.annotation,
+                                                       module_path,
+                                                       parent_path, {})),
+            has_default=default_ast is not None,
+            kind=kind,
+            name=ast_node.arg
+    )
 
 
 def _to_keyword_parameters(
         signature_ast: _ast.arguments,
-        module_path: _catalog.Path
+        module_path: _catalog.Path,
+        parent_path: _catalog.Path,
+        *,
+        kind: _Parameter.Kind = _Parameter.Kind.KEYWORD_ONLY
 ) -> _t.Iterable[_Parameter]:
-    kind = _Parameter.Kind.KEYWORD_ONLY
     return [_parameter_from_ast_node(parameter_ast, default_ast, module_path,
-                                     kind=kind)
+                                     parent_path, kind)
             for parameter_ast, default_ast in zip(signature_ast.kwonlyargs,
                                                   signature_ast.kw_defaults)]
 
 
 def _to_positional_parameters(
         signature_ast: _ast.arguments,
-        module_path: _catalog.Path
-) -> _t.Iterable[_Parameter]:
+        module_path: _catalog.Path,
+        parent_path: _catalog.Path
+) -> _t.List[_Parameter]:
     # double-reversing since parameters with default arguments go last
     parameters_with_defaults_ast: _t.List[
         _t.Tuple[_ast.arg, _t.Optional[_ast.expr]]
@@ -383,31 +563,33 @@ def _to_positional_parameters(
                           signature_ast.defaults))[::-1]
     kind = _Parameter.Kind.POSITIONAL_ONLY
     return [_parameter_from_ast_node(parameter_ast, default_ast, module_path,
-                                     kind=kind)
+                                     parent_path, kind)
             for parameter_ast, default_ast in parameters_with_defaults_ast]
 
 
 def _to_variadic_keyword_parameter(
         signature_ast: _ast.arguments,
-        module_path: _catalog.Path
+        module_path: _catalog.Path,
+        parent_path: _catalog.Path,
+        *,
+        kind: _Parameter.Kind = _Parameter.Kind.VARIADIC_KEYWORD
 ) -> _t.Optional[_Parameter]:
     ast_node = signature_ast.kwarg
-    return (
-        None
-        if ast_node is None
-        else _parameter_from_ast_node(ast_node, None, module_path,
-                                      kind=_Parameter.Kind.VARIADIC_KEYWORD)
-    )
+    return (None
+            if ast_node is None
+            else _parameter_from_ast_node(ast_node, None, module_path,
+                                          parent_path, kind))
 
 
 def _to_variadic_positional_parameter(
         signature_ast: _ast.arguments,
-        module_path: _catalog.Path
+        module_path: _catalog.Path,
+        parent_path: _catalog.Path,
+        *,
+        kind: _Parameter.Kind = _Parameter.Kind.VARIADIC_POSITIONAL
 ) -> _t.Optional[_Parameter]:
     ast_node = signature_ast.vararg
-    return (
-        None
-        if ast_node is None
-        else _parameter_from_ast_node(ast_node, None, module_path,
-                                      kind=_Parameter.Kind.VARIADIC_POSITIONAL)
-    )
+    return (None
+            if ast_node is None
+            else _parameter_from_ast_node(ast_node, None, module_path,
+                                          parent_path, kind))

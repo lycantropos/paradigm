@@ -236,3 +236,21 @@ def _(ast_node: ast.Name) -> catalog.Path:
 @to_path.register(ast.Attribute)
 def _(ast_node: ast.Attribute) -> catalog.Path:
     return to_path(ast_node.value) + (ast_node.attr,)
+
+
+@singledispatch
+def to_maybe_path(ast_node: ast.expr) -> t.Optional[catalog.Path]:
+    return None
+
+
+@to_maybe_path.register(ast.Name)
+def _(ast_node: ast.Name) -> t.Optional[catalog.Path]:
+    return (ast_node.id,)
+
+
+@to_maybe_path.register(ast.Attribute)
+def _(ast_node: ast.Attribute) -> t.Optional[catalog.Path]:
+    value_maybe_path = to_maybe_path(ast_node.value)
+    return (None
+            if value_maybe_path is None
+            else (*value_maybe_path, ast_node.attr))

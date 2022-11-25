@@ -28,24 +28,47 @@ class Parameter:
         def __str__(self) -> str:
             return self.name.lower().replace('_', ' ')
 
-    __slots__ = 'annotation', 'has_default', 'kind', 'name'
+    @property
+    def annotation(self) -> t.Any:
+        return self._annotation
 
-    def __init__(self,
-                 *,
-                 annotation: t.Any,
-                 has_default: bool,
-                 kind: Kind,
-                 name: str) -> None:
+    @property
+    def has_default(self) -> bool:
+        return self._has_default
+
+    @property
+    def kind(self) -> Kind:
+        return self._kind
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    __slots__ = '_annotation', '_has_default', '_kind', '_name'
+
+    _annotation: t.Any
+    _has_default: bool
+    _kind: Kind
+    _name: str
+
+    def __new__(cls,
+                *,
+                annotation: t.Any,
+                has_default: bool,
+                kind: Kind,
+                name: str) -> 'Parameter':
         # performing validation inside of `__init__` instead of `__new__`,
         # because `pickle` does not support keyword only arguments in `__new__`
-        if ((kind is self.Kind.VARIADIC_POSITIONAL
-             or kind is self.Kind.VARIADIC_KEYWORD)
+        if ((kind is cls.Kind.VARIADIC_POSITIONAL
+             or kind is cls.Kind.VARIADIC_KEYWORD)
                 and has_default):
             raise ValueError('Variadic parameters '
                              'can\'t have default arguments.')
-        self.annotation, self.has_default, self.kind, self.name = (
+        self = super().__new__(cls)
+        self._annotation, self._has_default, self._kind, self._name = (
             annotation, has_default, kind, name
         )
+        return self
 
     @t.overload
     def __eq__(self, other: 'Parameter') -> bool:
@@ -66,7 +89,7 @@ class Parameter:
     def __hash__(self) -> int:
         return hash((self.name, self.kind, self.has_default))
 
-    __repr__ = generate_repr(__init__,
+    __repr__ = generate_repr(__new__,
                              argument_serializer=annotated.to_repr)
 
     def __str__(self) -> str:
@@ -134,6 +157,10 @@ class PlainSignature(BaseSignature):
     def parameters(self) -> t.Sequence[Parameter]:
         return self._parameters
 
+    @property
+    def returns(self) -> t.Any:
+        return self._returns
+
     def all_set(self, *args: _Arg, **kwargs: _KwArg) -> bool:
         parameters_by_kind = to_parameters_by_kind(self._parameters)
         positionals = (
@@ -198,24 +225,29 @@ class PlainSignature(BaseSignature):
 
     def bind(self, *args: _Arg, **kwargs: _KwArg) -> 'PlainSignature':
         parameters_by_kind = to_parameters_by_kind(self._parameters)
-        return PlainSignature(*_bind_keywords(
-                _bind_positionals(
-                        self._parameters, args, kwargs,
-                        has_variadic=bool(
-                                parameters_by_kind[
-                                    Parameter.Kind.VARIADIC_POSITIONAL
-                                ]
-                        )
+        return PlainSignature(
+                *_bind_keywords(
+                        _bind_positionals(
+                                self._parameters, args, kwargs,
+                                has_variadic=bool(
+                                        parameters_by_kind[
+                                            Parameter.Kind.VARIADIC_POSITIONAL
+                                        ]
+                                )
+                        ),
+                        kwargs,
+                        has_variadic=bool(parameters_by_kind[
+                                              Parameter.Kind.VARIADIC_KEYWORD
+                                          ])
                 ),
-                kwargs,
-                has_variadic=bool(parameters_by_kind[
-                                      Parameter.Kind.VARIADIC_KEYWORD
-                                  ])
-        ))
+                returns=self._returns
+        )
 
-    __slots__ = '_parameters',
+    __slots__ = '_parameters', '_returns'
 
-    def __new__(cls, *parameters: Parameter) -> 'PlainSignature':
+    def __new__(cls,
+                *parameters: Parameter,
+                returns: t.Any) -> 'PlainSignature':
         try:
             prior, *rest = parameters
         except ValueError:
@@ -258,8 +290,8 @@ class PlainSignature(BaseSignature):
                 visited_kinds.add(kind)
         return super().__new__(cls)
 
-    def __init__(self, *parameters: Parameter) -> None:
-        self._parameters = parameters
+    def __init__(self, *parameters: Parameter, returns: t.Any) -> None:
+        self._parameters, self._returns = parameters, returns
 
     @t.overload
     def __eq__(self, other: BaseSignature) -> bool:
@@ -271,7 +303,8 @@ class PlainSignature(BaseSignature):
 
     def __eq__(self, other):
         return ((isinstance(other, PlainSignature)
-                 and self._parameters == other._parameters)
+                 and self._parameters == other._parameters
+                 and annotated.are_equal(self._returns, other._returns))
                 if isinstance(other, BaseSignature)
                 else NotImplemented)
 
@@ -301,7 +334,8 @@ class PlainSignature(BaseSignature):
         parts.extend(map(str, keywords_only))
         parts.extend(map(str,
                          parameters_by_kind[Parameter.Kind.VARIADIC_KEYWORD]))
-        return '(' + ', '.join(parts) + ')'
+        return ('(' + ', '.join(parts) + ') -> '
+                + annotated.to_repr(self.returns))
 
 
 Signature = t.Union['OverloadedSignature', PlainSignature]
@@ -359,7 +393,7 @@ class OverloadedSignature(BaseSignature):
     __repr__ = generate_repr(__init__)
 
     def __str__(self) -> str:
-        return ' or '.join(map(str, self._signatures))
+        return ' | '.join(map(str, self._signatures))
 
 
 def from_signatures(*signatures: Signature) -> Signature:
