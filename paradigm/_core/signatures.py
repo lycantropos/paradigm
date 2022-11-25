@@ -328,6 +328,11 @@ def _(
                                    has_default=False,
                                    kind=_Parameter.Kind.POSITIONAL_ONLY,
                                    name=parameters[0].name)
+    elif _stubs.nodes_kinds[module_path].get(parent_path) is _NodeKind.CLASS:
+        parameters[0] = _Parameter(annotation=_Self,
+                                   has_default=False,
+                                   kind=_Parameter.Kind.POSITIONAL_ONLY,
+                                   name=parameters[0].name)
     return _PlainSignature(*parameters,
                            returns=returns)
 
@@ -512,12 +517,12 @@ def _parameter_from_raw(raw: _inspect.Parameter) -> _Parameter:
                       has_default=raw.default is not _inspect._empty)
 
 
-def _from_raw_signature(object_: _inspect.Signature) -> _Signature:
+def _from_raw_signature(value: _inspect.Signature) -> _Signature:
     return _PlainSignature(
-            *[_parameter_from_raw(raw) for raw in object_.parameters.values()],
+            *[_parameter_from_raw(raw) for raw in value.parameters.values()],
             returns=(_t.Any
-                     if object_.return_annotation is _inspect._empty
-                     else object_.return_annotation)
+                     if value.return_annotation is _inspect._empty
+                     else value.return_annotation)
     )
 
 
