@@ -1,25 +1,26 @@
 import sys
-from functools import (partial,
-                       reduce,
+from functools import (reduce,
                        singledispatch)
-from operator import (attrgetter,
-                      le)
 from typing import (Any,
-                    Callable,
                     Dict,
+                    List,
                     Optional,
                     Tuple,
                     TypeVar)
 
 from hypothesis import strategies
+from typing_extensions import Literal
 
 from paradigm._core import catalog
 from paradigm._core.models import (to_parameters_by_kind,
                                    to_parameters_by_name)
-from paradigm.base import (OverloadedSignature,
-                           Parameter,
-                           PlainSignature)
-from tests.utils import (AnySignature,
+from paradigm.base import (OptionalParameter,
+                           OverloadedSignature,
+                           ParameterKind,
+                           PlainSignature,
+                           RequiredParameter)
+from tests.utils import (AnyParameter,
+                         AnySignature,
                          Args,
                          Kwargs,
                          Strategy,
@@ -40,39 +41,118 @@ def qualified_path_is_valid(value: type) -> bool:
                         catalog.path_to_string(object_path), None) is value)
 
 
-annotations_strategy = strategies.from_type(
-        type
-).filter(qualified_path_is_valid)
+base_hashable_values_strategy = (
+        strategies.none()
+        | strategies.booleans()
+        | strategies.integers()
+        | strategies.floats(allow_infinity=False,
+                            allow_nan=False)
+        | strategies.complex_numbers(allow_infinity=False,
+                                     allow_nan=False)
+        | strategies.binary()
+        | strategies.text()
+)
+hashable_values_strategy = strategies.recursive(
+        base_hashable_values_strategy,
+        lambda step: (strategies.lists(step).map(tuple)
+                      | strategies.frozensets(step))
+)
+values_strategy = strategies.recursive(
+        hashable_values_strategy | strategies.sets(hashable_values_strategy),
+        lambda step: (strategies.lists(step)
+                      | strategies.lists(step).map(tuple)
+                      | strategies.dictionaries(hashable_values_strategy,
+                                                step))
+)
+types_with_round_trippable_repr = strategies.from_type(type).filter(
+        qualified_path_is_valid
+)
 
 
-def to_parameters(*,
-                  annotations: Strategy[str] = annotations_strategy,
-                  names: Strategy[str] = identifiers,
-                  kinds: Strategy[Parameter.Kind],
-                  has_default_flags: Strategy[bool] =
-                  strategies.booleans()) -> Strategy[Parameter]:
+def is_hashable(value: Any) -> bool:
+    try:
+        hash(value)
+    except Exception:
+        return False
+    else:
+        return True
+
+
+hashable_annotations_strategy = (
+        strategies.none()
+        | (strategies.lists(hashable_values_strategy,
+                            min_size=1)
+           .map(tuple)
+           .map(Literal.__getitem__))
+        | types_with_round_trippable_repr.filter(is_hashable)
+)
+annotations_strategy = (
+        strategies.none()
+        | (strategies.lists(values_strategy,
+                            min_size=1)
+           .map(tuple)
+           .map(Literal.__getitem__))
+        | types_with_round_trippable_repr
+)
+
+
+def to_optional_parameters(
+        *,
+        annotations: Strategy[Any] = annotations_strategy,
+        names: Strategy[str] = identifiers,
+        kinds: Strategy[ParameterKind]
+        = strategies.sampled_from(list(ParameterKind)),
+        defaults: Strategy[bool] = values_strategy
+) -> Strategy[OptionalParameter]:
     def normalize_mapping(mapping: Dict[str, Any]) -> Dict[str, Any]:
         kind = mapping['kind']
-        return ({**mapping, 'has_default': False}
-                if (kind is Parameter.Kind.VARIADIC_KEYWORD
-                    or kind is Parameter.Kind.VARIADIC_POSITIONAL)
-                else mapping)
+        if (kind is ParameterKind.VARIADIC_KEYWORD
+                or kind is ParameterKind.VARIADIC_POSITIONAL):
+            mapping.pop('default', None)
+        return mapping
 
-    return (strategies.fixed_dictionaries(dict(annotation=annotations,
-                                               name=names,
-                                               kind=kinds,
-                                               has_default=has_default_flags))
+    return (strategies.fixed_dictionaries({'annotation': annotations,
+                                           'name': names,
+                                           'kind': kinds,
+                                           'default': defaults})
             .map(normalize_mapping)
-            .map(lambda mapping: Parameter(**mapping)))
+            .map(lambda mapping: OptionalParameter(**mapping)))
 
 
-def to_plain_signatures(*,
-                        parameters_names: Strategy[str] = identifiers,
-                        parameters_kinds: Strategy[Parameter.Kind],
-                        parameters_has_default_flags: Strategy[bool] =
-                        strategies.booleans(),
-                        min_size: int = 0,
-                        max_size: int) -> Strategy[PlainSignature]:
+def to_required_parameters(
+        *,
+        annotations: Strategy[Any] = annotations_strategy,
+        names: Strategy[str] = identifiers,
+        kinds: Strategy[Literal[ParameterKind.POSITIONAL_ONLY,
+                                ParameterKind.POSITIONAL_OR_KEYWORD,
+                                ParameterKind.KEYWORD_ONLY]]
+        = strategies.sampled_from([ParameterKind.POSITIONAL_ONLY,
+                                   ParameterKind.POSITIONAL_OR_KEYWORD,
+                                   ParameterKind.KEYWORD_ONLY])
+) -> Strategy[RequiredParameter]:
+    return strategies.builds(RequiredParameter,
+                             annotation=annotations,
+                             name=names,
+                             kind=kinds)
+
+
+def to_plain_signatures(
+        *,
+        parameters_annotations: Strategy[Any] = annotations_strategy,
+        parameters_names: Strategy[str] = identifiers,
+        required_parameters_kinds: Strategy[
+            Literal[ParameterKind.POSITIONAL_ONLY,
+                    ParameterKind.POSITIONAL_OR_KEYWORD,
+                    ParameterKind.KEYWORD_ONLY]
+        ] = strategies.sampled_from([ParameterKind.POSITIONAL_ONLY,
+                                     ParameterKind.POSITIONAL_OR_KEYWORD,
+                                     ParameterKind.KEYWORD_ONLY]),
+        optional_parameters_kinds: Strategy[ParameterKind]
+        = strategies.sampled_from(list(ParameterKind)),
+        parameters_defaults: Strategy[bool] = values_strategy,
+        min_size: int = 0,
+        max_size: int
+) -> Strategy[PlainSignature]:
     if min_size < 0:
         raise ValueError('Min size '
                          'should not be negative, '
@@ -82,66 +162,53 @@ def to_plain_signatures(*,
                          'should not be greater '
                          'than max size, '
                          f'but found {min_size} > {max_size}.')
-
-    empty = strategies.builds(PlainSignature,
-                              returns=annotations_strategy)
-    if max_size == 0:
-        return empty
-
-    @strategies.composite
-    def extend(
-            draw: Callable[[Strategy[_T1]], _T1],
-            base: Strategy[Tuple[Parameter, ...]]
-    ) -> Strategy[Tuple[Parameter, ...]]:
-        precursors = draw(base)
-        precursors_names = set(map(attrgetter('name'), precursors))
-        precursors_kinds = to_parameters_by_kind(precursors)
-        last_precursor = precursors[-1]
-
-        def is_kind_valid(parameter: Parameter) -> bool:
-            kind = parameter.kind
-            return (not precursors_kinds[kind]
-                    if (kind is Parameter.Kind.VARIADIC_KEYWORD
-                        or kind is Parameter.Kind.VARIADIC_POSITIONAL)
-                    else True)
-
-        def normalize(parameter: Parameter) -> Parameter:
-            kind = parameter.kind
-            if (kind is Parameter.Kind.POSITIONAL_OR_KEYWORD
-                    or kind is Parameter.Kind.POSITIONAL_ONLY):
-                if last_precursor.has_default and not parameter.has_default:
-                    return Parameter(annotation=parameter.annotation,
-                                     name=parameter.name,
-                                     kind=kind,
-                                     has_default=True)
-            return parameter
-
-        follower = draw(
-                (to_parameters(names=identifiers.filter(negate(precursors_names
-                                                               .__contains__)),
-                               kinds=(parameters_kinds
-                                      .filter(partial(le,
-                                                      max(precursors_kinds)))),
-                               has_default_flags=parameters_has_default_flags)
-                 .filter(is_kind_valid)
-                 .map(normalize))
-        )
-        return precursors + (follower,)
-
-    base_parameters = to_parameters(names=parameters_names,
-                                    kinds=parameters_kinds,
-                                    has_default_flags
-                                    =parameters_has_default_flags)
-    non_empty = strategies.builds(
-            pack(PlainSignature),
-            strategies.recursive(strategies.tuples(base_parameters),
-                                 extend,
-                                 max_leaves=max_size),
-            strategies.fixed_dictionaries({'returns': annotations_strategy})
+    base_parameters = (
+            to_required_parameters(annotations=parameters_annotations,
+                                   names=parameters_names,
+                                   kinds=required_parameters_kinds)
+            | to_optional_parameters(annotations=parameters_annotations,
+                                     names=parameters_names,
+                                     kinds=optional_parameters_kinds,
+                                     defaults=parameters_defaults)
     )
-    if min_size == 0:
-        return empty | non_empty
-    return non_empty
+
+    def normalize_parameters(
+            parameters: List[AnyParameter]
+    ) -> List[AnyParameter]:
+        parameters_by_kind = to_parameters_by_kind(
+                to_parameters_by_name(parameters).values()
+        )
+        for kind, kind_parameters in parameters_by_kind.items():
+            if (kind is ParameterKind.VARIADIC_POSITIONAL
+                    or kind is ParameterKind.VARIADIC_KEYWORD):
+                kind_parameters[:] = kind_parameters[:1]
+            kind_parameters.sort(key=OptionalParameter.__instancecheck__)
+        if any(
+                isinstance(parameter, OptionalParameter)
+                for parameter in parameters_by_kind.get(
+                        ParameterKind.POSITIONAL_ONLY, []
+                )
+        ) and ParameterKind.POSITIONAL_OR_KEYWORD in parameters_by_kind:
+            parameters_by_kind[ParameterKind.POSITIONAL_OR_KEYWORD][:] = [
+                parameter
+                for parameter in parameters_by_kind[
+                    ParameterKind.POSITIONAL_OR_KEYWORD
+                ]
+                if isinstance(parameter, OptionalParameter)
+            ]
+        result = []
+        for kind in sorted(parameters_by_kind.keys()):
+            result += parameters_by_kind[kind]
+        return result
+
+    return strategies.builds(
+            pack(PlainSignature),
+            (strategies.lists(base_parameters,
+                              min_size=min_size,
+                              max_size=max_size)
+             .map(normalize_parameters)),
+            strategies.fixed_dictionaries({'returns': parameters_annotations})
+    )
 
 
 def to_overloaded_signatures(
@@ -242,8 +309,8 @@ def signature_to_min_positionals_count(signature: AnySignature) -> int:
 @signature_to_min_positionals_count.register(PlainSignature)
 def _(signature: PlainSignature) -> int:
     parameters_by_kind = to_parameters_by_kind(signature.parameters)
-    positionals = (parameters_by_kind[Parameter.Kind.POSITIONAL_ONLY]
-                   + parameters_by_kind[Parameter.Kind.POSITIONAL_OR_KEYWORD])
+    positionals = (parameters_by_kind[ParameterKind.POSITIONAL_ONLY]
+                   + parameters_by_kind[ParameterKind.POSITIONAL_OR_KEYWORD])
     return len(positionals)
 
 
@@ -262,28 +329,28 @@ def _(signature: OverloadedSignature) -> int:
 @singledispatch
 def signature_to_keywords_intersection(
         signature: AnySignature
-) -> Dict[str, Parameter]:
+) -> Dict[str, AnyParameter]:
     raise TypeError(f'Unsupported signature type: {type(signature)}.')
 
 
 @singledispatch
 def signature_to_keywords_union(
         signature: AnySignature
-) -> Dict[str, Parameter]:
+) -> Dict[str, AnyParameter]:
     raise TypeError(f'Unsupported signature type: {type(signature)}.')
 
 
 @signature_to_keywords_union.register(PlainSignature)
 @signature_to_keywords_intersection.register(PlainSignature)
-def _(signature: PlainSignature) -> Dict[str, Parameter]:
+def _(signature: PlainSignature) -> Dict[str, AnyParameter]:
     parameters_by_kind = to_parameters_by_kind(signature.parameters)
-    keywords = (parameters_by_kind[Parameter.Kind.POSITIONAL_OR_KEYWORD]
-                + parameters_by_kind[Parameter.Kind.KEYWORD_ONLY])
+    keywords = (parameters_by_kind[ParameterKind.POSITIONAL_OR_KEYWORD]
+                + parameters_by_kind[ParameterKind.KEYWORD_ONLY])
     return to_parameters_by_name(keywords)
 
 
 @signature_to_keywords_intersection.register(OverloadedSignature)
-def _(signature: OverloadedSignature) -> Dict[str, Parameter]:
+def _(signature: OverloadedSignature) -> Dict[str, AnyParameter]:
     if not signature.signatures:
         return {}
 
@@ -298,7 +365,7 @@ def _(signature: OverloadedSignature) -> Dict[str, Parameter]:
 
 
 @signature_to_keywords_union.register(OverloadedSignature)
-def _(signature: OverloadedSignature) -> Dict[str, Parameter]:
+def _(signature: OverloadedSignature) -> Dict[str, AnyParameter]:
     if not signature.signatures:
         return {}
 

@@ -11,10 +11,13 @@ from typing import (Any,
 
 from hypothesis.strategies import SearchStrategy
 
-from paradigm.base import (OverloadedSignature,
-                           PlainSignature)
+from paradigm.base import (OptionalParameter,
+                           OverloadedSignature,
+                           PlainSignature,
+                           RequiredParameter)
 
 AnySignature = TypeVar('AnySignature', OverloadedSignature, PlainSignature)
+AnyParameter = TypeVar('AnyParameter', OptionalParameter, RequiredParameter)
 Strategy = SearchStrategy
 Predicate = Callable[..., bool]
 _T1 = TypeVar('_T1')

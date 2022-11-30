@@ -5,7 +5,7 @@ from tests.utils import (AnySignature,
 from . import strategies
 
 
-@given(strategies.signatures, strategies.signatures)
+@given(strategies.hashable_signatures, strategies.hashable_signatures)
 def test_relation_with_equality(signature: AnySignature,
                                 other_signature: AnySignature) -> None:
     signature_hash = hash(signature)
