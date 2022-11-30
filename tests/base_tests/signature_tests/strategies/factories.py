@@ -55,14 +55,16 @@ base_hashable_values_strategy = (
 hashable_values_strategy = strategies.recursive(
         base_hashable_values_strategy,
         lambda step: (strategies.lists(step).map(tuple)
-                      | strategies.frozensets(step))
+                      | strategies.frozensets(step)),
+        max_leaves=5
 )
 values_strategy = strategies.recursive(
         hashable_values_strategy | strategies.sets(hashable_values_strategy),
         lambda step: (strategies.lists(step)
                       | strategies.lists(step).map(tuple)
                       | strategies.dictionaries(hashable_values_strategy,
-                                                step))
+                                                step)),
+        max_leaves=5
 )
 types_with_round_trippable_repr = strategies.from_type(type).filter(
         qualified_path_is_valid
