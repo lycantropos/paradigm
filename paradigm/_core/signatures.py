@@ -20,8 +20,11 @@ from .arboreal.evaluation import (
 )
 from .arboreal.kind import NodeKind as _NodeKind
 from .arboreal.utils import subscript_to_item as _subscript_to_item
-from .models import (Parameter as _Parameter,
+from .models import (OptionalParameter as _OptionalParameter,
+                     Parameter as _Parameter,
+                     ParameterKind as _ParameterKind,
                      PlainSignature as _PlainSignature,
+                     RequiredParameter as _RequiredParameter,
                      Signature as _Signature,
                      from_signatures as _from_signatures)
 from .modules import supported_stdlib_qualified_paths as _qualified_paths
@@ -226,14 +229,13 @@ def _(ast_node: _ast.Subscript,
         return (
             _PlainSignature(
                     *[
-                        _Parameter(
+                        _RequiredParameter(
                                 annotation=_evaluate_expression_node(
                                         annotation, module_path, parent_path,
                                         {}
                                 ),
+                                kind=_ParameterKind.POSITIONAL_ONLY,
                                 name='_' + str(index),
-                                kind=_Parameter.Kind.POSITIONAL_ONLY,
-                                has_default=False
                         )
                         for index, annotation in enumerate(
                                 arguments_annotations.elts
@@ -246,14 +248,12 @@ def _(ast_node: _ast.Subscript,
             if isinstance(arguments_annotations, _ast.List)
             # unspecified parameters case
             else _PlainSignature(
-                    _Parameter(annotation=_t.Any,
-                               name='args',
-                               kind=_Parameter.Kind.VARIADIC_POSITIONAL,
-                               has_default=False),
-                    _Parameter(annotation=_t.Any,
-                               name='kwargs',
-                               kind=_Parameter.Kind.VARIADIC_KEYWORD,
-                               has_default=False),
+                    _OptionalParameter(annotation=_t.Any,
+                                       kind=_ParameterKind.VARIADIC_POSITIONAL,
+                                       name='args'),
+                    _OptionalParameter(annotation=_t.Any,
+                                       kind=_ParameterKind.VARIADIC_KEYWORD,
+                                       name='kwargs'),
                     returns=_evaluate_expression_node(
                             returns_annotation, module_path, parent_path, {}
                     )
@@ -301,7 +301,7 @@ def _(
         initializer_name: str = object.__init__.__name__,
 ) -> _Signature:
     signature_ast = ast_node.args
-    parameters = list(filter(
+    parameters: _t.List[_Parameter] = list(filter(
             None,
             (*_to_positional_parameters(signature_ast, module_path,
                                         parent_path),
@@ -324,15 +324,13 @@ def _(
             returns = _Self
     elif any(_is_classmethod(decorator_node, module_path, parent_path)
              for decorator_node in ast_node.decorator_list):
-        parameters[0] = _Parameter(annotation=_t.Type[_Self],
-                                   has_default=False,
-                                   kind=_Parameter.Kind.POSITIONAL_ONLY,
-                                   name=parameters[0].name)
+        parameters[0] = _RequiredParameter(annotation=_t.Type[_Self],
+                                           kind=_ParameterKind.POSITIONAL_ONLY,
+                                           name=parameters[0].name)
     elif _stubs.nodes_kinds[module_path].get(parent_path) is _NodeKind.CLASS:
-        parameters[0] = _Parameter(annotation=_Self,
-                                   has_default=False,
-                                   kind=_Parameter.Kind.POSITIONAL_ONLY,
-                                   name=parameters[0].name)
+        parameters[0] = _RequiredParameter(annotation=_Self,
+                                           kind=_ParameterKind.POSITIONAL_ONLY,
+                                           name=parameters[0].name)
     return _PlainSignature(*parameters,
                            returns=returns)
 
@@ -509,12 +507,23 @@ def _value_has_qualified_path(value: _t.Any,
 
 
 def _parameter_from_raw(raw: _inspect.Parameter) -> _Parameter:
-    return _Parameter(annotation=(_t.Any
-                                  if raw.annotation is _inspect._empty
-                                  else raw.annotation),
-                      name=raw.name,
-                      kind=_Parameter.Kind(raw.kind),
-                      has_default=raw.default is not _inspect._empty)
+    annotation, kind, name = (
+        _t.Any if raw.annotation is _inspect._empty else raw.annotation,
+        _ParameterKind(raw.kind), raw.name
+    )
+    return ((_OptionalParameter(annotation=annotation,
+                                kind=kind,
+                                name=name)
+             if (kind is _ParameterKind.VARIADIC_POSITIONAL
+                 or kind is _ParameterKind.VARIADIC_KEYWORD)
+             else _RequiredParameter(annotation=annotation,
+                                     kind=kind,
+                                     name=name))
+            if raw.default is _inspect._empty
+            else _OptionalParameter(annotation=annotation,
+                                    default=raw.default,
+                                    kind=kind,
+                                    name=name))
 
 
 def _from_raw_signature(value: _inspect.Signature) -> _Signature:
@@ -530,17 +539,28 @@ def _parameter_from_ast_node(ast_node: _ast.arg,
                              default_ast: _t.Optional[_ast.expr],
                              module_path: _catalog.Path,
                              parent_path: _catalog.Path,
-                             kind: _Parameter.Kind) -> _Parameter:
-    return _Parameter(
-            annotation=(_t.Any
-                        if ast_node.annotation is None
-                        else _evaluate_expression_node(ast_node.annotation,
-                                                       module_path,
-                                                       parent_path, {})),
-            has_default=default_ast is not None,
-            kind=kind,
-            name=ast_node.arg
-    )
+                             kind: _ParameterKind) -> _Parameter:
+    annotation = (_t.Any
+                  if ast_node.annotation is None
+                  else _evaluate_expression_node(ast_node.annotation,
+                                                 module_path, parent_path, {}))
+    name = ast_node.arg
+    if default_ast is not None:
+        default = _evaluate_expression_node(default_ast, module_path,
+                                            parent_path, {})
+        return _OptionalParameter(annotation=annotation,
+                                  **({}
+                                     if default is Ellipsis
+                                     else {'default': default}),
+                                  kind=kind,
+                                  name=name)
+    else:
+        return (_OptionalParameter
+                if (kind is _ParameterKind.VARIADIC_POSITIONAL
+                    or kind is _ParameterKind.VARIADIC_KEYWORD)
+                else _RequiredParameter)(annotation=annotation,
+                                         kind=kind,
+                                         name=name)
 
 
 def _to_keyword_parameters(
@@ -548,8 +568,8 @@ def _to_keyword_parameters(
         module_path: _catalog.Path,
         parent_path: _catalog.Path,
         *,
-        kind: _Parameter.Kind = _Parameter.Kind.KEYWORD_ONLY
-) -> _t.Iterable[_Parameter]:
+        kind: _ParameterKind = _ParameterKind.KEYWORD_ONLY
+) -> _t.List[_Parameter]:
     return [_parameter_from_ast_node(parameter_ast, default_ast, module_path,
                                      parent_path, kind)
             for parameter_ast, default_ast in zip(signature_ast.kwonlyargs,
@@ -566,7 +586,7 @@ def _to_positional_parameters(
         _t.Tuple[_ast.arg, _t.Optional[_ast.expr]]
     ] = list(_zip_longest(reversed(signature_ast.args),
                           signature_ast.defaults))[::-1]
-    kind = _Parameter.Kind.POSITIONAL_ONLY
+    kind = _ParameterKind.POSITIONAL_ONLY
     return [_parameter_from_ast_node(parameter_ast, default_ast, module_path,
                                      parent_path, kind)
             for parameter_ast, default_ast in parameters_with_defaults_ast]
@@ -577,7 +597,7 @@ def _to_variadic_keyword_parameter(
         module_path: _catalog.Path,
         parent_path: _catalog.Path,
         *,
-        kind: _Parameter.Kind = _Parameter.Kind.VARIADIC_KEYWORD
+        kind: _ParameterKind = _ParameterKind.VARIADIC_KEYWORD
 ) -> _t.Optional[_Parameter]:
     ast_node = signature_ast.kwarg
     return (None
@@ -591,7 +611,7 @@ def _to_variadic_positional_parameter(
         module_path: _catalog.Path,
         parent_path: _catalog.Path,
         *,
-        kind: _Parameter.Kind = _Parameter.Kind.VARIADIC_POSITIONAL
+        kind: _ParameterKind = _ParameterKind.VARIADIC_POSITIONAL
 ) -> _t.Optional[_Parameter]:
     ast_node = signature_ast.vararg
     return (None
