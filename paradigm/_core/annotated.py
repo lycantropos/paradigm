@@ -132,13 +132,28 @@ def to_repr(value: t.Any) -> str:
     return repr(value)
 
 
+@to_repr.register(list)
+def _(value: t.List[t.Any]) -> str:
+    return f'[{", ".join(to_repr(element) for element in value)}]'
+
+
+@to_repr.register(tuple)
+def _(value: t.Tuple[t.Any, ...]) -> str:
+    return (f'({to_repr(value[0])},)'
+            if len(value) == 1
+            else f'({", ".join(to_repr(element) for element in value)})')
+
+
 @to_repr.register(type)
 def _(value: type) -> str:
-    args = to_arguments(value)
-    result = f'{value.__module__}.{value.__qualname__}'
-    return (f'{result}[{", ".join(map(to_repr, args))}]'
-            if args
-            else result)
+    if value in (type(None), type(NotImplemented), type(Ellipsis)):
+        return f'{type.__qualname__}({value()!r})'
+    else:
+        args = to_arguments(value)
+        result = f'{value.__module__}.{value.__qualname__}'
+        return (f'{result}[{", ".join(map(to_repr, args))}]'
+                if args
+                else result)
 
 
 @to_repr.register(GenericAlias)
@@ -151,15 +166,15 @@ def _(value: GenericAlias) -> str:
              else (f'{to_repr(origin)}'
                    f'[{", ".join(map(to_repr, arguments))}]'))
             if origin is t.Union
-            else (((f'{value.__module__}.{value._name}'
+            else (((f'{to_repr(origin)}'
                     f'[{", ".join(map(to_repr, arguments))}]')
                    if arguments
-                   else f'{value.__module__}.{value._name}')
-                  if origin is None
-                  else ((f'{to_repr(origin)}'
+                   else f'{to_repr(origin)}[()]')
+                  if value._name is None
+                  else ((f'{value.__module__}.{value._name}'
                          f'[{", ".join(map(to_repr, arguments))}]')
                         if arguments
-                        else f'{to_repr(origin)}')))
+                        else f'{value.__module__}.{value._name}[()]')))
 
 
 @to_repr.register(t.TypeVar)
