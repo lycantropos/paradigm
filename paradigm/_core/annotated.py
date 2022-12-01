@@ -23,9 +23,15 @@ def are_equal(left: t.Any, right: t.Any) -> bool:
 @are_equal.register(type)
 def _(left: t.Union[GenericAlias, t.Type[t.Any]], right: t.Any) -> bool:
     left_args, right_args = to_arguments(left), to_arguments(right)
-    return ((to_origin(left) or left) is (to_origin(right) or right)
+    left_origin, right_origin = (to_origin(left) or left,
+                                 to_origin(right) or right)
+    return (left_origin is right_origin
             and len(left_args) == len(right_args)
-            and all(map(are_equal, left_args, right_args)))
+            and (all(any(are_equal(left_arg, right_arg)
+                         for right_arg in right_args)
+                     for left_arg in left_args)
+                 if left_origin is t.Union
+                 else all(map(are_equal, left_args, right_args))))
 
 
 @are_equal.register(abc.Sequence)
