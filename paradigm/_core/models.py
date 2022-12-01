@@ -6,7 +6,6 @@ from collections import defaultdict
 from itertools import (chain,
                        takewhile)
 
-from reprit.base import generate_repr
 from typing_extensions import (Literal,
                                TypeGuard,
                                final)
@@ -448,8 +447,12 @@ class PlainSignature(BaseSignature):
     def __hash__(self) -> int:
         return hash((self._parameters, self.returns))
 
-    __repr__ = generate_repr(__new__,
-                             argument_serializer=annotated.to_repr)
+    def __repr__(self) -> str:
+        return (f'{type(self).__qualname__}('
+                + (f'{", ".join(map(repr, self._parameters))}, '
+                   if self._parameters
+                   else '')
+                + f'returns={annotated.to_repr(self._returns)})')
 
     def __str__(self) -> str:
         parameters_by_kind = to_parameters_by_kind(self._parameters)
@@ -532,7 +535,9 @@ class OverloadedSignature(BaseSignature):
     def __hash__(self) -> int:
         return hash(self._signatures)
 
-    __repr__ = generate_repr(__new__)
+    def __repr__(self) -> str:
+        return (f'{type(self).__qualname__}'
+                f'({", ".join(map(repr, self._signatures))})')
 
     def __str__(self) -> str:
         return ' | '.join(map(str, self._signatures))
