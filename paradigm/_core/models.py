@@ -8,6 +8,7 @@ from itertools import (chain,
 
 from reprit.base import generate_repr
 from typing_extensions import (Literal,
+                               TypeGuard,
                                final)
 
 from . import annotated
@@ -46,16 +47,6 @@ class BaseParameter(ABC):
 
     @property
     @abstractmethod
-    def default(self) -> t.Any:
-        """Returns default argument of the parameter."""
-
-    @property
-    @abstractmethod
-    def has_default(self) -> bool:
-        """Returns whether the parameter has default argument."""
-
-    @property
-    @abstractmethod
     def kind(self) -> ParameterKind:
         """Returns kind of the parameter."""
 
@@ -70,12 +61,6 @@ class RequiredParameter(BaseParameter):
     @property
     def annotation(self) -> t.Any:
         return self._annotation
-
-    @property
-    def default(self) -> t.Any:
-        raise TypeError('Required parameters can\'t have default arguments.')
-
-    has_default = False
 
     @property
     def kind(self) -> ParameterKind:
@@ -117,9 +102,6 @@ class RequiredParameter(BaseParameter):
         return ((type(self) is type(other)
                  and self.name == other.name
                  and self.kind is other.kind
-                 and self.has_default is other.has_default
-                 and (not self.has_default
-                      or annotated.are_equal(self.default, other.default))
                  and annotated.are_equal(self.annotation, other.annotation))
                 if isinstance(other, BaseParameter)
                 else NotImplemented)
@@ -266,10 +248,11 @@ def to_parameters_by_name(
     return {parameter.name: parameter for parameter in parameters}
 
 
-def all_parameters_has_defaults(
+def all_parameters_are_optional(
         parameters: t.Iterable[Parameter]
-) -> bool:
-    return all(parameter.has_default for parameter in parameters)
+) -> TypeGuard[t.Iterable[OptionalParameter]]:
+    return all(isinstance(parameter, OptionalParameter)
+               for parameter in parameters)
 
 
 _Self = t.TypeVar('_Self')
@@ -343,8 +326,8 @@ class PlainSignature(BaseSignature):
             ParameterKind.POSITIONAL_ONLY
         ]
         rest_keywords = rest_keywords_by_name.values()
-        return (all_parameters_has_defaults(rest_positionals_only)
-                and all_parameters_has_defaults(rest_keywords))
+        return (all_parameters_are_optional(rest_positionals_only)
+                and all_parameters_are_optional(rest_keywords))
 
     def expects(self, *args: _Arg, **kwargs: _KwArg) -> bool:
         parameters_by_kind = to_parameters_by_kind(self._parameters)
@@ -613,17 +596,23 @@ def _bind_keywords(parameters: t.Tuple[Parameter, ...],
                              if parameter.name in kwargs_names)
     return (parameters[:first_kwarg_index]
             + tuple(
-                    (OptionalParameter
-                     if parameter.has_default or parameter.name in kwargs_names
-                     else RequiredParameter)(
-                            annotation=parameter.annotation,
-                            name=parameter.name,
-                            kind=ParameterKind.KEYWORD_ONLY,
-                            **({'default': parameter.default}
-                               if parameter.has_default
-                               else ({'default': kwargs[parameter.name]}
-                                     if parameter.name in kwargs_names
-                                     else {}))
+                    (
+                        OptionalParameter(
+                                annotation=parameter.annotation,
+                                name=parameter.name,
+                                kind=ParameterKind.KEYWORD_ONLY,
+                                **({'default': parameter.default}
+                                   if (isinstance(parameter, OptionalParameter)
+                                       and parameter.has_default)
+                                   else ({'default': kwargs[parameter.name]}
+                                         if parameter.name in kwargs_names
+                                         else {}))
+                        )
+                        if (isinstance(parameter, OptionalParameter)
+                            or parameter.name in kwargs_names)
+                        else RequiredParameter(annotation=parameter.annotation,
+                                               name=parameter.name,
+                                               kind=ParameterKind.KEYWORD_ONLY)
                     )
                     if (parameter.kind is ParameterKind.POSITIONAL_OR_KEYWORD
                         or parameter.kind is ParameterKind.KEYWORD_ONLY)
