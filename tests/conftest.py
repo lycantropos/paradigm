@@ -10,6 +10,7 @@ max_examples = (-(-settings.default.max_examples // (20 if is_pypy else 1))
                 if on_ci
                 else settings.default.max_examples)
 settings.register_profile('default',
+                          deadline=None,
                           max_examples=max_examples)
 
 
