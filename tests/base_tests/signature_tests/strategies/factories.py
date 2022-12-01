@@ -1,14 +1,17 @@
 import sys
 from functools import (reduce,
                        singledispatch)
+from operator import getitem
 from typing import (Any,
+                    Callable,
                     Dict,
                     List,
                     Optional,
                     Tuple,
-                    TypeVar)
+                    TypeVar,
+                    Union)
 
-from hypothesis import strategies
+from hypothesis import strategies as st
 from typing_extensions import Literal
 
 from paradigm._core import catalog
@@ -23,7 +26,6 @@ from tests.utils import (AnyParameter,
                          AnySignature,
                          Args,
                          Kwargs,
-                         Strategy,
                          negate,
                          pack)
 from .utils import (identifiers,
@@ -41,34 +43,55 @@ def qualified_path_is_valid(value: type) -> bool:
                         catalog.path_to_string(object_path), None) is value)
 
 
-base_hashable_values_strategy = (
-        strategies.none()
-        | strategies.booleans()
-        | strategies.integers()
-        | strategies.floats(allow_infinity=False,
-                            allow_nan=False)
-        | strategies.complex_numbers(allow_infinity=False,
-                                     allow_nan=False)
-        | strategies.binary()
-        | strategies.text()
+plain_hashable_values_strategy = (
+        st.none()
+        | st.booleans()
+        | st.integers()
+        | st.floats(allow_infinity=False,
+                    allow_nan=False)
+        | st.complex_numbers(allow_infinity=False,
+                             allow_nan=False)
+        | st.binary()
+        | st.text()
 )
-hashable_values_strategy = strategies.recursive(
-        base_hashable_values_strategy,
-        lambda step: (strategies.lists(step).map(tuple)
-                      | strategies.frozensets(step)),
-        max_leaves=5
+hashable_values_strategy = st.recursive(
+        plain_hashable_values_strategy,
+        lambda step: st.lists(step).map(tuple) | st.frozensets(step),
+        max_leaves=3
 )
-values_strategy = strategies.recursive(
-        hashable_values_strategy | strategies.sets(hashable_values_strategy),
-        lambda step: (strategies.lists(step)
-                      | strategies.lists(step).map(tuple)
-                      | strategies.dictionaries(hashable_values_strategy,
-                                                step)),
-        max_leaves=5
+values_strategy = st.recursive(
+        hashable_values_strategy | st.sets(hashable_values_strategy),
+        lambda step: (st.lists(step)
+                      | st.lists(step).map(tuple)
+                      | st.dictionaries(hashable_values_strategy, step)),
+        max_leaves=3
 )
-types_with_round_trippable_repr = strategies.from_type(type).filter(
+types_with_round_trippable_repr = st.from_type(type).filter(
         qualified_path_is_valid
 )
+
+
+def nest_annotations(base: st.SearchStrategy[Any]) -> st.SearchStrategy[Any]:
+    return (st.builds(Optional.__getitem__, base)
+            | st.builds(Union.__getitem__,
+                        (st.lists(base,
+                                  min_size=1,
+                                  max_size=5)
+                         .map(tuple)))
+            | st.builds(Tuple.__getitem__,
+                        st.tuples(base, st.just(Ellipsis)))
+            | st.builds(Tuple.__getitem__,
+                        (st.lists(base,
+                                  # due to
+                                  # https://github.com/python/cpython/issues/94245
+                                  min_size=sys.version_info < (3, 10),
+                                  max_size=5)
+                         .map(tuple)))
+            | st.builds(getitem, st.just(Callable),
+                        st.tuples(st.just(Ellipsis) | st.lists(base,
+                                                               min_size=0,
+                                                               max_size=5),
+                                  base)))
 
 
 def is_hashable(value: Any) -> bool:
@@ -80,32 +103,39 @@ def is_hashable(value: Any) -> bool:
         return True
 
 
-hashable_annotations_strategy = (
-        strategies.none()
-        | (strategies.lists(hashable_values_strategy,
-                            min_size=1)
+base_hashable_annotations_strategy = (
+        st.none()
+        | (st.lists(plain_hashable_values_strategy,
+                    min_size=1)
            .map(tuple)
            .map(Literal.__getitem__))
         | types_with_round_trippable_repr.filter(is_hashable)
 )
-annotations_strategy = (
-        strategies.none()
-        | (strategies.lists(values_strategy,
-                            min_size=1)
+hashable_annotations_strategy = st.recursive(
+        base_hashable_annotations_strategy, nest_annotations,
+        max_leaves=3
+)
+base_annotations_strategy = (
+        st.none()
+        | (st.lists(plain_hashable_values_strategy,
+                    min_size=1)
            .map(tuple)
            .map(Literal.__getitem__))
         | types_with_round_trippable_repr
 )
+annotations_strategy = st.recursive(base_annotations_strategy,
+                                    nest_annotations,
+                                    max_leaves=3)
 
 
 def to_optional_parameters(
         *,
-        annotations: Strategy[Any] = annotations_strategy,
-        names: Strategy[str] = identifiers,
-        kinds: Strategy[ParameterKind]
-        = strategies.sampled_from(list(ParameterKind)),
-        defaults: Strategy[bool] = values_strategy
-) -> Strategy[OptionalParameter]:
+        annotations: st.SearchStrategy[Any] = annotations_strategy,
+        names: st.SearchStrategy[str] = identifiers,
+        kinds: st.SearchStrategy[ParameterKind]
+        = st.sampled_from(list(ParameterKind)),
+        defaults: st.SearchStrategy[bool] = values_strategy
+) -> st.SearchStrategy[OptionalParameter]:
     def normalize_mapping(mapping: Dict[str, Any]) -> Dict[str, Any]:
         kind = mapping['kind']
         if (kind is ParameterKind.VARIADIC_KEYWORD
@@ -113,48 +143,48 @@ def to_optional_parameters(
             mapping.pop('default', None)
         return mapping
 
-    return (strategies.fixed_dictionaries({'annotation': annotations,
-                                           'name': names,
-                                           'kind': kinds,
-                                           'default': defaults})
+    return (st.fixed_dictionaries({'annotation': annotations,
+                                   'name': names,
+                                   'kind': kinds,
+                                   'default': defaults})
             .map(normalize_mapping)
             .map(lambda mapping: OptionalParameter(**mapping)))
 
 
 def to_required_parameters(
         *,
-        annotations: Strategy[Any] = annotations_strategy,
-        names: Strategy[str] = identifiers,
-        kinds: Strategy[Literal[ParameterKind.POSITIONAL_ONLY,
-                                ParameterKind.POSITIONAL_OR_KEYWORD,
-                                ParameterKind.KEYWORD_ONLY]]
-        = strategies.sampled_from([ParameterKind.POSITIONAL_ONLY,
-                                   ParameterKind.POSITIONAL_OR_KEYWORD,
-                                   ParameterKind.KEYWORD_ONLY])
-) -> Strategy[RequiredParameter]:
-    return strategies.builds(RequiredParameter,
-                             annotation=annotations,
-                             name=names,
-                             kind=kinds)
+        annotations: st.SearchStrategy[Any] = annotations_strategy,
+        names: st.SearchStrategy[str] = identifiers,
+        kinds: st.SearchStrategy[Literal[ParameterKind.POSITIONAL_ONLY,
+                                         ParameterKind.POSITIONAL_OR_KEYWORD,
+                                         ParameterKind.KEYWORD_ONLY]]
+        = st.sampled_from([ParameterKind.POSITIONAL_ONLY,
+                           ParameterKind.POSITIONAL_OR_KEYWORD,
+                           ParameterKind.KEYWORD_ONLY])
+) -> st.SearchStrategy[RequiredParameter]:
+    return st.builds(RequiredParameter,
+                     annotation=annotations,
+                     name=names,
+                     kind=kinds)
 
 
 def to_plain_signatures(
         *,
-        parameters_annotations: Strategy[Any] = annotations_strategy,
-        parameters_names: Strategy[str] = identifiers,
-        required_parameters_kinds: Strategy[
+        parameters_annotations: st.SearchStrategy[Any] = annotations_strategy,
+        parameters_names: st.SearchStrategy[str] = identifiers,
+        required_parameters_kinds: st.SearchStrategy[
             Literal[ParameterKind.POSITIONAL_ONLY,
                     ParameterKind.POSITIONAL_OR_KEYWORD,
                     ParameterKind.KEYWORD_ONLY]
-        ] = strategies.sampled_from([ParameterKind.POSITIONAL_ONLY,
-                                     ParameterKind.POSITIONAL_OR_KEYWORD,
-                                     ParameterKind.KEYWORD_ONLY]),
-        optional_parameters_kinds: Strategy[ParameterKind]
-        = strategies.sampled_from(list(ParameterKind)),
-        parameters_defaults: Strategy[bool] = values_strategy,
+        ] = st.sampled_from([ParameterKind.POSITIONAL_ONLY,
+                             ParameterKind.POSITIONAL_OR_KEYWORD,
+                             ParameterKind.KEYWORD_ONLY]),
+        optional_parameters_kinds: st.SearchStrategy[ParameterKind]
+        = st.sampled_from(list(ParameterKind)),
+        parameters_defaults: st.SearchStrategy[bool] = values_strategy,
         min_size: int = 0,
         max_size: int
-) -> Strategy[PlainSignature]:
+) -> st.SearchStrategy[PlainSignature]:
     if min_size < 0:
         raise ValueError('Min size '
                          'should not be negative, '
@@ -203,61 +233,61 @@ def to_plain_signatures(
             result += parameters_by_kind[kind]
         return result
 
-    return strategies.builds(
+    return st.builds(
             pack(PlainSignature),
-            (strategies.lists(base_parameters,
-                              min_size=min_size,
-                              max_size=max_size)
+            (st.lists(base_parameters,
+                      min_size=min_size,
+                      max_size=max_size)
              .map(normalize_parameters)),
-            strategies.fixed_dictionaries({'returns': parameters_annotations})
+            st.fixed_dictionaries({'returns': parameters_annotations})
     )
 
 
 def to_overloaded_signatures(
-        bases: Strategy[AnySignature],
+        bases: st.SearchStrategy[AnySignature],
         *,
         min_size: int = 2,
         max_size: Optional[int] = None
-) -> Strategy[OverloadedSignature]:
-    return (strategies.lists(bases,
-                             min_size=min_size,
-                             max_size=max_size)
+) -> st.SearchStrategy[OverloadedSignature]:
+    return (st.lists(bases,
+                     min_size=min_size,
+                     max_size=max_size)
             .map(pack(OverloadedSignature)))
 
 
 def to_signature_with_unexpected_args(
         signature: AnySignature
-) -> Strategy[Tuple[AnySignature, Args]]:
-    return strategies.tuples(strategies.just(signature),
-                             to_unexpected_args(signature))
+) -> st.SearchStrategy[Tuple[AnySignature, Args]]:
+    return st.tuples(st.just(signature),
+                     to_unexpected_args(signature))
 
 
 def to_signature_with_unexpected_kwargs(
         signature: AnySignature
-) -> Strategy[Tuple[AnySignature, Kwargs]]:
-    return strategies.tuples(strategies.just(signature),
-                             to_unexpected_kwargs(signature))
+) -> st.SearchStrategy[Tuple[AnySignature, Kwargs]]:
+    return st.tuples(st.just(signature),
+                     to_unexpected_kwargs(signature))
 
 
 def to_signature_with_expected_args(
         signature: AnySignature
-) -> Strategy[Tuple[AnySignature, Args]]:
-    return strategies.tuples(strategies.just(signature),
-                             to_expected_args(signature))
+) -> st.SearchStrategy[Tuple[AnySignature, Args]]:
+    return st.tuples(st.just(signature),
+                     to_expected_args(signature))
 
 
 def to_signature_with_expected_kwargs(
         signature: AnySignature
-) -> Strategy[Tuple[AnySignature, Kwargs]]:
-    return strategies.tuples(strategies.just(signature),
-                             to_expected_kwargs(signature))
+) -> st.SearchStrategy[Tuple[AnySignature, Kwargs]]:
+    return st.tuples(st.just(signature),
+                     to_expected_kwargs(signature))
 
 
 def to_expected_args(
         signature: AnySignature,
         *,
-        values: Strategy[_T1] = strategies.none()
-) -> Strategy[Args]:
+        values: st.SearchStrategy[_T1] = st.none()
+) -> st.SearchStrategy[Args]:
     count = signature_to_min_positionals_count(signature)
     return to_homogeneous_tuples(values,
                                  max_size=count)
@@ -266,21 +296,21 @@ def to_expected_args(
 def to_expected_kwargs(
         signature: AnySignature,
         *,
-        values: Strategy[_T1] = strategies.none()
-) -> Strategy[Kwargs]:
+        values: st.SearchStrategy[_T1] = st.none()
+) -> st.SearchStrategy[Kwargs]:
     keywords = signature_to_keywords_intersection(signature)
     if not keywords:
-        return strategies.fixed_dictionaries({})
-    return strategies.dictionaries(strategies.sampled_from(list(keywords
-                                                                .keys())),
-                                   values)
+        return st.fixed_dictionaries({})
+    return st.dictionaries(st.sampled_from(list(keywords
+                                                .keys())),
+                           values)
 
 
 def to_unexpected_args(
         signature: AnySignature,
         *,
-        values: Strategy[_T1] = strategies.none()
-) -> Strategy[Args]:
+        values: st.SearchStrategy[_T1] = st.none()
+) -> st.SearchStrategy[Args]:
     count = signature_to_max_positionals_count(signature) + 1
     return to_homogeneous_tuples(values,
                                  min_size=count)
@@ -289,11 +319,11 @@ def to_unexpected_args(
 def to_unexpected_kwargs(
         signature: AnySignature,
         *,
-        values: Strategy[_T1] = strategies.none()
-) -> Strategy[Kwargs]:
+        values: st.SearchStrategy[_T1] = st.none()
+) -> st.SearchStrategy[Kwargs]:
     keywords = signature_to_keywords_union(signature)
     is_unexpected = negate(keywords.__contains__)
-    return (strategies.dictionaries(identifiers.filter(is_unexpected), values)
+    return (st.dictionaries(identifiers.filter(is_unexpected), values)
             .filter(bool))
 
 
