@@ -1,6 +1,8 @@
 import sys
 import typing as t
 
+from typing_extensions import Final
+
 from . import catalog
 from .sources import stdlib_modules_paths
 
@@ -10,9 +12,15 @@ def _recursively_update_modules_paths(
         *names: str,
 ) -> None:
     paths = [catalog.path_from_string(name) for name in names]
+<<<<<<< Updated upstream
     assert all(path in stdlib_modules_paths for path in paths), [
         path for path in paths if path not in stdlib_modules_paths
     ]
+=======
+    # assert all(path in stdlib_modules_paths for path in paths), [
+    #     path for path in paths if path not in stdlib_modules_paths
+    # ]
+>>>>>>> Stashed changes
     set_.update({*paths,
                  *[candidate
                    for candidate in stdlib_modules_paths
@@ -158,5 +166,8 @@ else:
                         'distutils._msvccompiler',
                 )
 
-supported_stdlib_modules_paths = (stdlib_modules_paths
-                                  - unsupported_stdlib_modules_paths)
+supported_stdlib_modules_paths: Final[t.Iterable[catalog.Path]] = [
+    module_path
+    for module_path in stdlib_modules_paths
+    if module_path not in unsupported_stdlib_modules_paths
+]

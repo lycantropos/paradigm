@@ -369,26 +369,31 @@ def _try_resolve_object_path(
 
 
 def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
-    module_path, object_path = _resolve_qualified_path(value)
-    ast_nodes = _load_ast_nodes(module_path, object_path)
-    parent_path = object_path[:-1]
-    return _from_signatures(*[_from_statement_node(ast_node, value,
-                                                   module_path, parent_path)
-                              for ast_node in ast_nodes])
+    for module_path, object_path in _to_qualified_paths(value):
+        ast_nodes = _load_ast_nodes(module_path, object_path)
+        parent_path = object_path[:-1]
+        try:
+            signatures = [
+                _from_statement_node(ast_node, value, module_path, parent_path)
+                for ast_node in ast_nodes
+            ]
+        except _SignatureNotFound:
+            continue
+        else:
+            return _from_signatures(*signatures)
+    raise _SignatureNotFound
 
 
-def _resolve_qualified_path(
+def _to_qualified_paths(
         value: _t.Callable[..., _t.Any],
-) -> _catalog.QualifiedPath:
+) -> _t.Iterable[_catalog.QualifiedPath]:
     qualified_paths = resolve_qualified_paths(value)
-    if not qualified_paths:
-        raise _SignatureNotFound
-    module_path, object_path = qualified_paths[0]
-    if _stubs.nodes_kinds[module_path][object_path] is _NodeKind.CLASS:
-        module_path, object_path = _resolve_builder_qualified_path(
-                qualified_paths
-        )
-    return module_path, object_path
+    if qualified_paths:
+        module_path, object_path = qualified_paths[0]
+        if _stubs.nodes_kinds[module_path][object_path] is _NodeKind.CLASS:
+            yield _resolve_builder_qualified_path(qualified_paths)
+        else:
+            yield from qualified_paths
 
 
 def _resolve_builder_qualified_path(
