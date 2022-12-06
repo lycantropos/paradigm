@@ -12,15 +12,9 @@ def _recursively_update_modules_paths(
         *names: str,
 ) -> None:
     paths = [catalog.path_from_string(name) for name in names]
-<<<<<<< Updated upstream
     assert all(path in stdlib_modules_paths for path in paths), [
         path for path in paths if path not in stdlib_modules_paths
     ]
-=======
-    # assert all(path in stdlib_modules_paths for path in paths), [
-    #     path for path in paths if path not in stdlib_modules_paths
-    # ]
->>>>>>> Stashed changes
     set_.update({*paths,
                  *[candidate
                    for candidate in stdlib_modules_paths
