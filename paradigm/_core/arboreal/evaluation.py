@@ -282,9 +282,9 @@ def _evaluate_qualified_path(
                 modules_cache[module_path] = module = types.ModuleType(
                         module_name
                 )
-                module_raw_namespace = module.__dict__
+                module_namespace = module.__dict__
                 for name in stubs.definitions[module_path].keys():
-                    module_raw_namespace[name] = parent_namespace[name] = (
+                    module_namespace[name] = parent_namespace[name] = (
                         _evaluate_qualified_path(module_path, (name,),
                                                  parent_namespace)
                     )
@@ -310,9 +310,10 @@ def _evaluate_qualified_path(
             scope = stubs.definitions[module_path]
             for part in object_path:
                 scope = scope[part]
-            class_raw_namespace: namespacing.Namespace = {
+            class_namespace: namespacing.Namespace = {
                 '__module__': module_name
             }
+            module_namespace: namespacing.Namespace = {'__name__': module_name}
             annotations_nodes = {}
             for name in scope.keys():
                 raw_ast_nodes = module_raw_ast_nodes[(*object_path, name)]
@@ -344,23 +345,23 @@ def _evaluate_qualified_path(
                             )
                         )
                         if dependency_module_path != builtins_module_path:
-                            class_raw_namespace[dependency_name] = (
+                            module_namespace[dependency_name] = (
                                 _evaluate_qualified_path(
                                         dependency_module_path,
                                         dependency_object_path,
-                                        class_raw_namespace
+                                        module_namespace
                                 )
                             )
                     value = evaluate_statement_node(
                             definition_node, module_path, object_path,
-                            class_raw_namespace
+                            module_namespace
                     )
                 if definitions_nodes:
-                    class_raw_namespace[name] = value
+                    class_namespace[name] = value
             bases = tuple(
                     _evaluate_qualified_path(superclass_module_path,
                                              superclass_object_path,
-                                             class_raw_namespace)
+                                             module_namespace)
                     for (
                         superclass_module_path, superclass_object_path
                     ) in stubs.superclasses.get(module_path, {}).get(
@@ -368,13 +369,13 @@ def _evaluate_qualified_path(
                     )
             )
             if annotations_nodes:
-                class_raw_namespace['__annotations__'] = {}
+                class_namespace['__annotations__'] = {}
             result = parent_namespace[object_path[-1]] = objects_cache[
                 (module_path, object_path)
             ] = types.new_class(
                     object_path[-1], bases,
-                    exec_body=lambda raw_namespace: raw_namespace.update(
-                            class_raw_namespace
+                    exec_body=lambda namespace: namespace.update(
+                            class_namespace
                     )
             )
             if annotations_nodes:

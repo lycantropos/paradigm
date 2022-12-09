@@ -33,7 +33,7 @@ from .utils import decorate_if as _decorate_if
 
 @_singledispatch
 def from_callable(_callable: _t.Callable[..., _t.Any]) -> _Signature:
-    raise TypeError(f'Unsupported object type: {type(_callable)}.')
+    raise TypeError(type(_callable))
 
 
 @from_callable.register(_types.BuiltinFunctionType)
@@ -296,12 +296,24 @@ def _(
         ast_node: _t.Union[_ast.AsyncFunctionDef, _ast.FunctionDef],
         callable_: _t.Callable[..., _t.Any],
         module_path: _catalog.Path,
-        parent_path: _catalog.Path,
-        *,
-        initializer_name: str = object.__init__.__name__,
+        parent_path: _catalog.Path
 ) -> _Signature:
+    parameters = _parameters_from(ast_node, callable_, module_path,
+                                  parent_path)
+    returns = _returns_annotation_from(ast_node, callable_, module_path,
+                                       parent_path)
+    return _PlainSignature(*parameters,
+                           returns=returns)
+
+
+def _parameters_from(
+        ast_node: _t.Union[_ast.AsyncFunctionDef, _ast.FunctionDef],
+        callable_: _t.Callable[..., _t.Any],
+        module_path: _catalog.Path,
+        parent_path: _catalog.Path
+) -> _t.List[_Parameter]:
     signature_ast = ast_node.args
-    parameters: _t.List[_Parameter] = list(filter(
+    result: _t.List[_Parameter] = list(filter(
             None,
             (*_to_positional_parameters(signature_ast, module_path,
                                         parent_path),
@@ -311,28 +323,36 @@ def _(
              _to_variadic_keyword_parameter(signature_ast, module_path,
                                             parent_path))
     ))
-    returns_node = ast_node.returns
-    returns = (_t.Any
-               if returns_node is None
-               else _evaluate_expression_node(returns_node, module_path,
-                                              parent_path, {}))
     if isinstance(callable_, type):
-        del parameters[0]
-        if ast_node.name == initializer_name:
-            assert returns is None, (module_path,
-                                     (*parent_path, ast_node.name))
-            returns = _Self
+        del result[0]
     elif any(_is_classmethod(decorator_node, module_path, parent_path)
              for decorator_node in ast_node.decorator_list):
-        parameters[0] = _RequiredParameter(annotation=_t.Type[_Self],
-                                           kind=_ParameterKind.POSITIONAL_ONLY,
-                                           name=parameters[0].name)
+        result[0] = _RequiredParameter(annotation=_t.Type[_Self],
+                                       kind=_ParameterKind.POSITIONAL_ONLY,
+                                       name=result[0].name)
     elif _stubs.nodes_kinds[module_path].get(parent_path) is _NodeKind.CLASS:
-        parameters[0] = _RequiredParameter(annotation=_Self,
-                                           kind=_ParameterKind.POSITIONAL_ONLY,
-                                           name=parameters[0].name)
-    return _PlainSignature(*parameters,
-                           returns=returns)
+        result[0] = _RequiredParameter(annotation=_Self,
+                                       kind=_ParameterKind.POSITIONAL_ONLY,
+                                       name=result[0].name)
+    return result
+
+
+def _returns_annotation_from(
+        ast_node: _t.Union[_ast.AsyncFunctionDef, _ast.FunctionDef],
+        callable_: _t.Callable[..., _t.Any],
+        module_path: _catalog.Path,
+        parent_path: _catalog.Path,
+        *,
+        initializer_name: str = object.__init__.__name__
+) -> _t.Any:
+    returns_node = ast_node.returns
+    return (_Self
+            if (isinstance(callable_, type)
+                and ast_node.name == initializer_name)
+            else (_t.Any
+                  if returns_node is None
+                  else _evaluate_expression_node(returns_node, module_path,
+                                                 parent_path, {})))
 
 
 def _is_classmethod(
