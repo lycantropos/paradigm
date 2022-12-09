@@ -405,7 +405,7 @@ def _from_callable(value: _t.Callable[..., _t.Any]) -> _Signature:
 
 
 def _to_qualified_paths(
-        value: _t.Callable[..., _t.Any],
+        value: _t.Callable[..., _t.Any]
 ) -> _t.Iterable[_catalog.QualifiedPath]:
     qualified_paths = resolve_qualified_paths(value)
     if qualified_paths:
