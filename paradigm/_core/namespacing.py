@@ -5,7 +5,7 @@ from functools import reduce
 from . import catalog
 
 ModuleOrType = t.Union[types.ModuleType, type]
-Namespace = t.Dict[str, t.Any]
+Namespace = t.MutableMapping[str, t.Any]
 
 
 class ObjectNotFound(Exception):

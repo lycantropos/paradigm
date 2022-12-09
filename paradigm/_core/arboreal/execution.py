@@ -19,4 +19,6 @@ def _execute_tree(node: ast.Module,
                   source_path: Path,
                   namespace: namespacing.Namespace) -> None:
     code = compile(node, str(source_path), 'exec')
-    exec(code, namespace)
+    namespace_dict = dict(namespace)
+    exec(code, namespace_dict)
+    namespace.update(namespace_dict)
