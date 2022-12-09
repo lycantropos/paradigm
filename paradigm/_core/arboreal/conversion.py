@@ -160,6 +160,12 @@ def _(ast_node: ast.Constant) -> str:
     return str(ast_node.value)
 
 
+if sys.version_info < (3, 8):
+    @to_str.register(ast.Ellipsis)
+    def _(ast_node: ast.Ellipsis) -> str:
+        return str(Ellipsis)
+
+
 @to_str.register(ast.Attribute)
 def _(ast_node: ast.Attribute) -> str:
     return f'{to_str(ast_node.value)}.{ast_node.attr}'
