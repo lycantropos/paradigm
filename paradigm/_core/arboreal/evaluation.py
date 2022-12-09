@@ -132,7 +132,7 @@ class _LazyEvaluator(ast.NodeTransformer):
                            None
                            if node.annotation is None
                            else ast.Str(conversion.to_str(node.annotation)),
-                           node.type_comment)
+                           getattr(node, 'type_comment', None))
 
 
 _AstNode = t.TypeVar('_AstNode',
