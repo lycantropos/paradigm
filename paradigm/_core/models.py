@@ -496,13 +496,12 @@ class OverloadedSignature(BaseSignature):
                    for signature in self._signatures)
 
     def bind(self, *args: _Arg, **kwargs: _KwArg) -> 'OverloadedSignature':
-        signatures = [signature
+        signatures = [signature.bind(*args, **kwargs)
                       for signature in self._signatures
                       if signature.expects(*args, **kwargs)]
         if not signatures:
             raise TypeError('No corresponding signature found.')
-        return OverloadedSignature(*[signature.bind(*args, **kwargs)
-                                     for signature in signatures])
+        return from_signatures(*signatures)
 
     __slots__ = '_signatures',
 
