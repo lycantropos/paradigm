@@ -147,7 +147,7 @@ def _(ast_node: t.Union[ast.AsyncFunctionDef, ast.FunctionDef],
       module_path: catalog.Path,
       parent_path: catalog.Path,
       parent_namespace: namespacing.Namespace) -> t.Any:
-    namespace = parent_namespace.copy()
+    namespace = dict(parent_namespace)
     try:
         source_path = sources.from_module_path(module_path)
     except sources.NotFound:
@@ -297,9 +297,9 @@ def evaluate_qualified_path(
                 modules_cache[module_path] = module = types.ModuleType(
                         module_name
                 )
-                module_namespace = module.__dict__
+                namespace = module.__dict__
                 for name in stubs.definitions[module_path].keys():
-                    module_namespace[name] = parent_namespace[name] = (
+                    namespace[name] = parent_namespace[name] = (
                         evaluate_qualified_path(module_path, (name,),
                                                 parent_namespace)
                     )

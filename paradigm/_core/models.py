@@ -254,7 +254,6 @@ def all_parameters_are_optional(
                for parameter in parameters)
 
 
-_Self = t.TypeVar('_Self')
 _Arg = t.TypeVar('_Arg')
 _KwArg = t.TypeVar('_KwArg')
 
@@ -274,7 +273,7 @@ class BaseSignature(ABC):
         """Checks if the signature accepts given arguments."""
 
     @abstractmethod
-    def bind(self: _Self, *args: _Arg, **kwargs: _KwArg) -> _Self:
+    def bind(self, *args: _Arg, **kwargs: _KwArg) -> 'BaseSignature':
         """Binds given arguments to the signature."""
 
 
@@ -495,7 +494,7 @@ class OverloadedSignature(BaseSignature):
         return any(signature.expects(*args, **kwargs)
                    for signature in self._signatures)
 
-    def bind(self, *args: _Arg, **kwargs: _KwArg) -> 'OverloadedSignature':
+    def bind(self, *args: _Arg, **kwargs: _KwArg) -> Signature:
         signatures = [signature.bind(*args, **kwargs)
                       for signature in self._signatures
                       if signature.expects(*args, **kwargs)]
