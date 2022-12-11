@@ -4,7 +4,8 @@ import typing as t
 from collections import abc
 from functools import singledispatch
 
-from typing_extensions import (ParamSpec,
+from typing_extensions import (Literal,
+                               ParamSpec,
                                ParamSpecArgs,
                                ParamSpecKwargs)
 
@@ -30,7 +31,7 @@ def _(left: t.Union[GenericAlias, t.Type[t.Any]], right: t.Any) -> bool:
             and (all(any(are_equal(left_arg, right_arg)
                          for right_arg in right_args)
                      for left_arg in left_args)
-                 if left_origin is t.Union
+                 if (left_origin is t.Union or left_origin is Literal)
                  else all(map(are_equal, left_args, right_args))))
 
 
