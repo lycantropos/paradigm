@@ -60,7 +60,7 @@ if sys.implementation.name == 'pypy':
                                           '_resource_build',
                                           '_sqlite3_build',
                                           '_sysconfigdata',
-                                          '_tkinter.tklib_build',
+                                          '_tkinter',
                                           'asyncio.unix_events',
                                           'cffi._pycparser._build_tables',
                                           'ctypes_support',
@@ -93,7 +93,7 @@ if sys.implementation.name == 'pypy':
     else:
         _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
                                           '_overlapped',
-                                          '_tkinter.tklib_build',
+                                          '_tkinter',
                                           '_winapi',
                                           'asyncio.windows_events',
                                           'asyncio.windows_utils',
