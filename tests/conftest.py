@@ -2,7 +2,8 @@ import os
 import sys
 
 import pytest
-from hypothesis import settings
+from hypothesis import (HealthCheck,
+                        settings)
 
 is_pypy = sys.implementation.name == 'pypy'
 on_ci = bool(os.getenv('CI', False))
@@ -11,7 +12,8 @@ max_examples = (-(-settings.default.max_examples // (10 if is_pypy else 1))
                 else settings.default.max_examples)
 settings.register_profile('default',
                           deadline=None,
-                          max_examples=max_examples)
+                          max_examples=max_examples,
+                          suppress_health_check=[HealthCheck.filter_too_much])
 
 
 @pytest.hookimpl(trylast=True)
