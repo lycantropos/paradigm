@@ -315,101 +315,100 @@ def evaluate_qualified_path(
         return objects_cache[(module_path, object_path)]
     except KeyError:
         module_raw_ast_nodes = stubs.raw_ast_nodes[module_path]
+        node_kind = stubs.nodes_kinds[module_path][object_path]
         try:
             raw_ast_nodes = module_raw_ast_nodes[object_path]
         except KeyError:
-            assert (
-                    stubs.nodes_kinds[module_path][object_path]
-                    is NodeKind.CLASS
-            ), (module_path, object_path)
-            scope = stubs.definitions[module_path]
-            for part in object_path:
-                scope = scope[part]
-            class_namespace: namespacing.Namespace = {'__module__': __name__}
-            module_namespace: namespacing.Namespace = {'__name__': __name__}
-            annotations_nodes = {}
-            for name in scope.keys():
-                raw_ast_nodes = module_raw_ast_nodes[(*object_path, name)]
-                ast_nodes = [construction.from_raw(raw_ast_node)
-                             for raw_ast_node in raw_ast_nodes]
-                definitions_nodes: t.List[ast.stmt] = []
-                for ast_node in ast_nodes:
-                    if (isinstance(ast_node, ast.AnnAssign)
-                            and ast_node.value is None):
-                        annotations_nodes[name] = ast_node.annotation
-                    else:
-                        assert isinstance(ast_node, ast.stmt), (module_path,
-                                                                object_path)
-                        definitions_nodes.append(ast_node)
-                for definition_node in definitions_nodes:
-                    for dependency_name in {
-                        child.id
-                        for child in recursively_iterate_children(
-                                _to_lazy_statement(definition_node)
-                        )
-                        if is_dependency_name(child)
-                    }:
-                        dependency_module_path, dependency_object_path = (
-                            scoping.resolve_object_path(
-                                    module_path, object_path,
-                                    (dependency_name,), stubs.definitions,
-                                    stubs.references, stubs.submodules,
-                                    stubs.superclasses
-                            )
-                        )
-                        if dependency_module_path != builtins_module_path:
-                            module_namespace[dependency_name] = (
-                                evaluate_qualified_path(
-                                        dependency_module_path,
-                                        dependency_object_path,
-                                        module_namespace
-                                )
-                            )
-                    value = evaluate_statement_node(
-                            definition_node, module_path, object_path,
-                            ChainMap(class_namespace, module_namespace)
-                    )
-                if definitions_nodes:
-                    class_namespace[name] = value
-            bases = tuple(
-                    evaluate_qualified_path(superclass_module_path,
-                                            superclass_object_path,
-                                            module_namespace)
-                    for (
-                        superclass_module_path, superclass_object_path
-                    ) in stubs.superclasses.get(module_path, {}).get(
-                            object_path, []
-                    )
-            )
-            if annotations_nodes:
-                class_namespace['__annotations__'] = {}
-            result = parent_namespace[object_path[-1]] = objects_cache[
-                (module_path, object_path)
-            ] = types.new_class(
-                    catalog.path_to_string(object_path), bases,
-                    exec_body=lambda namespace: namespace.update(
-                            class_namespace
-                    )
-            )
-            if annotations_nodes:
-                result.__annotations__.update({
-                    name: evaluate_expression_node(annotation_node,
-                                                   module_path, object_path,
-                                                   parent_namespace)
-                    for name, annotation_node in annotations_nodes.items()
-                })
-            globals()[catalog.path_to_string(object_path)] = result
-            return result
+            assert node_kind is NodeKind.CLASS, (module_path, object_path)
         else:
-            for raw_ast_node in raw_ast_nodes:
-                ast_node = construction.from_raw(raw_ast_node)
-                assert isinstance(ast_node, ast.stmt), (module_path,
-                                                        object_path)
+            if node_kind is not NodeKind.CLASS:
+                for raw_ast_node in raw_ast_nodes:
+                    ast_node = construction.from_raw(raw_ast_node)
+                    assert isinstance(ast_node, ast.stmt), (module_path,
+                                                            object_path)
+                    value = evaluate_statement_node(
+                            ast_node, module_path, object_path[:-1],
+                            parent_namespace
+                    )
+                return value
+        scope = stubs.definitions[module_path]
+        for part in object_path:
+            scope = scope[part]
+        class_namespace: namespacing.Namespace = {'__module__': __name__}
+        module_namespace: namespacing.Namespace = {'__name__': __name__}
+        annotations_nodes = {}
+        for name in scope.keys():
+            raw_ast_nodes = module_raw_ast_nodes[(*object_path, name)]
+            ast_nodes = [construction.from_raw(raw_ast_node)
+                         for raw_ast_node in raw_ast_nodes]
+            definitions_nodes: t.List[ast.stmt] = []
+            for ast_node in ast_nodes:
+                if (isinstance(ast_node, ast.AnnAssign)
+                        and ast_node.value is None):
+                    annotations_nodes[name] = ast_node.annotation
+                else:
+                    assert isinstance(ast_node, ast.stmt), (module_path,
+                                                            object_path)
+                    definitions_nodes.append(ast_node)
+            for definition_node in definitions_nodes:
+                for dependency_name in {
+                    child.id
+                    for child in recursively_iterate_children(
+                            _to_lazy_statement(definition_node)
+                    )
+                    if is_dependency_name(child)
+                }:
+                    dependency_module_path, dependency_object_path = (
+                        scoping.resolve_object_path(
+                                module_path, object_path,
+                                (dependency_name,), stubs.definitions,
+                                stubs.references, stubs.submodules,
+                                stubs.superclasses
+                        )
+                    )
+                    if dependency_module_path != builtins_module_path:
+                        module_namespace[dependency_name] = (
+                            evaluate_qualified_path(
+                                    dependency_module_path,
+                                    dependency_object_path,
+                                    module_namespace
+                            )
+                        )
                 value = evaluate_statement_node(
-                        ast_node, module_path, object_path[:-1],
-                        parent_namespace
+                        definition_node, module_path, object_path,
+                        ChainMap(class_namespace, module_namespace)
                 )
-            return value
+            if definitions_nodes:
+                class_namespace[name] = value
+        bases = tuple(
+                evaluate_qualified_path(superclass_module_path,
+                                        superclass_object_path,
+                                        module_namespace)
+                for (
+                    superclass_module_path, superclass_object_path
+                ) in stubs.superclasses.get(module_path, {}).get(
+                        object_path, []
+                )
+        )
+        if annotations_nodes:
+            class_namespace['__annotations__'] = {}
+        result = parent_namespace[object_path[-1]] = objects_cache[
+            (module_path, object_path)
+        ] = types.new_class(
+                catalog.path_to_string(object_path), bases,
+                exec_body=lambda namespace: namespace.update(
+                        class_namespace
+                )
+        )
+        if annotations_nodes:
+            result.__annotations__.update({
+                name: evaluate_expression_node(annotation_node,
+                                               module_path, object_path,
+                                               parent_namespace)
+                for name, annotation_node in annotations_nodes.items()
+            })
+        globals()[catalog.path_to_string(object_path)] = result
+        return result
 
 
 if sys.version_info < (3, 8):
