@@ -28,9 +28,12 @@ def _(left: t.Union[GenericAlias, t.Type[t.Any]], right: t.Any) -> bool:
                                  to_origin(right) or right)
     return (left_origin is right_origin
             and len(left_args) == len(right_args)
-            and (all(any(are_equal(left_arg, right_arg)
-                         for right_arg in right_args)
-                     for left_arg in left_args)
+            and ((all(any(are_equal(left_arg, right_arg)
+                          for right_arg in right_args)
+                      for left_arg in left_args)
+                  and all(any(are_equal(left_arg, right_arg)
+                              for left_arg in left_args)
+                          for right_arg in right_args))
                  if (left_origin is t.Union or left_origin is Literal)
                  else all(map(are_equal, left_args, right_args))))
 
