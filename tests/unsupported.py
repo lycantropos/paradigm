@@ -18,10 +18,7 @@ def _load_and_add(set_: Set[Any], module_name: str, object_name: str) -> None:
     path = catalog.path_from_string(object_name)
     try:
         object_ = _search_by_path(module, path)
-    except KeyError:
-        warnings.warn(f'Module "{module_name}" has no object '
-                      f'with name "{path[0]}".')
-    except AttributeError:
+    except namespacing.ObjectNotFound:
         warnings.warn(f'Module "{module_name}" has no object '
                       f'with path "{path}".')
     else:
@@ -155,7 +152,6 @@ if sys.platform == 'linux':
                                               'SubsequentHeaderError',
                                               'TruncatedHeaderError'])
         _load_and_add(classes, 'threading', '_CRLock')
-        _load_and_add(classes, 'typing_extensions', '_AnyMeta')
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
 
@@ -252,6 +248,7 @@ if sys.platform == 'linux':
                                                      '_swapped_meta'])
         _load_and_add(classes, 'curses.panel', 'error')
         _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
+        _load_and_add(classes, 'distutils.cygwinccompiler', 'RangeMap.Item')
         _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
         _load_and_add(classes, 'email._encoded_words', '_QByteMap')
         _load_and_update(classes, 'encodings.big5', ['IncrementalDecoder',
@@ -372,6 +369,7 @@ if sys.platform == 'linux':
         _load_and_add(classes, 'lib2to3.patcomp', 'PatternSyntaxError')
         _load_and_add(classes, 'lib2to3.refactor', '_EveryNode')
         _load_and_add(classes, 'logging.config', 'ConvertingDict')
+        _load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
         _load_and_add(classes,
                       'multiprocessing.process', 'AuthenticationString')
         _load_and_add(classes, 'runpy', '_Error')
@@ -385,7 +383,6 @@ if sys.platform == 'linux':
                                               'TruncatedHeaderError'])
         _load_and_add(classes, 'threading', '_CRLock')
         _load_and_add(classes, 'tty', 'error')
-        _load_and_add(classes, 'typing_extensions', '_AnyMeta')
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
         _load_and_add(classes, 'xxsubtype', 'spamdict')
@@ -661,7 +658,6 @@ if sys.platform == 'linux':
             _load_and_add(classes,
                           'importlib.metadata', 'FreezableDefaultDict')
             _load_and_add(classes, 'importlib.metadata._text', 'FoldedCase')
-            _load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
             _load_and_add(classes, 'unittest.mock', 'InvalidSpecError')
             _load_and_update(classes, 'xxlimited_35', ['Null',
                                                        'Str',
@@ -682,6 +678,15 @@ if sys.platform == 'linux':
             _load_and_add(methods_descriptors, 'xxlimited_35', 'Xxo.demo')
 
             _load_and_add(wrappers_descriptors, 'xxlimited_35', 'Xxo.__del__')
+        if sys.version_info >= (3, 11):
+            _load_and_add(classes, '_tokenize', 'TokenizerIter')
+            _load_and_add(classes, 'ctypes', 'BigEndianUnion')
+            _load_and_update(classes,
+                             'ctypes._endian', ['_swapped_struct_meta',
+                                                '_swapped_union_meta'])
+            _load_and_add(classes, 'pdb', '_ModuleTarget')
+            _load_and_update(classes, 'typing', ['_AnyMeta',
+                                                 '_DeprecatedType'])
 elif sys.platform == 'darwin':
     if sys.implementation.name == 'pypy':
         _load_and_update(classes, '_cffi_backend', ['FFI',
@@ -782,7 +787,6 @@ elif sys.platform == 'darwin':
                                               'SubsequentHeaderError',
                                               'TruncatedHeaderError'])
         _load_and_add(classes, 'threading', '_CRLock')
-        _load_and_add(classes, 'typing_extensions', '_AnyMeta')
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
 
@@ -1002,6 +1006,7 @@ elif sys.platform == 'darwin':
         _load_and_add(classes, 'lib2to3.patcomp', 'PatternSyntaxError')
         _load_and_add(classes, 'lib2to3.refactor', '_EveryNode')
         _load_and_add(classes, 'logging.config', 'ConvertingDict')
+        _load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
         _load_and_add(classes,
                       'multiprocessing.process', 'AuthenticationString')
         _load_and_add(classes, 'runpy', '_Error')
@@ -1252,6 +1257,7 @@ elif sys.platform == 'darwin':
 
             _load_and_add(methods_descriptors,
                           'collections', '_tuplegetter.__reduce__')
+
         if sys.version_info < (3, 9):
             _load_and_add(classes, 'dataclasses', '_InitVarMeta')
         else:
@@ -1284,7 +1290,6 @@ elif sys.platform == 'darwin':
                           'weakref', 'ProxyType.__reversed__')
         if sys.version_info < (3, 10):
             _load_and_add(built_in_functions, 'faulthandler', '_fatal_error')
-            _load_and_add(classes, 'typing_extensions', '_AnyMeta')
         else:
             _load_and_update(built_in_functions, 'xxlimited_35', ['foo',
                                                                   'new',
@@ -1301,7 +1306,6 @@ elif sys.platform == 'darwin':
                     'importlib.metadata._collections', 'FreezableDefaultDict'
             )
             _load_and_add(classes, 'importlib.metadata._text', 'FoldedCase')
-            _load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
             _load_and_add(classes, 'unittest.mock', 'InvalidSpecError')
             _load_and_update(classes, 'xxlimited_35', ['Null',
                                                        'Str',
@@ -1322,6 +1326,17 @@ elif sys.platform == 'darwin':
             _load_and_add(methods_descriptors, 'xxlimited_35', 'Xxo.demo')
 
             _load_and_add(wrappers_descriptors, 'xxlimited_35', 'Xxo.__del__')
+        if sys.version_info >= (3, 11):
+            _load_and_add(built_in_functions,
+                          'threading', '_original_start_new_thread')
+
+            _load_and_add(classes, '_tokenize', 'TokenizerIter')
+            _load_and_add(classes, 'ctypes', 'BigEndianUnion')
+            _load_and_update(classes, 'ctypes._endian', ['_swapped_struct_meta',
+                                                         '_swapped_union_meta'])
+            _load_and_add(classes, 'pdb', '_ModuleTarget')
+            _load_and_update(classes, 'typing', ['_AnyMeta',
+                                                 '_DeprecatedType'])
 elif sys.platform == 'win32':
     if sys.implementation.name == 'pypy':
         _load_and_update(classes, '_cffi_backend', ['FFI',
@@ -1422,7 +1437,6 @@ elif sys.platform == 'win32':
                                               'SubsequentHeaderError',
                                               'TruncatedHeaderError'])
         _load_and_add(classes, 'threading', '_CRLock')
-        _load_and_add(classes, 'typing_extensions', '_AnyMeta')
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
 
@@ -1568,8 +1582,6 @@ elif sys.platform == 'win32':
                                                       'PWIN32_FIND_DATAA',
                                                       'PWIN32_FIND_DATAW',
                                                       'PWORD'])
-        _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
-        _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
         _load_and_add(classes, 'email._encoded_words', '_QByteMap')
         _load_and_update(classes, 'encodings.big5', ['IncrementalDecoder',
                                                      'IncrementalEncoder',
@@ -1698,7 +1710,6 @@ elif sys.platform == 'win32':
                                               'SubsequentHeaderError',
                                               'TruncatedHeaderError'])
         _load_and_add(classes, 'threading', '_CRLock')
-        _load_and_add(classes, 'typing_extensions', '_AnyMeta')
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
         _load_and_add(classes, 'xxsubtype', 'spamdict')
@@ -1876,6 +1887,9 @@ elif sys.platform == 'win32':
                              'decimal', ['Context._unsafe_setemax',
                                          'Context._unsafe_setemin',
                                          'Context._unsafe_setprec'])
+        else:
+            _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
+            _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
 
         if sys.byteorder == 'little':
             _load_and_update(classes,
@@ -1991,6 +2005,7 @@ elif sys.platform == 'win32':
             _load_and_add(classes,
                           'importlib.metadata', 'FreezableDefaultDict')
             _load_and_add(classes, 'importlib.metadata._text', 'FoldedCase')
+            _load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
             _load_and_add(classes, 'unittest.mock', 'InvalidSpecError')
 
             _load_and_update(methods_descriptors, '_csv', ['Writer.writerow',
@@ -2008,5 +2023,15 @@ elif sys.platform == 'win32':
 
             if sys.maxsize == 0x7fffffff:
                 _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
-            else:
-                _load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
+        if sys.version_info >= (3, 11):
+            _load_and_add(classes, '_tokenize', 'TokenizerIter')
+            _load_and_add(classes, 'ctypes', 'BigEndianUnion')
+            _load_and_update(classes,
+                             'ctypes._endian', ['_swapped_struct_meta',
+                                                '_swapped_union_meta'])
+            _load_and_add(classes, 'pdb', '_ModuleTarget')
+            _load_and_update(classes, 'typing', ['_AnyMeta',
+                                                 '_DeprecatedType'])
+
+            if sys.maxsize == 0x7fffffff:
+               _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
