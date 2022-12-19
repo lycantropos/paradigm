@@ -483,7 +483,7 @@ Signature = t.Union['OverloadedSignature', PlainSignature]
 @final
 class OverloadedSignature(BaseSignature):
     @property
-    def signatures(self) -> t.Sequence[Signature]:
+    def signatures(self) -> t.Sequence[PlainSignature]:
         return self._signatures
 
     def all_set(self, *args: _Arg, **kwargs: _KwArg) -> bool:
@@ -504,7 +504,7 @@ class OverloadedSignature(BaseSignature):
 
     __slots__ = '_signatures',
 
-    _signatures: t.Tuple[Signature, ...]
+    _signatures: t.Tuple[PlainSignature, ...]
 
     def __new__(cls, *signatures: Signature) -> 'OverloadedSignature':
         if len(signatures) < _MIN_SUB_SIGNATURES_COUNT:
@@ -512,7 +512,7 @@ class OverloadedSignature(BaseSignature):
                              f'only from at least {_MIN_SUB_SIGNATURES_COUNT} '
                              f'signatures.')
 
-        def flatten(signature: Signature) -> t.Sequence[Signature]:
+        def flatten(signature: Signature) -> t.Sequence[PlainSignature]:
             return (signature._signatures
                     if isinstance(signature, OverloadedSignature)
                     else [signature])
