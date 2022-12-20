@@ -104,6 +104,7 @@ if sys.platform == 'linux':
                                                'deltainterop',
                                                'timeinterop'])
         _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
+        _load_and_add(classes, 'distutils.cygwinccompiler', 'RangeMap.Item')
         _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
         _load_and_add(classes, 'doctest', '_SpoofOut')
         _load_and_add(classes, 'email._encoded_words', '_QByteMap')
@@ -740,6 +741,9 @@ elif sys.platform == 'darwin':
         _load_and_update(classes, 'datetime', ['dateinterop',
                                                'deltainterop',
                                                'timeinterop'])
+        _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
+        _load_and_add(classes, 'distutils.cygwinccompiler', 'RangeMap.Item')
+        _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
         _load_and_add(classes, 'doctest', '_SpoofOut')
         _load_and_add(classes, 'email._encoded_words', '_QByteMap')
         _load_and_update(classes, 'greenlet', ['GreenletExit',
@@ -884,6 +888,9 @@ elif sys.platform == 'darwin':
         _load_and_update(classes, 'ctypes._endian', ['_array_type',
                                                      '_swapped_meta'])
         _load_and_add(classes, 'curses.panel', 'error')
+        _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
+        _load_and_add(classes, 'distutils.cygwinccompiler', 'RangeMap.Item')
+        _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
         _load_and_add(classes, 'email._encoded_words', '_QByteMap')
         _load_and_update(classes, 'encodings.big5', ['IncrementalDecoder',
                                                      'IncrementalEncoder',
@@ -1199,8 +1206,6 @@ elif sys.platform == 'darwin':
                                         'c_uint64.__ctype_le__'])
 
         if sys.version_info < (3, 8):
-            _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
-            _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
             _load_and_add(classes, 'macpath', 'norm_error')
 
             _load_and_update(methods_descriptors,
@@ -1251,8 +1256,6 @@ elif sys.platform == 'darwin':
                                                     'InterpreterID',
                                                     'RunFailedError'])
             _load_and_add(classes, 'collections', '_tuplegetter')
-            _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
-            _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
             _load_and_add(classes, 'shutil', '_GiveupOnFastCopy')
 
             _load_and_add(methods_descriptors,
@@ -1389,6 +1392,7 @@ elif sys.platform == 'win32':
                                                'deltainterop',
                                                'timeinterop'])
         _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
+        _load_and_add(classes, 'distutils.cygwinccompiler', 'RangeMap.Item')
         _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
         _load_and_add(classes, 'doctest', '_SpoofOut')
         _load_and_add(classes, 'email._encoded_words', '_QByteMap')
@@ -1582,6 +1586,9 @@ elif sys.platform == 'win32':
                                                       'PWIN32_FIND_DATAA',
                                                       'PWIN32_FIND_DATAW',
                                                       'PWORD'])
+        _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
+        _load_and_add(classes, 'distutils.cygwinccompiler', 'RangeMap.Item')
+        _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
         _load_and_add(classes, 'email._encoded_words', '_QByteMap')
         _load_and_update(classes, 'encodings.big5', ['IncrementalDecoder',
                                                      'IncrementalEncoder',
@@ -1887,9 +1894,6 @@ elif sys.platform == 'win32':
                              'decimal', ['Context._unsafe_setemax',
                                          'Context._unsafe_setemin',
                                          'Context._unsafe_setprec'])
-        else:
-            _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
-            _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
 
         if sys.byteorder == 'little':
             _load_and_update(classes,
@@ -2021,8 +2025,6 @@ elif sys.platform == 'win32':
                              'types', ['UnionType.__instancecheck__',
                                        'UnionType.__subclasscheck__'])
 
-            if sys.maxsize == 0x7fffffff:
-                _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
         if sys.version_info >= (3, 11):
             _load_and_add(classes, '_tokenize', 'TokenizerIter')
             _load_and_add(classes, 'ctypes', 'BigEndianUnion')
