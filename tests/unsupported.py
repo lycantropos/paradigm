@@ -1335,8 +1335,9 @@ elif sys.platform == 'darwin':
 
             _load_and_add(classes, '_tokenize', 'TokenizerIter')
             _load_and_add(classes, 'ctypes', 'BigEndianUnion')
-            _load_and_update(classes, 'ctypes._endian', ['_swapped_struct_meta',
-                                                         '_swapped_union_meta'])
+            _load_and_update(classes,
+                             'ctypes._endian', ['_swapped_struct_meta',
+                                                '_swapped_union_meta'])
             _load_and_add(classes, 'pdb', '_ModuleTarget')
             _load_and_update(classes, 'typing', ['_AnyMeta',
                                                  '_DeprecatedType'])
@@ -2034,6 +2035,3 @@ elif sys.platform == 'win32':
             _load_and_add(classes, 'pdb', '_ModuleTarget')
             _load_and_update(classes, 'typing', ['_AnyMeta',
                                                  '_DeprecatedType'])
-
-            if sys.maxsize == 0x7fffffff:
-               _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
