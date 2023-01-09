@@ -3,9 +3,10 @@ import sys
 import typing as t
 from collections import deque
 
+import typing_extensions as te
+
 from paradigm._core import (catalog,
                             sources)
-from typing_extensions import TypeGuard
 
 
 def recursively_iterate_children(node: ast.AST) -> t.Iterable[ast.AST]:
@@ -45,6 +46,6 @@ else:
         return ast_node.slice
 
 
-def is_dependency_name(ast_node: ast.AST) -> TypeGuard[ast.Name]:
+def is_dependency_name(ast_node: ast.AST) -> te.TypeGuard[ast.Name]:
     return (isinstance(ast_node, ast.Name)
             and isinstance(ast_node.ctx, ast.Load))

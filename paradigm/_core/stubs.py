@@ -77,15 +77,15 @@ if _reload_cache:
                    exporting as _exporting,
                    namespacing as _namespacing,
                    sources as _sources)
+    from .arboreal import (construction as _construction,
+                           conversion as _conversion)
     from .arboreal.execution import execute_statement as _execute_statement
     from .arboreal.utils import (
-        is_dependency_name,
+        is_dependency_name as _is_dependency_name,
         recursively_iterate_children as _recursively_iterate_children,
         subscript_to_item as _subscript_to_item,
         to_parent_module_path as _to_parent_module_path
     )
-    from .arboreal import (construction as _construction,
-                           conversion as _conversion)
     from .sources import stubs_stdlib_modules_paths as _stdlib_modules_paths
 
     _ObjectAstNodes = _t.List[_ast.AST]
@@ -93,8 +93,9 @@ if _reload_cache:
     _ModuleAstNodesKinds = _t.Dict[_catalog.Path, _NodeKind]
     _ModuleReferences = _t.Dict[_catalog.Path, _catalog.QualifiedPath]
     _ModuleSubmodules = _t.List[_catalog.Path]
-    _ModuleSuperclasses = _t.Dict[_catalog.Path,
-                                  _t.List[_catalog.QualifiedPath]]
+    _ModuleSuperclasses = _t.Dict[
+        _catalog.Path, _t.List[_catalog.QualifiedPath]
+    ]
     _Scope = _t.Dict[str, '_Scope']
 
 
@@ -187,16 +188,19 @@ if _reload_cache:
                 module_ast_nodes_kinds: _ModuleAstNodesKinds,
                 module_references: _ModuleReferences,
                 modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
-                modules_ast_nodes_kinds: _t.Dict[_catalog.Path,
-                                                 _ModuleAstNodesKinds],
+                modules_ast_nodes_kinds: _t.Dict[
+                    _catalog.Path, _ModuleAstNodesKinds
+                ],
                 modules_definitions: _t.Dict[_catalog.Path, _Scope],
                 modules_references: _t.Dict[_catalog.Path, _ModuleReferences],
                 modules_submodules: _t.Dict[_catalog.Path, _ModuleSubmodules],
-                modules_superclasses: _t.Dict[_catalog.Path,
-                                              _ModuleSuperclasses],
+                modules_superclasses: _t.Dict[
+                    _catalog.Path, _ModuleSuperclasses
+                ],
                 visited_modules_paths: _t.Set[_catalog.Path],
-                classes_bases: _t.Dict[_catalog.QualifiedPath,
-                                       _t.List[_ast.expr]],
+                classes_bases: _t.Dict[
+                    _catalog.QualifiedPath, _t.List[_ast.expr]
+                ],
                 generics_parameters_paths: _t.Dict[
                     _catalog.QualifiedPath, _t.Tuple[_catalog.Path, ...]
                 ]
@@ -356,7 +360,7 @@ if _reload_cache:
             for dependency_name in {
                 child.id
                 for child in _recursively_iterate_children(node.test)
-                if is_dependency_name(child)
+                if _is_dependency_name(child)
             }:
                 module_path, object_path = self._resolve_object_path(
                         (dependency_name,)
@@ -514,16 +518,18 @@ if _reload_cache:
             parent_path: _catalog.Path,
             object_path: _catalog.Path,
             modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
-            modules_ast_nodes_kinds: _t.Dict[_catalog.Path,
-                                             _ModuleAstNodesKinds],
+            modules_ast_nodes_kinds: _t.Dict[
+                _catalog.Path, _ModuleAstNodesKinds
+            ],
             modules_definitions: _t.Dict[_catalog.Path, _Scope],
             modules_references: _t.Dict[_catalog.Path, _ModuleReferences],
             modules_submodules: _t.Dict[_catalog.Path, _ModuleSubmodules],
             modules_superclasses: _t.Dict[_catalog.Path, _ModuleSuperclasses],
             visited_modules_paths: _t.Set[_catalog.Path],
             classes_bases: _t.Dict[_catalog.QualifiedPath, _t.List[_ast.expr]],
-            generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
-                                               _t.Tuple[_catalog.Path, ...]],
+            generics_parameters_paths: _t.Dict[
+                _catalog.QualifiedPath, _t.Tuple[_catalog.Path, ...]
+            ],
             *,
             _builtins_module_path: _catalog.Path
             = _catalog.module_path_from_module(_builtins)
@@ -576,16 +582,18 @@ if _reload_cache:
     def _parse_stub_scope(
             module_path: _catalog.Path,
             modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
-            modules_ast_nodes_kinds: _t.Dict[_catalog.Path,
-                                             _ModuleAstNodesKinds],
+            modules_ast_nodes_kinds: _t.Dict[
+                _catalog.Path, _ModuleAstNodesKinds
+            ],
             modules_definitions: _t.Dict[_catalog.Path, _Scope],
             modules_references: _t.Dict[_catalog.Path, _ModuleReferences],
             modules_submodules: _t.Dict[_catalog.Path, _ModuleSubmodules],
             modules_superclasses: _t.Dict[_catalog.Path, _ModuleSuperclasses],
             visited_modules_paths: _t.Set[_catalog.Path],
             classes_bases: _t.Dict[_catalog.QualifiedPath, _t.List[_ast.expr]],
-            generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
-                                               _t.Tuple[_catalog.Path, ...]]
+            generics_parameters_paths: _t.Dict[
+                _catalog.QualifiedPath, _t.Tuple[_catalog.Path, ...]
+            ]
     ) -> _Scope:
         if module_path in visited_modules_paths:
             return modules_definitions[module_path]
@@ -658,12 +666,14 @@ if _reload_cache:
 
     def _parse_stubs_state(
             modules_paths: _t.Iterable[_catalog.Path]
-    ) -> _t.Tuple[_t.Dict[_catalog.Path, _Scope],
-                  _t.Dict[_catalog.Path, _ModuleAstNodesKinds],
-                  _t.Dict[_catalog.Path, _ModuleRawAstNodes],
-                  _t.Dict[_catalog.Path, _ModuleReferences],
-                  _t.Dict[_catalog.Path, _ModuleSubmodules],
-                  _t.Dict[_catalog.Path, _ModuleSuperclasses]]:
+    ) -> _t.Tuple[
+        _t.Dict[_catalog.Path, _Scope],
+        _t.Dict[_catalog.Path, _ModuleAstNodesKinds],
+        _t.Dict[_catalog.Path, _ModuleRawAstNodes],
+        _t.Dict[_catalog.Path, _ModuleReferences],
+        _t.Dict[_catalog.Path, _ModuleSubmodules],
+        _t.Dict[_catalog.Path, _ModuleSuperclasses]
+    ]:
         modules_definitions: _t.Dict[_catalog.Path, _Scope] = {}
         modules_nodes_kinds: _t.Dict[_catalog.Path, _ModuleAstNodesKinds] = {}
         modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes] = {}
@@ -671,8 +681,9 @@ if _reload_cache:
         modules_submodules: _t.Dict[_catalog.Path, _ModuleSubmodules] = {}
         modules_superclasses: _t.Dict[_catalog.Path, _ModuleSuperclasses] = {}
         classes_bases: _t.Dict[_catalog.QualifiedPath, _t.List[_ast.expr]] = {}
-        generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
-                                           _t.Tuple[_catalog.Path, ...]] = {}
+        generics_parameters_paths: _t.Dict[
+            _catalog.QualifiedPath, _t.Tuple[_catalog.Path, ...]
+        ] = {}
         visited_modules_paths: _t.Set[_catalog.Path] = set()
         _parse_stub_scope(
                 _catalog.module_path_from_module(_builtins), modules_ast_nodes,
@@ -709,8 +720,9 @@ if _reload_cache:
 
     def _process_classes_bases(
             classes_bases: _t.Dict[_catalog.QualifiedPath, _t.List[_ast.expr]],
-            generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
-                                               _t.Tuple[_catalog.Path, ...]],
+            generics_parameters_paths: _t.Dict[
+                _catalog.QualifiedPath, _t.Tuple[_catalog.Path, ...]
+            ],
             modules_ast_nodes: _t.Dict[_catalog.Path, _ModuleAstNodes],
             modules_definitions: _t.Dict[_catalog.Path, _Scope],
             modules_nodes_kinds: _t.Dict[_catalog.Path, _ModuleAstNodesKinds],
@@ -762,8 +774,9 @@ if _reload_cache:
             child_module_path: _catalog.Path,
             child_object_path: _catalog.Path,
             classes_bases: _t.Dict[_catalog.QualifiedPath, _t.List[_ast.expr]],
-            generics_parameters_paths: _t.Dict[_catalog.QualifiedPath,
-                                               _t.Tuple[_catalog.Path, ...]],
+            generics_parameters_paths: _t.Dict[
+                _catalog.QualifiedPath, _t.Tuple[_catalog.Path, ...]
+            ],
             specializations_ast_nodes: _ModuleAstNodes,
             specializations_module_path: _catalog.Path,
             specializations_module_scope: _Scope,
@@ -907,8 +920,9 @@ if _reload_cache:
             modules_nodes_kinds: _t.Dict[_catalog.Path, _ModuleAstNodesKinds],
             modules_references: _t.Dict[_catalog.Path, _ModuleReferences],
             modules_submodules: _t.Mapping[_catalog.Path, _ModuleSubmodules],
-            modules_superclasses: _t.Mapping[_catalog.Path,
-                                             _ModuleSuperclasses],
+            modules_superclasses: _t.Mapping[
+                _catalog.Path, _ModuleSuperclasses
+            ],
             builtins_module_path: _catalog.Path
             = _catalog.module_path_from_module(_builtins)
     ) -> None:
@@ -929,11 +943,11 @@ if _reload_cache:
         args_names = (
                 {arg.id
                  for arg in specialization_args
-                 if is_dependency_name(arg)}
+                 if _is_dependency_name(arg)}
                 | {child.id
                    for ast_node in specialization_args
                    for child in _recursively_iterate_children(ast_node)
-                   if is_dependency_name(child)}
+                   if _is_dependency_name(child)}
         )
         for name in generic_scope.keys():
             generic_field_path = (*generic_object_path, name)
@@ -953,7 +967,7 @@ if _reload_cache:
                     {child.id
                      for ast_node in specialization_ast_nodes
                      for child in _recursively_iterate_children(ast_node)
-                     if is_dependency_name(child)}
+                     if _is_dependency_name(child)}
                     - specialization_definitions_names
             ):
                 dependency_path = (dependency_name,)
