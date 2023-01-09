@@ -32,10 +32,10 @@ class ParameterKind(enum.IntEnum):
     VARIADIC_KEYWORD = 4
 
     def __repr__(self) -> str:
-        return type(self).__qualname__ + '.' + self.name
+        return type(self).__qualname__ + '.' + str(self.name)
 
     def __str__(self) -> str:
-        return self.name.lower().replace('_', ' ')
+        return str(self.name).lower().replace('_', ' ')
 
 
 class BaseParameter(ABC):
