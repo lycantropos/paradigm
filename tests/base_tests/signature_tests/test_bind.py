@@ -6,9 +6,9 @@ from typing import (Iterable,
 import pytest
 from hypothesis import given
 
+from paradigm._core.models import to_parameters_by_name
 from paradigm.base import (OverloadedSignature,
                            PlainSignature)
-from paradigm._core.models import to_parameters_by_name
 from tests.utils import (AnySignature,
                          Args,
                          Kwargs,
