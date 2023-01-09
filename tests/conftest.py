@@ -7,7 +7,7 @@ from hypothesis import (HealthCheck,
 
 is_pypy = sys.implementation.name == 'pypy'
 on_ci = bool(os.getenv('CI', False))
-max_examples = (-(-settings.default.max_examples // (10 if is_pypy else 1))
+max_examples = (-(-settings.default.max_examples // 10)
                 if on_ci
                 else settings.default.max_examples)
 settings.register_profile('default',
