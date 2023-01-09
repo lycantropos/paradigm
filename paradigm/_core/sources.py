@@ -6,12 +6,14 @@ from importlib.machinery import (EXTENSION_SUFFIXES,
                                  SOURCE_SUFFIXES)
 from importlib.util import find_spec
 from itertools import chain
-from pathlib import Path
+from pathlib import Path as _Path
 
 from . import (catalog,
                file_system)
 
 _STUB_EXTENSION = '.pyi'
+
+Path = _Path
 
 
 class NotFound(Exception):
@@ -77,8 +79,7 @@ def _relative_file_path_to_module_path(path: Path) -> catalog.Path:
 _stubs_cache = _to_stubs_cache()
 stubs_stdlib_modules_paths = set(_stubs_cache.keys())
 _sources_directories = {
-    Path(sysconfig.get_path('platstdlib')),
-    Path(sysconfig.get_path('stdlib')),
+    Path(sysconfig.get_path('platstdlib')), Path(sysconfig.get_path('stdlib'))
 }
 
 

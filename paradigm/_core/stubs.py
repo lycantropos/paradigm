@@ -95,7 +95,7 @@ if _reload_cache:
     _ModuleSubmodules = _t.List[_catalog.Path]
     _ModuleSuperclasses = _t.Dict[_catalog.Path,
                                   _t.List[_catalog.QualifiedPath]]
-    _Scope = _t.Dict[str, dict]
+    _Scope = _t.Dict[str, '_Scope']
 
 
     def _named_tuple_to_constructor_ast_node(

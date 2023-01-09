@@ -14,7 +14,7 @@ def repr_from(value: t.Any, indent: int, depth: int) -> str:
 
 
 @repr_from.register(dict)
-def _(value: dict, indent: int, depth: int) -> str:
+def _(value: t.Dict[t.Any, t.Any], indent: int, depth: int) -> str:
     return (
         ('{\n'
          + ',\n'.join(sorted([
@@ -32,7 +32,7 @@ def _(value: dict, indent: int, depth: int) -> str:
 
 
 @repr_from.register(list)
-def _(value: list, indent: int, depth: int) -> str:
+def _(value: t.List[t.Any], indent: int, depth: int) -> str:
     return (('[\n'
              + ',\n'.join([indent * ' ' * (depth + 1)
                            + repr_from(sub_value, indent, depth + 1)
@@ -43,7 +43,7 @@ def _(value: list, indent: int, depth: int) -> str:
 
 
 @repr_from.register(tuple)
-def _(value: tuple, indent: int, depth: int) -> str:
+def _(value: t.Tuple[t.Any, ...], indent: int, depth: int) -> str:
     if len(value) > 1:
         return ('(\n'
                 + ',\n'.join([indent * ' ' * (depth + 1)
@@ -57,7 +57,7 @@ def _(value: tuple, indent: int, depth: int) -> str:
 
 
 @repr_from.register(set)
-def _(value: set, indent: int, depth: int) -> str:
+def _(value: t.Set[t.Any], indent: int, depth: int) -> str:
     return (('{\n'
              + ',\n'.join([indent * ' ' * (depth + 1)
                            + repr_from(sub_value, indent, depth + 1)

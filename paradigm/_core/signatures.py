@@ -40,8 +40,9 @@ def from_callable(_callable: _t.Callable[..., _t.Any]) -> _Signature:
 @_decorate_if(from_callable.register(_types.BuiltinMethodType),
               _sys.implementation.name != 'pypy')
 def _(
-        _callable: _t.Union[_types.BuiltinFunctionType,
-                            _types.BuiltinMethodType]
+        _callable: _t.Union[
+            _types.BuiltinFunctionType, _types.BuiltinMethodType
+        ]
 ) -> _Signature:
     try:
         return ((_from_callable(_callable)
@@ -92,8 +93,11 @@ def _(_callable: _types.MethodWrapperType) -> _Signature:
               _sys.implementation.name != 'pypy')
 @_decorate_if(from_callable.register(_types.WrapperDescriptorType),
               _sys.implementation.name != 'pypy')
-def _(_callable: _t.Union[_types.MethodDescriptorType,
-                          _types.WrapperDescriptorType]) -> _Signature:
+def _(
+        _callable: _t.Union[
+            _types.MethodDescriptorType, _types.WrapperDescriptorType
+        ]
+) -> _Signature:
     cls = _callable.__objclass__
     assert isinstance(cls, type), _callable
     try:
@@ -124,7 +128,7 @@ def _(_callable: _t.Callable[..., _t.Any]) -> _Signature:
 
 
 @from_callable.register(_partial)
-def _(_callable: _partial) -> _Signature:
+def _(_callable: '_partial[_t.Any]') -> _Signature:
     return from_callable(_callable.func).bind(*_callable.args,
                                               **_callable.keywords)
 
@@ -579,13 +583,15 @@ def _parameter_from_ast_node(ast_node: _ast.arg,
                                      else {'default': default}),
                                   kind=kind,
                                   name=name)
+    elif (kind is _ParameterKind.VARIADIC_POSITIONAL
+          or kind is _ParameterKind.VARIADIC_KEYWORD):
+        return _OptionalParameter(annotation=annotation,
+                                  kind=kind,
+                                  name=name)
     else:
-        return (_OptionalParameter
-                if (kind is _ParameterKind.VARIADIC_POSITIONAL
-                    or kind is _ParameterKind.VARIADIC_KEYWORD)
-                else _RequiredParameter)(annotation=annotation,
-                                         kind=kind,
-                                         name=name)
+        return _RequiredParameter(annotation=annotation,
+                                  kind=kind,
+                                  name=name)
 
 
 def _to_keyword_parameters(

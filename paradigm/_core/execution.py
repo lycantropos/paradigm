@@ -42,7 +42,7 @@ def call_in_process(function: t.Callable[..., t.Any],
                 sys.modules['__main__'] = main_module
 
 
-def _put_result_in_queue(queue: SimpleQueue,
+def _put_result_in_queue(queue: 'SimpleQueue[t.Any]',
                          function: t.Callable[..., t.Any],
                          *args: t.Any,
                          **kwargs: t.Any) -> None:

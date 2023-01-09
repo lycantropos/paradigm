@@ -20,7 +20,9 @@ else:
 def from_raw(raw: RawAstNode,
              *,
              namespace: t.Dict[str, t.Any] = _AST_NAMESPACE) -> ast.AST:
-    return eval(raw, namespace)
+    result = eval(raw, namespace)
+    assert isinstance(result, ast.AST), result
+    return result
 
 
 def from_source_path(path: Path) -> ast.Module:

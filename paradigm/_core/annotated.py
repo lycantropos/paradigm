@@ -16,7 +16,9 @@ del _T
 
 @singledispatch
 def are_equal(left: t.Any, right: t.Any) -> bool:
-    return left == right
+    result = left == right
+    assert isinstance(result, bool), result
+    return result
 
 
 @are_equal.register(GenericAlias)
@@ -110,7 +112,9 @@ def _(left: t.TypeVar, right: t.Any) -> bool:
 @are_equal.register(bytes)
 @are_equal.register(str)
 def _(left: t.Union[bytes, str], right: t.Any) -> bool:
-    return left == right
+    result = left == right
+    assert isinstance(result, bool), result
+    return result
 
 
 if sys.version_info >= (3, 8):
@@ -124,6 +128,7 @@ else:
                     and to_origin(annotation) is abc.Callable
                     and result[0] is not Ellipsis):
                 result = (list(result[:-1]), result[-1])
+            assert isinstance(result, tuple)
             return result
         return ()
 

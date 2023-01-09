@@ -9,7 +9,7 @@ ModuleReferences = t.Mapping[catalog.Path, catalog.QualifiedPath]
 ModuleSubmodules = t.Collection[catalog.Path]
 ModuleSuperclasses = t.Mapping[catalog.Path,
                                t.Collection[catalog.QualifiedPath]]
-Scope = t.Mapping[str, t.Mapping]
+Scope = t.Mapping[str, 'Scope']
 
 
 class ObjectNotFound(Exception):

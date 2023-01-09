@@ -2,14 +2,18 @@ import functools
 import sys
 import typing as t
 
+import typing_extensions as te
+
+_Params = te.ParamSpec('_Params')
 _T1 = t.TypeVar('_T1')
 _T2 = t.TypeVar('_T2')
 
 
-def decorate_if(decorator: t.Callable[[_T1], _T2],
-                condition: bool) -> t.Union[t.Callable[[_T1], _T1],
-                                            t.Callable[[_T1], _T2]]:
-    return decorator if condition else _identity
+def decorate_if(
+        decorator: t.Callable[[t.Callable[_Params, _T1]], t.Any],
+        condition: bool
+) -> t.Callable[[t.Callable[_Params, _T1]], t.Any]:
+    return decorator if condition else _identity_decorator
 
 
 singledispatchmethod: t.Any
@@ -20,8 +24,7 @@ if sys.version_info < (3, 8):
         func: t.Callable[..., _T1]
 
         def __new__(cls,
-                    func: t.Callable[
-                        ..., _T1]) -> '_singledispatchmethod':
+                    func: t.Callable[..., _T1]) -> '_singledispatchmethod':
             if not callable(func) and not hasattr(func, '__get__'):
                 raise TypeError(f'{func!r} is not callable or a descriptor')
             self = super().__new__(cls)
@@ -30,22 +33,22 @@ if sys.version_info < (3, 8):
 
         @t.overload
         def register(self,
-                     cls: t.Type,
-                     method: t.Callable[..., _T1]) -> t.Callable[..., _T1]:
+                     cls: t.Type[t.Any],
+                     method: t.Callable[..., _T1]) -> t.Any:
             return self.dispatcher.register(cls, method)
 
         @t.overload
-        def register(self, cls: t.Type) -> t.Callable[
-            [t.Callable[..., _T1]], t.Callable[..., _T1]
-        ]:
+        def register(self, cls: t.Type[t.Any]) -> t.Any:
             return self.dispatcher.register(cls)
 
-        def register(self, cls, method=None):
+        def register(self,
+                     cls: t.Type[t.Any],
+                     method: t.Optional[t.Callable[..., _T1]] = None) -> t.Any:
             return self.dispatcher.register(cls, method)
 
         def __get__(self,
                     instance: _T2,
-                    cls: t.Optional[_T2] = None) -> t.Callable[..., _T1]:
+                    cls: t.Optional[_T2] = None) -> t.Any:
             def dispatchable_method(*args: t.Any,
                                     **kwargs: t.Any) -> t.Any:
                 method = self.dispatcher.dispatch(args[0].__class__)
@@ -67,5 +70,7 @@ else:
     singledispatchmethod = functools.singledispatchmethod
 
 
-def _identity(value: _T1) -> _T1:
+def _identity_decorator(
+        value: t.Callable[_Params, _T1]
+) -> t.Callable[_Params, _T1]:
     return value
