@@ -1,7 +1,6 @@
 import sys as _sys
 import typing as _t
 from importlib import import_module as _import_module
-from itertools import chain
 from operator import attrgetter as _attrgetter
 from pathlib import Path as _Path
 
@@ -70,6 +69,7 @@ if _reload_cache:
     import builtins as _builtins
     from copy import deepcopy as _deepcopy
     from functools import singledispatch as _singledispatch
+    from itertools import chain
 
     from typing_extensions import TypeGuard as _TypeGuard
 
