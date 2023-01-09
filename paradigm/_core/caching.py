@@ -1,12 +1,28 @@
+import typing as t
 import warnings
 from compileall import compile_file
+from importlib import import_module
+from importlib.machinery import SOURCE_SUFFIXES
+from operator import attrgetter
 from pathlib import Path
-from typing import Any
+
+import typing_extensions as te
 
 from . import pretty
 
+FILE_SUFFIX: te.Final[str] = SOURCE_SUFFIXES[0]
 
-def save(path: Path, **values: Any) -> None:
+
+def load(*names: str, path: Path) -> t.Tuple[t.Any, ...]:
+    return attrgetter(*names)(
+            import_module((''
+                           if __name__ in ('__main__', '__mp_main__')
+                           else __name__.rsplit('.', maxsplit=1)[0] + '.')
+                          + path.stem)
+    )
+
+
+def save(*, path: Path, **values: t.Any) -> None:
     try:
         with path.open('w',
                        encoding='utf-8') as file:

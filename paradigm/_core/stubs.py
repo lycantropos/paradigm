@@ -1,14 +1,14 @@
 import sys as _sys
 import typing as _t
 from importlib import import_module as _import_module
-from operator import attrgetter as _attrgetter
 from pathlib import Path as _Path
 
 import mypy as _mypy
 from mypy.version import __version__ as _mypy_version
 
 from paradigm import __version__ as _version
-from . import (catalog as _catalog,
+from . import (caching as _caching,
+               catalog as _catalog,
                scoping as _scoping)
 from .arboreal import conversion as _serialization
 from .arboreal.kind import NodeKind as _NodeKind
@@ -18,7 +18,7 @@ _CACHE_PATH = _Path(__file__).with_name(
         + '_' + _sys.platform
         + '_' + _sys.implementation.name
         + '_' + '_'.join(map(str, _sys.version_info))
-        + '_' + _Path(__file__).name
+        + '_' + _Path(__file__).with_suffix(_caching.FILE_SUFFIX).name
 )
 _DEFINITIONS_FIELD_NAME = 'definitions'
 _NODES_KINDS_FIELD_NAME = 'nodes_kinds'
@@ -42,16 +42,11 @@ try:
     (
         definitions, _raw_nodes_kinds, raw_ast_nodes, references, submodules,
         superclasses, _cached_version
-    ) = _attrgetter(
-            _DEFINITIONS_FIELD_NAME, _NODES_KINDS_FIELD_NAME,
-            _RAW_AST_NODES_FIELD_NAME, _REFERENCES_FIELD_NAME,
-            _SUBMODULES_FIELD_NAME, _SUPERCLASSES_FIELD_NAME,
-            _VERSION_FIELD_NAME
-    )(_import_module((''
-                      if __name__ in ('__main__', '__mp_main__')
-                      else __name__.rsplit('.', maxsplit=1)[
-                               0] + '.')
-                     + _CACHE_PATH.stem))
+    ) = _caching.load(_DEFINITIONS_FIELD_NAME, _NODES_KINDS_FIELD_NAME,
+                      _RAW_AST_NODES_FIELD_NAME, _REFERENCES_FIELD_NAME,
+                      _SUBMODULES_FIELD_NAME, _SUPERCLASSES_FIELD_NAME,
+                      _VERSION_FIELD_NAME,
+                      path=_CACHE_PATH)
 except Exception:
     _reload_cache = True
 else:
@@ -74,7 +69,6 @@ if _reload_cache:
     from typing_extensions import TypeGuard as _TypeGuard
 
     from . import (execution as _execution,
-                   exporting as _exporting,
                    namespacing as _namespacing,
                    sources as _sources)
     from .arboreal import (construction as _construction,
@@ -996,14 +990,14 @@ if _reload_cache:
             superclasses
         ) = _execution.call_in_process(_parse_stubs_state,
                                        _stdlib_modules_paths)
-        _exporting.save(_CACHE_PATH,
-                        **{_DEFINITIONS_FIELD_NAME: definitions,
-                           _NODES_KINDS_FIELD_NAME: nodes_kinds,
-                           _RAW_AST_NODES_FIELD_NAME: raw_ast_nodes,
-                           _REFERENCES_FIELD_NAME: references,
-                           _SUBMODULES_FIELD_NAME: submodules,
-                           _SUPERCLASSES_FIELD_NAME: superclasses,
-                           _VERSION_FIELD_NAME: _version})
+        _caching.save(**{_DEFINITIONS_FIELD_NAME: definitions,
+                         _NODES_KINDS_FIELD_NAME: nodes_kinds,
+                         _RAW_AST_NODES_FIELD_NAME: raw_ast_nodes,
+                         _REFERENCES_FIELD_NAME: references,
+                         _SUBMODULES_FIELD_NAME: submodules,
+                         _SUPERCLASSES_FIELD_NAME: superclasses,
+                         _VERSION_FIELD_NAME: _version},
+                      path=_CACHE_PATH)
     else:
         (
             definitions, nodes_kinds, raw_ast_nodes, references, submodules,
