@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import sys
 import typing as t
@@ -23,8 +25,7 @@ if sys.version_info < (3, 8):
         dispatcher: t.Any
         func: t.Callable[..., _T1]
 
-        def __new__(cls,
-                    func: t.Callable[..., _T1]) -> '_singledispatchmethod':
+        def __new__(cls, func: t.Callable[..., _T1]) -> _singledispatchmethod:
             if not callable(func) and not hasattr(func, '__get__'):
                 raise TypeError(f'{func!r} is not callable or a descriptor')
             self = super().__new__(cls)
