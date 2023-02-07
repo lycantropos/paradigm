@@ -25,7 +25,7 @@ if sys.version_info < (3, 8):
         dispatcher: t.Any
         func: t.Callable[..., _T1]
 
-        def __new__(cls, func: t.Callable[..., _T1]) -> _singledispatchmethod:
+        def __new__(cls, func: t.Callable[..., t.Any]) -> te.Self:
             if not callable(func) and not hasattr(func, '__get__'):
                 raise TypeError(f'{func!r} is not callable or a descriptor')
             self = super().__new__(cls)
@@ -47,6 +47,10 @@ if sys.version_info < (3, 8):
                      method: t.Optional[t.Callable[..., _T1]] = None) -> t.Any:
             return self.dispatcher.register(cls, method)
 
+        @property
+        def __isabstractmethod__(self) -> bool:
+            return getattr(self.func, '__isabstractmethod__', False)
+
         def __get__(self,
                     instance: _T2,
                     cls: t.Optional[_T2] = None) -> t.Any:
@@ -60,10 +64,6 @@ if sys.version_info < (3, 8):
             result.register = self.register
             functools.update_wrapper(result, self.func)
             return result
-
-        @property
-        def __isabstractmethod__(self) -> bool:
-            return getattr(self.func, '__isabstractmethod__', False)
 
 
     singledispatchmethod = _singledispatchmethod
