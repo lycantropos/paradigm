@@ -190,37 +190,37 @@ def _(ast_node: ast.List,
             for element in ast_node.elts]
 
 
+@evaluate_statement_node.register(ast.AnnAssign)
 @evaluate_statement_node.register(ast.Assign)
 def _(ast_node: ast.Assign,
       module_path: catalog.Path,
       parent_path: catalog.Path,
       parent_namespace: namespacing.Namespace,
       *,
-      namespace: namespacing.Namespace = globals()) -> t.Any:
-    names = conversion.to_names(ast_node)
-    for name in names:
+      cache: t.Dict[catalog.QualifiedPath, t.Any] = {}) -> t.Any:
+    targets_paths = [
+        scoping.resolve_object_path(module_path, parent_path, (name,),
+                                    stubs.definitions, stubs.references,
+                                    stubs.submodules, stubs.superclasses)
+        for name in conversion.to_names(ast_node)
+    ]
+    for target_path in targets_paths:
         try:
-            result = namespace[name]
+            result = cache[target_path]
         except KeyError:
+            _, target_object_path = target_path
+            cache[target_path] = t.ForwardRef(
+                    catalog.path_to_string(target_object_path)
+            )
             continue
         else:
             break
     else:
         result = evaluate_expression_node(ast_node.value, module_path,
                                           parent_path, parent_namespace)
-    for name in names:
-        namespace[name] = result
+    for target_path in targets_paths:
+        cache[target_path] = result
     return result
-
-
-@evaluate_statement_node.register(ast.AnnAssign)
-def _(ast_node: ast.AnnAssign,
-      module_path: catalog.Path,
-      parent_path: catalog.Path,
-      parent_namespace: namespacing.Namespace) -> t.Any:
-    assert ast_node.value is not None, ast_node
-    return evaluate_expression_node(ast_node.value, module_path, parent_path,
-                                    parent_namespace)
 
 
 @evaluate_expression_node.register(ast.BinOp)
@@ -250,8 +250,7 @@ def _(ast_node: ast.Name,
             module_path, parent_path, (object_name,), stubs.definitions,
             stubs.references, stubs.submodules, stubs.superclasses
     )
-    return evaluate_qualified_path(module_path, object_path,
-                                   parent_namespace)
+    return evaluate_qualified_path(module_path, object_path, parent_namespace)
 
 
 @evaluate_expression_node.register(ast.Attribute)
@@ -326,9 +325,10 @@ def evaluate_qualified_path(
                     ast_node = construction.from_raw(raw_ast_node)
                     assert isinstance(ast_node, ast.stmt), (module_path,
                                                             object_path)
-                    value = evaluate_statement_node(
-                            ast_node, module_path, object_path[:-1],
-                            parent_namespace
+                    value = parent_namespace[object_path[-1]] = (
+                        evaluate_statement_node(ast_node, module_path,
+                                                object_path[:-1],
+                                                parent_namespace)
                     )
                 return value
         scope = stubs.definitions[module_path]
