@@ -13,7 +13,8 @@ max_examples = (-(-settings.default.max_examples // (20 if is_pypy else 5))
 settings.register_profile('default',
                           deadline=None,
                           max_examples=max_examples,
-                          suppress_health_check=[HealthCheck.filter_too_much])
+                          suppress_health_check=[HealthCheck.filter_too_much,
+                                                 HealthCheck.too_slow])
 
 
 @pytest.hookimpl(trylast=True)
