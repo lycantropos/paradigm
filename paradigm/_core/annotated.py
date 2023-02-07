@@ -10,7 +10,7 @@ from typing_extensions import (Literal,
                                ParamSpecKwargs)
 
 _T = t.TypeVar('_T')
-GenericAlias: t.Any = type(t.List[_T])
+GenericAlias: t.Any = type(t.Generic[_T])
 del _T
 
 
