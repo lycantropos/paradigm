@@ -436,6 +436,7 @@ if sys.version_info < (3, 8):
         return ast_node.n
 
 
+    @evaluate_expression_node.register(ast.Bytes)
     @evaluate_expression_node.register(ast.Str)
     def _(ast_node: ast.Str,
           module_path: catalog.Path,
