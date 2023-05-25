@@ -1,2 +1,2 @@
-hypothesis>=6.62.0,<7.0
-pytest>=7.2.0,<8.0
+hypothesis>=6.75.3,<7.0
+pytest>=7.3.1,<8.0
