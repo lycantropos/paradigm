@@ -37,7 +37,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.coverage.run]
-concurrency = "multiprocessing"
+concurrency = ["multiprocessing"]
 source = ["paradigm"]
 
 [tool.mypy]
