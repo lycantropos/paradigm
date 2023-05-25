@@ -73,6 +73,22 @@ def _(ast_node: ast.UnaryOp,
     )
 
 
+@evaluate_expression_node.register(ast.Dict)
+def _(ast_node: ast.Dict,
+      module_path: catalog.Path,
+      parent_path: catalog.Path,
+      parent_namespace: namespacing.Namespace) -> t.Any:
+    return {
+        evaluate_expression_node(
+                key, module_path, parent_path, parent_namespace
+        ):
+            evaluate_expression_node(
+                    value, module_path, parent_path, parent_namespace
+            )
+        for key, value in zip(ast_node.keys, ast_node.values)
+    }
+
+
 @evaluate_operator_node.register(ast.BitAnd)
 def _(ast_node: ast.BitAnd) -> t.Any:
     return operator.and_
