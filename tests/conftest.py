@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import timedelta
 
 import pytest
 from hypothesis import (HealthCheck,
@@ -11,7 +12,9 @@ max_examples = (-(-settings.default.max_examples // (20 if is_pypy else 5))
                 if on_ci
                 else settings.default.max_examples)
 settings.register_profile('default',
-                          deadline=None,
+                          deadline=(timedelta(hours=1) / max_examples
+                                    if on_ci
+                                    else None),
                           max_examples=max_examples,
                           suppress_health_check=[HealthCheck.filter_too_much,
                                                  HealthCheck.too_slow])
