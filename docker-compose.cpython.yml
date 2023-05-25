@@ -10,10 +10,8 @@ services:
     image: lycantropos/paradigm-cpython:4.1.0
     volumes:
       - ./paradigm:/opt/paradigm/paradigm
-      - ./pytest.ini:/opt/paradigm/pytest.ini
+      - ./pyproject.toml:/opt/paradigm/pyproject.toml
       - ./README.md:/opt/paradigm/README.md
-      - ./requirements-tests.txt:/opt/paradigm/requirements-tests.txt
-      - ./requirements.txt:/opt/paradigm/requirements.txt
       - ./setup.py:/opt/paradigm/setup.py
       - ./tests:/opt/paradigm/tests
     entrypoint: pytest
