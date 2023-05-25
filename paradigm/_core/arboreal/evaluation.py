@@ -9,7 +9,7 @@ from collections import ChainMap
 from functools import singledispatch
 from importlib import import_module
 
-from typing_extensions import Self
+import typing_extensions as te
 
 from paradigm._core import (catalog,
                             namespacing,
@@ -299,7 +299,7 @@ def evaluate_qualified_path(
         modules_cache: t.MutableMapping[catalog.Path, types.ModuleType]
         = weakref.WeakValueDictionary(),
         objects_cache: t.MutableMapping[catalog.QualifiedPath, t.Any]
-        = weakref.WeakValueDictionary([((('_typeshed',), ('Self',)), Self)])
+        = weakref.WeakValueDictionary([((('_typeshed',), ('Self',)), te.Self)])
 ) -> t.Any:
     module_name = catalog.path_to_string(module_path)
     try:
