@@ -616,7 +616,7 @@ def _to_positional_parameters(
     parameters_with_defaults_ast: _t.List[
         _t.Tuple[_ast.arg, _t.Optional[_ast.expr]]
     ] = list(_zip_longest(reversed(signature_ast.args),
-                          signature_ast.defaults))[::-1]
+                          signature_ast.defaults[::-1]))[::-1]
     kind = _ParameterKind.POSITIONAL_ONLY
     return [_parameter_from_ast_node(parameter_ast, default_ast, module_path,
                                      parent_path, kind)
