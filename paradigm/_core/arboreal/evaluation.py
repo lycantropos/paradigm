@@ -73,11 +73,21 @@ def _(ast_node: ast.UnaryOp,
     )
 
 
+_T = t.TypeVar('_T')
+
+
+def _all_not_none(
+        value: t.List[t.Optional[_T]]
+) -> te.TypeGuard[t.List[_T]]:
+    return all(element is not None for element in value)
+
+
 @evaluate_expression_node.register(ast.Dict)
 def _(ast_node: ast.Dict,
       module_path: catalog.Path,
       parent_path: catalog.Path,
       parent_namespace: namespacing.Namespace) -> t.Any:
+    assert _all_not_none(ast_node.keys), ast_node.keys
     return {
         evaluate_expression_node(
                 key, module_path, parent_path, parent_namespace
