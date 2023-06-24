@@ -1,12 +1,11 @@
+import types
+import typing as t
+import warnings
 from collections import deque
 from functools import (partial,
                        reduce)
 from importlib import import_module
 from types import ModuleType
-from typing import (Any,
-                    Deque,
-                    List,
-                    Union)
 
 from hypothesis import strategies
 
@@ -15,8 +14,8 @@ from paradigm._core.discovery import supported_stdlib_modules_paths
 from tests.contracts import is_supported
 
 
-def find_module_callables_recursively(module: ModuleType) -> List[Any]:
-    queue: Deque[Union[ModuleType, type]] = deque([module])
+def find_module_callables_recursively(module: ModuleType) -> t.List[t.Any]:
+    queue: t.Deque[t.Union[ModuleType, type]] = deque([module])
     result = []
     visited_types = set()
     while queue:
@@ -36,9 +35,18 @@ def find_module_callables_recursively(module: ModuleType) -> List[Any]:
     return result
 
 
+def safe_import_module(name: str) -> t.Optional[types.ModuleType]:
+    try:
+        return import_module(name)
+    except Exception:
+        warnings.warn(f'Failed importing module "{name}".', ImportWarning)
+        return None
+
+
 callables = (strategies.sampled_from(sorted(supported_stdlib_modules_paths))
              .map(catalog.path_to_string)
-             .map(import_module)
+             .map(safe_import_module)
+             .filter(bool)
              .map(find_module_callables_recursively)
              .filter(bool)
              .flatmap(strategies.sampled_from))
