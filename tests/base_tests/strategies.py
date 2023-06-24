@@ -43,10 +43,11 @@ def safe_import_module(name: str) -> t.Optional[types.ModuleType]:
         return None
 
 
-callables = (strategies.sampled_from(sorted(supported_stdlib_modules_paths))
-             .map(catalog.path_to_string)
-             .map(safe_import_module)
-             .filter(bool)
+modules = (strategies.sampled_from(sorted(supported_stdlib_modules_paths))
+           .map(catalog.path_to_string)
+           .map(safe_import_module)
+           .filter(bool))
+callables = (modules
              .map(find_module_callables_recursively)
              .filter(bool)
              .flatmap(strategies.sampled_from))
