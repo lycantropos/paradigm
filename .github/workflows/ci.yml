@@ -78,7 +78,7 @@ jobs:
       - name: 'Run tests'
         run: coverage run --append -m pytest
       - name: 'Collect coverage'
-        run: coverage xml
+        run: coverage combine && coverage xml
       - name: 'Upload coverage'
         uses: codecov/codecov-action@v3
         with:
