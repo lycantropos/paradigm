@@ -44,7 +44,7 @@ if sys.implementation.name == 'pypy':
     unsupported_stdlib_modules_paths.update(
             [path
              for path in stdlib_modules_paths
-             if (path[0].startswith(('__pypy', '_pypy'))
+             if (path[0].startswith(('__pypy', '_hpy', '_pypy', 'hpy'))
                  or '__pycache__' in path)]
     )
     if sys.platform == 'win32':
