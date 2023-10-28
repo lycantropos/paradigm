@@ -111,8 +111,6 @@ if sys.platform == 'linux':
         _load_and_update(classes, 'greenlet', ['GreenletExit',
                                                '_continulet',
                                                'error'])
-        _load_and_add(classes, 'hpy.debug.leakdetector', 'HPyDebugError')
-        _load_and_add(classes, 'hpy.devel', 'HPyExtensionName')
         _load_and_add(classes, 'importlib._bootstrap', '_DeadlockError')
         _load_and_add(classes, 'importlib.util', '_LazyModule')
         _load_and_update(classes, 'itertools', ['_groupby',
@@ -749,8 +747,6 @@ elif sys.platform == 'darwin':
         _load_and_update(classes, 'greenlet', ['GreenletExit',
                                                '_continulet',
                                                'error'])
-        _load_and_add(classes, 'hpy.debug.leakdetector', 'HPyDebugError')
-        _load_and_add(classes, 'hpy.devel', 'HPyExtensionName')
         _load_and_add(classes, 'importlib._bootstrap', '_DeadlockError')
         _load_and_add(classes, 'importlib.util', '_LazyModule')
         _load_and_update(classes, 'itertools', ['_groupby',
@@ -1400,8 +1396,6 @@ elif sys.platform == 'win32':
         _load_and_update(classes, 'greenlet', ['GreenletExit',
                                                '_continulet',
                                                'error'])
-        _load_and_add(classes, 'hpy.debug.leakdetector', 'HPyDebugError')
-        _load_and_add(classes, 'hpy.devel', 'HPyExtensionName')
         _load_and_add(classes, 'importlib._bootstrap', '_DeadlockError')
         _load_and_add(classes, 'importlib.util', '_LazyModule')
         _load_and_add(classes, 'io', '_WindowsConsoleIO')
