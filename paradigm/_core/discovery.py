@@ -146,17 +146,12 @@ else:
                                           'encodings.mbcs',
                                           'encodings.oem',
                                           'multiprocessing.popen_spawn_win32')
-        if sys.version_info < (3, 8):
-            _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
-                                              'distutils._msvccompiler',
-                                              'encodings.cp65001')
         if sys.platform == 'darwin':
-            if sys.version_info >= (3, 8):
-                _recursively_update_modules_paths(
-                        unsupported_stdlib_modules_paths,
-                        'dbm.gnu',
-                        'distutils._msvccompiler',
-                )
+            _recursively_update_modules_paths(
+                    unsupported_stdlib_modules_paths,
+                    'dbm.gnu',
+                    'distutils._msvccompiler',
+            )
 
 supported_stdlib_modules_paths: Final[t.Iterable[catalog.Path]] = [
     module_path

@@ -117,29 +117,8 @@ def _(left: t.Union[bytes, str], right: t.Any) -> bool:
     return result
 
 
-if sys.version_info >= (3, 8):
-    to_arguments = t.get_args
-    to_origin = t.get_origin
-else:
-    def to_arguments(annotation: t.Any) -> t.Tuple[t.Any, ...]:
-        if isinstance(annotation, GenericAlias):
-            result = annotation.__args__
-            if (result
-                    and to_origin(annotation) is abc.Callable
-                    and result[0] is not Ellipsis):
-                result = (list(result[:-1]), result[-1])
-            assert isinstance(result, tuple)
-            return result
-        return ()
-
-
-    def to_origin(annotation: t.Any) -> t.Any:
-        if isinstance(annotation, GenericAlias):
-            return annotation.__origin__
-        elif annotation is t.Generic:
-            return t.Generic
-        else:
-            return None
+to_arguments = t.get_args
+to_origin = t.get_origin
 
 
 @singledispatch

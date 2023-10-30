@@ -111,29 +111,17 @@ if _reload_cache:
         )
 
 
-    if _sys.version_info < (3, 8):
-        def _annotations_to_signature(
-                ast_nodes: _t.List[_ast.AnnAssign]
-        ) -> _ast.arguments:
-            return _ast.arguments([_ast.arg('cls', None)]
-                                  + [_ann_assign_to_arg(ast_node)
-                                     for ast_node in ast_nodes],
-                                  None, [], [], None,
-                                  [ast_node.value
-                                   for ast_node in ast_nodes
-                                   if ast_node.value is not None])
-    else:
-        def _annotations_to_signature(
-                ast_nodes: _t.List[_ast.AnnAssign]
-        ) -> _ast.arguments:
-            return _ast.arguments([],
-                                  [_ast.arg('cls', None)]
-                                  + [_ann_assign_to_arg(ast_node)
-                                     for ast_node in ast_nodes],
-                                  None, [], [], None,
-                                  [ast_node.value
-                                   for ast_node in ast_nodes
-                                   if ast_node.value is not None])
+    def _annotations_to_signature(
+            ast_nodes: _t.List[_ast.AnnAssign]
+    ) -> _ast.arguments:
+        return _ast.arguments([],
+                              [_ast.arg('cls', None)]
+                              + [_ann_assign_to_arg(ast_node)
+                                 for ast_node in ast_nodes],
+                              None, [], [], None,
+                              [ast_node.value
+                               for ast_node in ast_nodes
+                               if ast_node.value is not None])
 
 
     def _ann_assign_to_arg(ast_node: _ast.AnnAssign) -> _ast.arg:

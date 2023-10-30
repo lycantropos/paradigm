@@ -6,15 +6,11 @@ from pathlib import Path
 from .conversion import RawAstNode
 
 _AST_NAMESPACE = vars(ast).copy()
-if sys.version_info >= (3, 8):
-    del _AST_NAMESPACE[ast.Ellipsis.__qualname__]
+del _AST_NAMESPACE[ast.Ellipsis.__qualname__]
 
-if sys.version_info < (3, 8):
-    def from_node(ast_node: ast.AST) -> ast.Module:
-        return ast.Module([ast_node])
-else:
-    def from_node(ast_node: ast.AST) -> ast.Module:
-        return ast.Module([ast_node], [])
+
+def from_node(ast_node: ast.AST) -> ast.Module:
+    return ast.Module([ast_node], [])
 
 
 def from_raw(raw: RawAstNode,

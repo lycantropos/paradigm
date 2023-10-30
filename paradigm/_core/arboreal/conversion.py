@@ -187,25 +187,6 @@ def _(ast_node: ast.List) -> str:
     return f'[{", ".join(elements_strings)}]'
 
 
-if sys.version_info < (3, 8):
-    @to_str.register(ast.Ellipsis)
-    def _(ast_node: ast.Ellipsis) -> str:
-        return str(Ellipsis)
-
-    @to_str.register(ast.NameConstant)
-    def _(ast_node: ast.NameConstant) -> str:
-        return str(ast_node.value)
-
-
-    @to_str.register(ast.Num)
-    def _(ast_node: ast.Num) -> str:
-        return str(ast_node.n)
-
-
-    @to_str.register(ast.Str)
-    def _(ast_node: ast.Str) -> str:
-        return ast_node.s
-
 if sys.version_info < (3, 10):
     @to_str.register(ast.BinOp)
     def _(ast_node: ast.BinOp) -> str:

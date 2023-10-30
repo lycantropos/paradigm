@@ -147,19 +147,12 @@ class _LazyEvaluator(ast.NodeTransformer):
         self.generic_visit(node)
         return node
 
-    if sys.version_info < (3, 8):
-        def visit_arg(self, node: ast.arg) -> ast.arg:
-            return ast.arg(node.arg,
-                           None
-                           if node.annotation is None
-                           else ast.Str(conversion.to_str(node.annotation)))
-    else:
-        def visit_arg(self, node: ast.arg) -> ast.arg:
-            return ast.arg(node.arg,
-                           None
-                           if node.annotation is None
-                           else ast.Str(conversion.to_str(node.annotation)),
-                           getattr(node, 'type_comment', None))
+    def visit_arg(self, node: ast.arg) -> ast.arg:
+        return ast.arg(node.arg,
+                       None
+                       if node.annotation is None
+                       else ast.Str(conversion.to_str(node.annotation)),
+                       getattr(node, 'type_comment', None))
 
 
 _AstNode = t.TypeVar('_AstNode',
@@ -436,39 +429,6 @@ def evaluate_qualified_path(
         globals()[catalog.path_to_string(object_path)] = result
         return result
 
-
-if sys.version_info < (3, 8):
-    @evaluate_expression_node.register(ast.Ellipsis)
-    def _(ast_node: ast.Ellipsis,
-          module_path: catalog.Path,
-          parent_path: catalog.Path,
-          parent_namespace: namespacing.Namespace) -> t.Any:
-        return Ellipsis
-
-
-    @evaluate_expression_node.register(ast.NameConstant)
-    def _(ast_node: ast.NameConstant,
-          module_path: catalog.Path,
-          parent_path: catalog.Path,
-          parent_namespace: namespacing.Namespace) -> t.Any:
-        return ast_node.value
-
-
-    @evaluate_expression_node.register(ast.Num)
-    def _(ast_node: ast.Num,
-          module_path: catalog.Path,
-          parent_path: catalog.Path,
-          parent_namespace: namespacing.Namespace) -> t.Any:
-        return ast_node.n
-
-
-    @evaluate_expression_node.register(ast.Bytes)
-    @evaluate_expression_node.register(ast.Str)
-    def _(ast_node: ast.Str,
-          module_path: catalog.Path,
-          parent_path: catalog.Path,
-          parent_namespace: namespacing.Namespace) -> t.Any:
-        return ast_node.s
 
 if sys.version_info < (3, 9):
     _GenericAlias: t.Any = type(t.List)
