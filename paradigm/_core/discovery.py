@@ -114,6 +114,7 @@ if sys.implementation.name == 'pypy':
                                           '_ssl_build')
 else:
     _recursively_update_modules_paths(unsupported_stdlib_modules_paths,
+                                      'distutils._msvccompiler',
                                       'distutils.command.bdist_msi')
 
     if sys.version_info < (3, 10):

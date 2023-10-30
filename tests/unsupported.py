@@ -47,6 +47,7 @@ def _search_by_path(module: types.ModuleType, path: catalog.Path) -> Any:
 stdlib_modules: Set[types.ModuleType] = set()
 built_in_functions: Set[types.BuiltinFunctionType] = set()
 classes: Set[type] = set()
+functions: Set[types.FunctionType] = set()
 methods_descriptors: Set[types.MethodDescriptorType] = set()
 wrappers_descriptors: Set[types.WrapperDescriptorType] = set()
 
@@ -185,6 +186,8 @@ if sys.platform == 'linux':
         _load_and_update(built_in_functions, '_thread', ['allocate',
                                                          'exit_thread',
                                                          'start_new'])
+        _load_and_add(built_in_functions, 'collections',
+                      'UserString.maketrans')
         _load_and_add(built_in_functions, 'ctypes', '_dlopen')
         _load_and_update(built_in_functions,
                          'faulthandler', ['_fatal_error_c_thread',
@@ -385,6 +388,13 @@ if sys.platform == 'linux':
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
         _load_and_add(classes, 'xxsubtype', 'spamdict')
+
+        _load_and_update(functions, 'ctypes', ['CFUNCTYPE',
+                                               'PYFUNCTYPE'])
+        _load_and_update(functions, 'ctypes._endian', ['CDLL.__getattr__',
+                                                       'CDLL.__getitem__',
+                                                       'CFUNCTYPE',
+                                                       'PYFUNCTYPE'])
 
         _load_and_update(
                 methods_descriptors,
@@ -831,6 +841,8 @@ elif sys.platform == 'darwin':
         _load_and_update(built_in_functions, '_thread', ['allocate',
                                                          'exit_thread',
                                                          'start_new'])
+        _load_and_add(built_in_functions, 'collections',
+                      'UserString.maketrans')
         _load_and_add(built_in_functions, 'ctypes', '_dlopen')
         _load_and_update(built_in_functions,
                          'faulthandler', ['_fatal_error_c_thread',
@@ -1025,6 +1037,13 @@ elif sys.platform == 'darwin':
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
         _load_and_add(classes, 'xxsubtype', 'spamdict')
+
+        _load_and_update(functions, 'ctypes', ['CFUNCTYPE',
+                                               'PYFUNCTYPE'])
+        _load_and_update(functions, 'ctypes._endian', ['CDLL.__getattr__',
+                                                       'CDLL.__getitem__',
+                                                       'CFUNCTYPE',
+                                                       'PYFUNCTYPE'])
 
         _load_and_update(
                 methods_descriptors,
@@ -1334,6 +1353,8 @@ elif sys.platform == 'darwin':
             _load_and_update(classes,
                              'ctypes._endian', ['_swapped_struct_meta',
                                                 '_swapped_union_meta'])
+            _load_and_add(classes, 'multiprocessing.resource_tracker',
+                          'ReentrantCallError')
             _load_and_add(classes, 'pdb', '_ModuleTarget')
             _load_and_update(classes, 'typing', ['_AnyMeta',
                                                  '_DeprecatedType'])
@@ -1482,7 +1503,9 @@ elif sys.platform == 'win32':
         _load_and_update(built_in_functions, '_thread', ['allocate',
                                                          'exit_thread',
                                                          'start_new'])
-        _load_and_add(built_in_functions, 'collections', '_count_elements')
+        _load_and_update(built_in_functions,
+                         'collections', ['_count_elements',
+                                         'UserString.maketrans'])
         _load_and_update(built_in_functions, 'ctypes', ['_check_HRESULT',
                                                         '_dlopen'])
         _load_and_update(built_in_functions,
@@ -1715,6 +1738,13 @@ elif sys.platform == 'win32':
         _load_and_update(classes, 'unittest.case', ['_ShouldStop',
                                                     '_UnexpectedSuccess'])
         _load_and_add(classes, 'xxsubtype', 'spamdict')
+
+        _load_and_update(functions, 'ctypes', ['CFUNCTYPE',
+                                               'PYFUNCTYPE'])
+        _load_and_update(functions, 'ctypes._endian', ['CDLL.__getattr__',
+                                                       'CDLL.__getitem__',
+                                                       'CFUNCTYPE',
+                                                       'PYFUNCTYPE'])
 
         _load_and_update(
                 methods_descriptors,

@@ -66,16 +66,20 @@ def is_module_path_supported(module_path: catalog.Path) -> bool:
 
 @is_supported.register(types.BuiltinFunctionType)
 @is_supported.register(types.BuiltinMethodType)
-def _(object_: Union[types.BuiltinFunctionType,
-                     types.BuiltinMethodType]) -> bool:
+def _(
+        object_: Union[types.BuiltinFunctionType, types.BuiltinMethodType]
+) -> bool:
     return (((catalog.module_path_from_module(object_.__self__)
               not in unsupported_stdlib_modules_paths)
              and object_.__self__ not in unsupported.stdlib_modules
              and object_ not in unsupported.built_in_functions)
             if isinstance(object_.__self__, types.ModuleType)
             else (object_.__self__ not in unsupported.classes
+                  and object_ not in unsupported.built_in_functions
                   if isinstance(object_.__self__, type)
-                  else is_supported(type(object_.__self__))))
+                  else (object_ not in unsupported.built_in_functions
+                        if object_.__self__ is None
+                        else is_supported(type(object_.__self__)))))
 
 
 @is_supported.register(types.MethodType)
@@ -94,7 +98,8 @@ def _(object_: type) -> bool:
 
 @is_supported.register(types.FunctionType)
 def _(object_: types.FunctionType) -> bool:
-    return is_module_path_supported(module_path_from_callable(object_))
+    return (is_module_path_supported(module_path_from_callable(object_))
+            and object_ not in unsupported.functions)
 
 
 def module_path_from_callable(value: Any) -> catalog.Path:
