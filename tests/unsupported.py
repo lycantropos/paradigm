@@ -182,6 +182,23 @@ if sys.platform == 'linux':
                          '_string', ['formatter_field_name_split',
                                      'formatter_parser'])
         _load_and_add(built_in_functions, '_uuid', 'generate_time_safe')
+        _load_and_update(built_in_functions,
+                         '_xxsubinterpreters', ['_channel_id',
+                                                'channel_close',
+                                                'channel_create',
+                                                'channel_destroy',
+                                                'channel_list_all',
+                                                'channel_recv',
+                                                'channel_release',
+                                                'channel_send',
+                                                'create',
+                                                'destroy',
+                                                'get_current',
+                                                'get_main',
+                                                'is_running',
+                                                'is_shareable',
+                                                'list_all',
+                                                'run_string'])
         _load_and_add(built_in_functions, '_xxtestfuzz', 'run')
         _load_and_update(built_in_functions, '_thread', ['allocate',
                                                          'exit_thread',
@@ -208,6 +225,7 @@ if sys.platform == 'linux':
         _load_and_update(built_in_functions, 'locale', ['_localeconv',
                                                         '_setlocale'])
         _load_and_add(built_in_functions, 'logging', 'Formatter.converter')
+        _load_and_add(built_in_functions, 'math', 'hypot')
         _load_and_add(built_in_functions,
                       'multiprocessing.synchronize', 'sem_unlink')
         _load_and_add(built_in_functions, 'parser', '_pickler')
@@ -215,7 +233,8 @@ if sys.platform == 'linux':
         _load_and_add(built_in_functions, 'random', '_log')
         _load_and_add(built_in_functions,
                       'selectors', 'PollSelector._selector_cls')
-        _load_and_add(built_in_functions, 'threading', '_set_sentinel')
+        _load_and_update(built_in_functions, 'threading', ['_set_sentinel',
+                                                           'excepthook'])
         _load_and_add(built_in_functions, 'timeit', 'default_timer')
         _load_and_update(built_in_functions, 'tty', ['tcdrain',
                                                      'tcflow',
@@ -239,12 +258,21 @@ if sys.platform == 'linux':
                                              'MultibyteStreamReader',
                                              'MultibyteStreamWriter'])
         _load_and_add(classes, '_multiprocessing', 'SemLock')
+        _load_and_update(classes,
+                         '_xxsubinterpreters', ['ChannelClosedError',
+                                                'ChannelEmptyError',
+                                                'ChannelError',
+                                                'ChannelNotEmptyError',
+                                                'ChannelNotFoundError',
+                                                'InterpreterID',
+                                                'RunFailedError'])
         _load_and_update(
                 classes,
                 'asyncio.events', ['BaseDefaultEventLoopPolicy._Local',
                                    '_RunningLoop']
         )
         _load_and_add(classes, 'csv', '_Dialect')
+        _load_and_add(classes, 'collections', '_tuplegetter')
         _load_and_add(classes, 'ctypes', '_CFuncPtr')
         _load_and_update(classes, 'ctypes._endian', ['_array_type',
                                                      '_swapped_meta'])
@@ -376,6 +404,7 @@ if sys.platform == 'linux':
                       'multiprocessing.process', 'AuthenticationString')
         _load_and_add(classes, 'runpy', '_Error')
         _load_and_add(classes, 'selectors', 'DefaultSelector._selector_cls')
+        _load_and_add(classes, 'shutil', '_GiveupOnFastCopy')
         _load_and_add(classes, 'socket', '_GiveupOnSendfile')
         _load_and_add(classes, 'ssl', '_SSLContext')
         _load_and_update(classes, 'tarfile', ['EOFHeaderError',
@@ -484,6 +513,8 @@ if sys.platform == 'linux':
                          'builtins', ['complex.__getnewargs__',
                                       'reversed.__setstate__'])
         _load_and_add(methods_descriptors,
+                      'collections', '_tuplegetter.__reduce__')
+        _load_and_add(methods_descriptors,
                       'ctypes', '_SimpleCData.__ctypes_from_outparam__')
         _load_and_update(
                 methods_descriptors,
@@ -573,55 +604,6 @@ if sys.platform == 'linux':
                                         'c_uint32.__ctype_le__',
                                         'c_uint64.__ctype_le__'])
 
-        if sys.version_info < (3, 8):
-            _load_and_add(classes, 'macpath', 'norm_error')
-            _load_and_update(methods_descriptors,
-                             'bz2', ['BZ2Compressor.__getstate__',
-                                     'BZ2Decompressor.__getstate__'])
-            _load_and_update(methods_descriptors,
-                             'io', ['BufferedRWPair.__getstate__',
-                                    'BufferedRandom.__getstate__',
-                                    'BufferedReader.__getstate__',
-                                    'BufferedWriter.__getstate__',
-                                    'FileIO.__getstate__',
-                                    'TextIOWrapper.__getstate__'])
-            _load_and_update(methods_descriptors,
-                             'lzma', ['LZMACompressor.__getstate__',
-                                      'LZMADecompressor.__getstate__'])
-        else:
-            _load_and_update(built_in_functions,
-                             '_xxsubinterpreters', ['_channel_id',
-                                                    'channel_close',
-                                                    'channel_create',
-                                                    'channel_destroy',
-                                                    'channel_list_all',
-                                                    'channel_recv',
-                                                    'channel_release',
-                                                    'channel_send',
-                                                    'create',
-                                                    'destroy',
-                                                    'get_current',
-                                                    'get_main',
-                                                    'is_running',
-                                                    'is_shareable',
-                                                    'list_all',
-                                                    'run_string'])
-            _load_and_add(built_in_functions, 'math', 'hypot')
-            _load_and_add(built_in_functions, 'threading', 'excepthook')
-
-            _load_and_update(classes,
-                             '_xxsubinterpreters', ['ChannelClosedError',
-                                                    'ChannelEmptyError',
-                                                    'ChannelError',
-                                                    'ChannelNotEmptyError',
-                                                    'ChannelNotFoundError',
-                                                    'InterpreterID',
-                                                    'RunFailedError'])
-            _load_and_add(classes, 'collections', '_tuplegetter')
-            _load_and_add(classes, 'shutil', '_GiveupOnFastCopy')
-
-            _load_and_add(methods_descriptors,
-                          'collections', '_tuplegetter.__reduce__')
         if sys.version_info < (3, 9):
             _load_and_add(classes, 'dataclasses', '_InitVarMeta')
         else:
@@ -838,6 +820,10 @@ elif sys.platform == 'darwin':
         _load_and_add(built_in_functions, '_hashlib', 'new')
         _load_and_add(built_in_functions, '_uuid', 'generate_time_safe')
         _load_and_add(built_in_functions, '_xxtestfuzz', 'run')
+        _load_and_add(
+                built_in_functions,
+                'ctypes.macholib.dyld', '_dyld_shared_cache_contains_path'
+        )
         _load_and_add(built_in_functions, 'locale', '_localeconv')
         _load_and_add(built_in_functions, 'logging', 'Formatter.converter')
         _load_and_add(built_in_functions, 'parser', '_pickler')
@@ -855,6 +841,23 @@ elif sys.platform == 'darwin':
         _load_and_update(built_in_functions, '_thread', ['allocate',
                                                          'exit_thread',
                                                          'start_new'])
+        _load_and_update(built_in_functions,
+                         '_xxsubinterpreters', ['_channel_id',
+                                                'channel_close',
+                                                'channel_create',
+                                                'channel_destroy',
+                                                'channel_list_all',
+                                                'channel_recv',
+                                                'channel_release',
+                                                'channel_send',
+                                                'create',
+                                                'destroy',
+                                                'get_current',
+                                                'get_main',
+                                                'is_running',
+                                                'is_shareable',
+                                                'list_all',
+                                                'run_string'])
         _load_and_add(built_in_functions, 'collections',
                       'UserString.maketrans')
         _load_and_add(built_in_functions, 'ctypes', '_dlopen')
@@ -875,11 +878,13 @@ elif sys.platform == 'darwin':
                                           'encode_basestring',
                                           'encode_basestring_ascii'])
         _load_and_add(built_in_functions, 'locale', '_setlocale')
+        _load_and_add(built_in_functions, 'math', 'hypot')
         _load_and_add(built_in_functions,
                       'multiprocessing.synchronize', 'sem_unlink')
         _load_and_add(built_in_functions, 'pty', 'select')
         _load_and_add(built_in_functions, 'random', '_log')
-        _load_and_add(built_in_functions, 'threading', '_set_sentinel')
+        _load_and_update(built_in_functions, 'threading', ['_set_sentinel',
+                                                           'excepthook'])
         _load_and_update(built_in_functions, 'tty', ['tcdrain',
                                                      'tcflow',
                                                      'tcflush',
@@ -893,6 +898,7 @@ elif sys.platform == 'darwin':
 
         _load_and_update(classes, '_collections', ['_deque_iterator',
                                                    '_deque_reverse_iterator'])
+        _load_and_add(classes, '_gdbm', 'error')
         _load_and_add(classes, '_lsprof', 'Profiler')
         _load_and_update(classes,
                          '_multibytecodec', ['MultibyteIncrementalDecoder',
@@ -900,11 +906,20 @@ elif sys.platform == 'darwin':
                                              'MultibyteStreamReader',
                                              'MultibyteStreamWriter'])
         _load_and_add(classes, '_multiprocessing', 'SemLock')
+        _load_and_update(classes,
+                         '_xxsubinterpreters', ['ChannelClosedError',
+                                                'ChannelEmptyError',
+                                                'ChannelError',
+                                                'ChannelNotEmptyError',
+                                                'ChannelNotFoundError',
+                                                'InterpreterID',
+                                                'RunFailedError'])
         _load_and_update(
                 classes,
                 'asyncio.events', ['_RunningLoop',
                                    'BaseDefaultEventLoopPolicy._Local']
         )
+        _load_and_add(classes, 'collections', '_tuplegetter')
         _load_and_add(classes, 'csv', '_Dialect')
         _load_and_add(classes, 'ctypes', '_CFuncPtr')
         _load_and_update(classes, 'ctypes._endian', ['_array_type',
@@ -1039,6 +1054,7 @@ elif sys.platform == 'darwin':
         _load_and_add(classes,
                       'multiprocessing.process', 'AuthenticationString')
         _load_and_add(classes, 'runpy', '_Error')
+        _load_and_add(classes, 'shutil', '_GiveupOnFastCopy')
         _load_and_add(classes, 'socket', '_GiveupOnSendfile')
         _load_and_add(classes, 'ssl', '_SSLContext')
         _load_and_update(classes, 'tarfile', ['EOFHeaderError',
@@ -1147,6 +1163,8 @@ elif sys.platform == 'darwin':
                          'builtins', ['complex.__getnewargs__',
                                       'reversed.__setstate__'])
         _load_and_add(methods_descriptors,
+                      'collections', '_tuplegetter.__reduce__')
+        _load_and_add(methods_descriptors,
                       'ctypes', '_SimpleCData.__ctypes_from_outparam__')
         _load_and_update(methods_descriptors,
                          'ctypes._endian', ['_array_type.from_address',
@@ -1233,62 +1251,6 @@ elif sys.platform == 'darwin':
                                         'c_uint16.__ctype_le__',
                                         'c_uint32.__ctype_le__',
                                         'c_uint64.__ctype_le__'])
-
-        if sys.version_info < (3, 8):
-            _load_and_add(classes, 'macpath', 'norm_error')
-
-            _load_and_update(methods_descriptors,
-                             'bz2', ['BZ2Compressor.__getstate__',
-                                     'BZ2Decompressor.__getstate__'])
-            _load_and_update(methods_descriptors,
-                             'io', ['BufferedRWPair.__getstate__',
-                                    'BufferedRandom.__getstate__',
-                                    'BufferedReader.__getstate__',
-                                    'BufferedWriter.__getstate__',
-                                    'FileIO.__getstate__',
-                                    'TextIOWrapper.__getstate__'])
-            _load_and_update(methods_descriptors,
-                             'lzma', ['LZMACompressor.__getstate__',
-                                      'LZMADecompressor.__getstate__'])
-        else:
-            _load_and_update(built_in_functions,
-                             '_xxsubinterpreters', ['_channel_id',
-                                                    'channel_close',
-                                                    'channel_create',
-                                                    'channel_destroy',
-                                                    'channel_list_all',
-                                                    'channel_recv',
-                                                    'channel_release',
-                                                    'channel_send',
-                                                    'create',
-                                                    'destroy',
-                                                    'get_current',
-                                                    'get_main',
-                                                    'is_running',
-                                                    'is_shareable',
-                                                    'list_all',
-                                                    'run_string'])
-            _load_and_add(
-                    built_in_functions,
-                    'ctypes.macholib.dyld', '_dyld_shared_cache_contains_path'
-            )
-            _load_and_add(built_in_functions, 'math', 'hypot')
-            _load_and_add(built_in_functions, 'threading', 'excepthook')
-
-            _load_and_add(classes, '_gdbm', 'error')
-            _load_and_update(classes,
-                             '_xxsubinterpreters', ['ChannelClosedError',
-                                                    'ChannelEmptyError',
-                                                    'ChannelError',
-                                                    'ChannelNotEmptyError',
-                                                    'ChannelNotFoundError',
-                                                    'InterpreterID',
-                                                    'RunFailedError'])
-            _load_and_add(classes, 'collections', '_tuplegetter')
-            _load_and_add(classes, 'shutil', '_GiveupOnFastCopy')
-
-            _load_and_add(methods_descriptors,
-                          'collections', '_tuplegetter.__reduce__')
 
         if sys.version_info < (3, 9):
             _load_and_add(classes, 'dataclasses', '_InitVarMeta')
@@ -1527,13 +1489,31 @@ elif sys.platform == 'win32':
                                          'ResetEvent',
                                          'SetEvent',
                                          'UnregisterWait',
-                                         'UnregisterWaitEx'])
+                                         'UnregisterWaitEx',
+                                         'WSAConnect'])
         _load_and_update(built_in_functions,
                          '_string', ['formatter_field_name_split',
                                      'formatter_parser'])
         _load_and_update(built_in_functions, '_thread', ['allocate',
                                                          'exit_thread',
                                                          'start_new'])
+        _load_and_update(built_in_functions,
+                         '_xxsubinterpreters', ['_channel_id',
+                                                'channel_close',
+                                                'channel_create',
+                                                'channel_destroy',
+                                                'channel_list_all',
+                                                'channel_recv',
+                                                'channel_release',
+                                                'channel_send',
+                                                'create',
+                                                'destroy',
+                                                'get_current',
+                                                'get_main',
+                                                'is_running',
+                                                'is_shareable',
+                                                'list_all',
+                                                'run_string'])
         _load_and_update(built_in_functions,
                          'collections', ['_count_elements',
                                          'UserString.maketrans'])
@@ -1558,7 +1538,8 @@ elif sys.platform == 'win32':
                                                         'Connection._write'])
         _load_and_add(built_in_functions,
                       'multiprocessing.synchronize', 'sem_unlink')
-        _load_and_add(built_in_functions, 'threading', '_set_sentinel')
+        _load_and_update(built_in_functions, 'threading', ['_set_sentinel',
+                                                           'excepthook'])
         _load_and_add(built_in_functions, 'warnings', '_filters_mutated')
         _load_and_add(built_in_functions, 'xxsubtype', 'bench')
 
@@ -1577,11 +1558,20 @@ elif sys.platform == 'win32':
                                              'MultibyteStreamWriter'])
         _load_and_add(classes, '_multiprocessing', 'SemLock')
         _load_and_add(classes, '_overlapped', 'Overlapped')
+        _load_and_update(classes,
+                         '_xxsubinterpreters', ['ChannelClosedError',
+                                                'ChannelEmptyError',
+                                                'ChannelError',
+                                                'ChannelNotEmptyError',
+                                                'ChannelNotFoundError',
+                                                'InterpreterID',
+                                                'RunFailedError'])
         _load_and_update(
                 classes,
                 'asyncio.events', ['_RunningLoop',
                                    'BaseDefaultEventLoopPolicy._Local']
         )
+        _load_and_add(classes, 'collections', '_tuplegetter')
         _load_and_add(classes, 'ctypes', '_CFuncPtr')
         _load_and_update(classes, 'ctypes._endian', ['_array_type',
                                                      '_swapped_meta'])
@@ -1757,6 +1747,7 @@ elif sys.platform == 'win32':
         _load_and_add(classes,
                       'multiprocessing.process', 'AuthenticationString')
         _load_and_add(classes, 'runpy', '_Error')
+        _load_and_add(classes, 'shutil', '_GiveupOnFastCopy')
         _load_and_add(classes, 'socket', '_GiveupOnSendfile')
         _load_and_add(classes, 'ssl', '_SSLContext')
         _load_and_add(classes, 'subprocess', 'Handle')
@@ -1880,6 +1871,8 @@ elif sys.platform == 'win32':
                          'builtins', ['complex.__getnewargs__',
                                       'reversed.__setstate__'])
         _load_and_add(methods_descriptors,
+                      'collections', '_tuplegetter.__reduce__')
+        _load_and_add(methods_descriptors,
                       'ctypes', '_SimpleCData.__ctypes_from_outparam__')
         _load_and_update(methods_descriptors,
                          'ctypes._endian', ['_array_type.from_address',
@@ -1973,59 +1966,6 @@ elif sys.platform == 'win32':
                                         'c_uint16.__ctype_le__',
                                         'c_uint32.__ctype_le__',
                                         'c_uint64.__ctype_le__'])
-
-        if sys.version_info < (3, 8):
-            _load_and_add(classes, 'macpath', 'norm_error')
-
-            _load_and_add(methods_descriptors,
-                          '_io', '_WindowsConsoleIO.__getstate__')
-            _load_and_update(methods_descriptors,
-                             'bz2', ['BZ2Compressor.__getstate__',
-                                     'BZ2Decompressor.__getstate__'])
-            _load_and_update(methods_descriptors,
-                             'io', ['BufferedRWPair.__getstate__',
-                                    'BufferedRandom.__getstate__',
-                                    'BufferedReader.__getstate__',
-                                    'BufferedWriter.__getstate__',
-                                    'FileIO.__getstate__',
-                                    'TextIOWrapper.__getstate__'])
-            _load_and_update(methods_descriptors,
-                             'lzma', ['LZMACompressor.__getstate__',
-                                      'LZMADecompressor.__getstate__'])
-        else:
-            _load_and_add(built_in_functions, '_overlapped', 'WSAConnect')
-            _load_and_update(built_in_functions,
-                             '_xxsubinterpreters', ['_channel_id',
-                                                    'channel_close',
-                                                    'channel_create',
-                                                    'channel_destroy',
-                                                    'channel_list_all',
-                                                    'channel_recv',
-                                                    'channel_release',
-                                                    'channel_send',
-                                                    'create',
-                                                    'destroy',
-                                                    'get_current',
-                                                    'get_main',
-                                                    'is_running',
-                                                    'is_shareable',
-                                                    'list_all',
-                                                    'run_string'])
-            _load_and_add(built_in_functions, 'threading', 'excepthook')
-
-            _load_and_update(classes,
-                             '_xxsubinterpreters', ['ChannelClosedError',
-                                                    'ChannelEmptyError',
-                                                    'ChannelError',
-                                                    'ChannelNotEmptyError',
-                                                    'ChannelNotFoundError',
-                                                    'InterpreterID',
-                                                    'RunFailedError'])
-            _load_and_add(classes, 'collections', '_tuplegetter')
-            _load_and_add(classes, 'shutil', '_GiveupOnFastCopy')
-
-            _load_and_add(methods_descriptors,
-                          'collections', '_tuplegetter.__reduce__')
 
         if sys.version_info < (3, 9):
             _load_and_add(classes, 'dataclasses', '_InitVarMeta')
