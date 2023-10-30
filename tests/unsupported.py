@@ -693,9 +693,23 @@ if sys.platform == 'linux':
             _load_and_update(classes,
                              'ctypes._endian', ['_swapped_struct_meta',
                                                 '_swapped_union_meta'])
+            _load_and_add(classes, 'multiprocessing.resource_tracker',
+                          'ReentrantCallError')
             _load_and_add(classes, 'pdb', '_ModuleTarget')
             _load_and_update(classes, 'typing', ['_AnyMeta',
                                                  '_DeprecatedType'])
+        if sys.version_info >= (3, 12):
+            _load_and_add(classes, 'importlib.resources.abc', 'TraversalError')
+
+            _load_and_update(methods_descriptors, 'typing',
+                             ['ParamSpec.__mro_entries__',
+                              'ParamSpecArgs.__mro_entries__',
+                              'ParamSpecKwargs.__mro_entries__',
+                              'TypeVar.__mro_entries__',
+                              'TypeVarTuple.__mro_entries__'])
+
+            _load_and_add(wrappers_descriptors, 'sqlite3',
+                          'Connection.__del__')
 elif sys.platform == 'darwin':
     if sys.implementation.name == 'pypy':
         _load_and_update(classes, '_cffi_backend', ['FFI',
@@ -1344,20 +1358,37 @@ elif sys.platform == 'darwin':
             _load_and_add(methods_descriptors, 'xxlimited_35', 'Xxo.demo')
 
             _load_and_add(wrappers_descriptors, 'xxlimited_35', 'Xxo.__del__')
-        if sys.version_info >= (3, 11):
+
+        if sys.version_info == (3, 11):
             _load_and_add(built_in_functions,
                           'threading', '_original_start_new_thread')
 
+            _load_and_add(classes, 'multiprocessing.resource_tracker',
+                          'ReentrantCallError')
+
+        if sys.version_info >= (3, 11):
             _load_and_add(classes, '_tokenize', 'TokenizerIter')
             _load_and_add(classes, 'ctypes', 'BigEndianUnion')
             _load_and_update(classes,
                              'ctypes._endian', ['_swapped_struct_meta',
                                                 '_swapped_union_meta'])
-            _load_and_add(classes, 'multiprocessing.resource_tracker',
-                          'ReentrantCallError')
             _load_and_add(classes, 'pdb', '_ModuleTarget')
             _load_and_update(classes, 'typing', ['_AnyMeta',
                                                  '_DeprecatedType'])
+
+        if sys.version_info >= (3, 12):
+            _load_and_add(classes, 'importlib.resources.abc',
+                          'TraversalError')
+
+            _load_and_update(methods_descriptors, 'typing',
+                             ['ParamSpec.__mro_entries__',
+                              'ParamSpecArgs.__mro_entries__',
+                              'ParamSpecKwargs.__mro_entries__',
+                              'TypeVar.__mro_entries__',
+                              'TypeVarTuple.__mro_entries__'])
+
+            _load_and_add(wrappers_descriptors, 'sqlite3',
+                          'Connection.__del__')
 elif sys.platform == 'win32':
     if sys.implementation.name == 'pypy':
         _load_and_update(classes, '_cffi_backend', ['FFI',
@@ -2056,6 +2087,21 @@ elif sys.platform == 'win32':
             _load_and_update(classes,
                              'ctypes._endian', ['_swapped_struct_meta',
                                                 '_swapped_union_meta'])
+            _load_and_add(classes, 'multiprocessing.resource_tracker',
+                          'ReentrantCallError')
             _load_and_add(classes, 'pdb', '_ModuleTarget')
             _load_and_update(classes, 'typing', ['_AnyMeta',
                                                  '_DeprecatedType'])
+        if sys.version_info >= (3, 12):
+            _load_and_add(classes, 'importlib.resources.abc',
+                          'TraversalError')
+
+            _load_and_update(methods_descriptors, 'typing',
+                             ['ParamSpec.__mro_entries__',
+                              'ParamSpecArgs.__mro_entries__',
+                              'ParamSpecKwargs.__mro_entries__',
+                              'TypeVar.__mro_entries__',
+                              'TypeVarTuple.__mro_entries__'])
+
+            _load_and_add(wrappers_descriptors, 'sqlite3',
+                          'Connection.__del__')
