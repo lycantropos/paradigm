@@ -1,11 +1,13 @@
-from typing import (Any,
-                    Callable)
+from typing import Any, Callable
 
 from hypothesis import given
 
-from paradigm.base import (OverloadedSignature,
-                           PlainSignature,
-                           signature_from_callable)
+from paradigm.base import (
+    OverloadedSignature,
+    PlainSignature,
+    signature_from_callable,
+)
+
 from . import strategies
 
 

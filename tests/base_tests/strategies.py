@@ -1,11 +1,12 @@
+from __future__ import annotations
+
 import types
-import typing as t
 import warnings
 from collections import deque
-from functools import (partial,
-                       reduce)
+from functools import partial, reduce
 from importlib import import_module
 from types import ModuleType
+from typing import Any
 
 from hypothesis import strategies
 
@@ -14,8 +15,8 @@ from paradigm._core.discovery import supported_stdlib_modules_paths
 from tests.contracts import is_supported
 
 
-def find_module_callables_recursively(module: ModuleType) -> t.List[t.Any]:
-    queue: t.Deque[t.Union[ModuleType, type]] = deque([module])
+def find_module_callables_recursively(module: ModuleType) -> list[Any]:
+    queue: deque[ModuleType | type] = deque([module])
     result = []
     visited_types = set()
     while queue:
@@ -23,33 +24,41 @@ def find_module_callables_recursively(module: ModuleType) -> t.List[t.Any]:
         if isinstance(container, type):
             if container in visited_types:
                 continue
-            else:
-                visited_types.add(container)
-        contained_callables = [content
-                               for content in vars(container).values()
-                               if callable(content) and is_supported(content)]
+            visited_types.add(container)
+        contained_callables = [
+            content
+            for content in vars(container).values()
+            if callable(content) and is_supported(content)
+        ]
         result.extend(contained_callables)
-        queue.extendleft(content
-                         for content in contained_callables
-                         if isinstance(content, type))
+        queue.extendleft(
+            content
+            for content in contained_callables
+            if isinstance(content, type)
+        )
     return result
 
 
-def safe_import_module(name: str) -> t.Optional[types.ModuleType]:
+def safe_import_module(name: str) -> types.ModuleType | None:
     try:
         return import_module(name)
     except Exception:
-        warnings.warn(f'Failed importing module "{name}".', ImportWarning)
+        warnings.warn(
+            f'Failed importing module "{name}".', ImportWarning, stacklevel=2
+        )
         return None
 
 
-modules = (strategies.sampled_from(sorted(supported_stdlib_modules_paths))
-           .map(catalog.path_to_string)
-           .map(safe_import_module)
-           .filter(bool))
-callables = (modules
-             .map(find_module_callables_recursively)
-             .filter(bool)
-             .flatmap(strategies.sampled_from))
+modules = (
+    strategies.sampled_from(sorted(supported_stdlib_modules_paths))
+    .map(catalog.path_to_string)
+    .map(safe_import_module)
+    .filter(bool)
+)
+callables = (
+    modules.map(find_module_callables_recursively)
+    .filter(bool)
+    .flatmap(strategies.sampled_from)
+)
 callables |= callables.map(partial)
 overloaded_callables = strategies.sampled_from([int, reduce, super, type])

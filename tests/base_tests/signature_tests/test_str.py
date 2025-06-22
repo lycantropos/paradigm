@@ -1,8 +1,8 @@
 from hypothesis import given
 
-from paradigm.base import (OverloadedSignature,
-                           PlainSignature)
+from paradigm.base import OverloadedSignature, PlainSignature
 from tests.utils import AnySignature
+
 from . import strategies
 
 

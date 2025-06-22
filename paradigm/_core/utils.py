@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 import functools
-import typing as t
+from typing import Any, Callable, TypeVar
 
-import typing_extensions as te
+from typing_extensions import ParamSpec
 
-_Params = te.ParamSpec('_Params')
-_T1 = t.TypeVar('_T1')
-_T2 = t.TypeVar('_T2')
+_Params = ParamSpec('_Params')
+_T1 = TypeVar('_T1')
+_T2 = TypeVar('_T2')
 
 
 def decorate_if(
-        decorator: t.Callable[[t.Callable[_Params, _T1]], t.Any],
-        condition: bool
-) -> t.Callable[[t.Callable[_Params, _T1]], t.Any]:
+    decorator: Callable[[Callable[_Params, _T1]], Any],
+    condition: bool,  # noqa: FBT001
+    /,
+) -> Callable[[Callable[_Params, _T1]], Any]:
     return decorator if condition else _identity_decorator
 
 
@@ -21,6 +22,6 @@ singledispatchmethod = functools.singledispatchmethod
 
 
 def _identity_decorator(
-        value: t.Callable[_Params, _T1]
-) -> t.Callable[_Params, _T1]:
+    value: Callable[_Params, _T1],
+) -> Callable[_Params, _T1]:
     return value

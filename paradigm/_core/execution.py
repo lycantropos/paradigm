@@ -1,18 +1,21 @@
+from __future__ import annotations
+
 import inspect
 import multiprocessing
 import sys
 import threading
-import typing as t
+from collections.abc import Callable
 from multiprocessing.queues import SimpleQueue
+from typing import Any
 
 
 def is_main_process() -> bool:
     return multiprocessing.current_process().name == 'MainProcess'
 
 
-def call_in_process(function: t.Callable[..., t.Any],
-                    *args: t.Any,
-                    **kwargs: t.Any) -> t.Any:
+def call_in_process(
+    function: Callable[..., Any], *args: Any, **kwargs: Any
+) -> Any:
     with threading.Lock():
         caller_frame = inspect.stack()[1].frame
         caller_module = inspect.getmodule(caller_frame)
@@ -23,11 +26,12 @@ def call_in_process(function: t.Callable[..., t.Any],
             context = multiprocessing.get_context()
             queue = context.SimpleQueue()
             process = context.Process(
-                    target=_put_result_in_queue,
-                    name=(f'{call_in_process.__qualname__}_'
-                          f'{function.__qualname__}'),
-                    args=(queue, function, *args),
-                    kwargs=kwargs
+                target=_put_result_in_queue,
+                name=(
+                    f'{call_in_process.__qualname__}_{function.__qualname__}'
+                ),
+                args=(queue, function, *args),
+                kwargs=kwargs,
             )
             process.start()
             result, error = queue.get()
@@ -42,10 +46,12 @@ def call_in_process(function: t.Callable[..., t.Any],
                 sys.modules['__main__'] = main_module
 
 
-def _put_result_in_queue(queue: 'SimpleQueue[t.Any]',
-                         function: t.Callable[..., t.Any],
-                         *args: t.Any,
-                         **kwargs: t.Any) -> None:
+def _put_result_in_queue(
+    queue: SimpleQueue[Any],
+    function: Callable[..., Any],
+    *args: Any,
+    **kwargs: Any,
+) -> None:
     try:
         result = function(*args, **kwargs)
     except Exception as error:

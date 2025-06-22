@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ast
 import platform
 import types
@@ -5,8 +7,7 @@ from functools import singledispatch
 from importlib import import_module
 from importlib.util import find_spec
 from pathlib import Path
-from typing import (Any,
-                    Union)
+from typing import Any
 
 from paradigm._core import catalog
 from paradigm._core.discovery import unsupported_stdlib_modules_paths
@@ -15,7 +16,7 @@ from tests import unsupported
 
 
 @singledispatch
-def is_supported(object_: Any) -> bool:
+def is_supported(_object: Any, /) -> bool:
     """
     Checks if object metadata extraction is supported.
     """
@@ -23,12 +24,13 @@ def is_supported(object_: Any) -> bool:
 
 
 @is_supported.register(types.ModuleType)
-def _(object_: types.ModuleType) -> bool:
+def _(object_: types.ModuleType, /) -> bool:
     module_path = catalog.module_path_from_module(object_)
-    return (module_path in stdlib_modules_paths
-            and module_path not in unsupported_stdlib_modules_paths
-            and object_ not in unsupported.stdlib_modules
-            or has_supported_python_source_file(object_))
+    return (
+        module_path in stdlib_modules_paths
+        and module_path not in unsupported_stdlib_modules_paths
+        and object_ not in unsupported.stdlib_modules
+    ) or has_supported_python_source_file(object_)
 
 
 def is_source_path_supported(source_path: Path) -> bool:
@@ -37,8 +39,7 @@ def is_source_path_supported(source_path: Path) -> bool:
     except (FileNotFoundError, UnicodeDecodeError):
         return False
     try:
-        ast.parse(source,
-                  filename=str(source_path))
+        ast.parse(source, filename=str(source_path))
     except SyntaxError:
         return False
     else:
@@ -66,40 +67,49 @@ def is_module_path_supported(module_path: catalog.Path) -> bool:
 
 @is_supported.register(types.BuiltinFunctionType)
 @is_supported.register(types.BuiltinMethodType)
-def _(
-        object_: Union[types.BuiltinFunctionType, types.BuiltinMethodType]
-) -> bool:
-    return (((catalog.module_path_from_module(object_.__self__)
-              not in unsupported_stdlib_modules_paths)
-             and object_.__self__ not in unsupported.stdlib_modules
-             and object_ not in unsupported.built_in_functions)
-            if isinstance(object_.__self__, types.ModuleType)
-            else (object_.__self__ not in unsupported.classes
-                  and object_ not in unsupported.built_in_functions
-                  if isinstance(object_.__self__, type)
-                  else (object_ not in unsupported.built_in_functions
-                        if object_.__self__ is None
-                        else is_supported(type(object_.__self__)))))
+def _(object_: types.BuiltinFunctionType | types.BuiltinMethodType, /) -> bool:
+    return (
+        (
+            (
+                catalog.module_path_from_module(object_.__self__)
+                not in unsupported_stdlib_modules_paths
+            )
+            and object_.__self__ not in unsupported.stdlib_modules
+            and object_ not in unsupported.built_in_functions
+        )
+        if isinstance(object_.__self__, types.ModuleType)
+        else (
+            object_.__self__ not in unsupported.classes
+            and object_ not in unsupported.built_in_functions
+            if isinstance(object_.__self__, type)
+            else (
+                object_ not in unsupported.built_in_functions
+                if object_.__self__ is None
+                else is_supported(type(object_.__self__))
+            )
+        )
+    )
 
 
 @is_supported.register(types.MethodType)
-def _(object_: types.MethodType) -> bool:
+def _(object_: types.MethodType, /) -> bool:
     return is_supported(object_.__func__)
 
 
 @is_supported.register(type)
-def _(object_: type) -> bool:
-    return (object_ not in unsupported.classes
-            and (is_stdlib_object(object_)
-                 or is_module_path_supported(
-                            catalog.qualified_path_from(object_)[0]
-                    )))
+def _(object_: type, /) -> bool:
+    return object_ not in unsupported.classes and (
+        is_stdlib_object(object_)
+        or is_module_path_supported(catalog.qualified_path_from(object_)[0])
+    )
 
 
 @is_supported.register(types.FunctionType)
-def _(object_: types.FunctionType) -> bool:
-    return (is_module_path_supported(module_path_from_callable(object_))
-            and object_ not in unsupported.functions)
+def _(object_: types.FunctionType, /) -> bool:
+    return (
+        is_module_path_supported(module_path_from_callable(object_))
+        and object_ not in unsupported.functions
+    )
 
 
 def module_path_from_callable(value: Any) -> catalog.Path:
@@ -108,16 +118,20 @@ def module_path_from_callable(value: Any) -> catalog.Path:
 
 
 if platform.python_implementation() != 'PyPy':
-    @is_supported.register(types.MethodDescriptorType)
-    def _(object_: types.MethodDescriptorType) -> bool:
-        return (object_.__objclass__ not in unsupported.classes
-                and object_ not in unsupported.methods_descriptors)
 
+    @is_supported.register(types.MethodDescriptorType)
+    def _(object_: types.MethodDescriptorType, /) -> bool:
+        return (
+            object_.__objclass__ not in unsupported.classes
+            and object_ not in unsupported.methods_descriptors
+        )
 
     @is_supported.register(types.WrapperDescriptorType)
-    def _(object_: types.WrapperDescriptorType) -> bool:
-        return (object_.__objclass__ not in unsupported.classes
-                and object_ not in unsupported.wrappers_descriptors)
+    def _(object_: types.WrapperDescriptorType, /) -> bool:
+        return (
+            object_.__objclass__ not in unsupported.classes
+            and object_ not in unsupported.wrappers_descriptors
+        )
 
 
 def has_supported_python_source_file(module: types.ModuleType) -> bool:
@@ -125,8 +139,9 @@ def has_supported_python_source_file(module: types.ModuleType) -> bool:
         file_path_string = module.__file__
     except AttributeError:
         return False
-    return (file_path_string is not None
-            and is_source_path_supported(Path(file_path_string)))
+    return file_path_string is not None and is_source_path_supported(
+        Path(file_path_string)
+    )
 
 
 def is_stdlib_object(object_: Any) -> bool:

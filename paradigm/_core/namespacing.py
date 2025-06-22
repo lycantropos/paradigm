@@ -16,4 +16,4 @@ def search(module_or_type: ModuleOrType, object_path: catalog.Path) -> t.Any:
     try:
         return reduce(getattr, object_path, module_or_type)
     except AttributeError:
-        raise ObjectNotFound(object_path)
+        raise ObjectNotFound(object_path) from None

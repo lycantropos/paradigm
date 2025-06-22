@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import ast
-import sys
-import typing as t
 from pathlib import Path
+from typing import Any
 
 from .conversion import RawAstNode
 
@@ -13,9 +14,9 @@ def from_node(ast_node: ast.AST) -> ast.Module:
     return ast.Module([ast_node], [])
 
 
-def from_raw(raw: RawAstNode,
-             *,
-             namespace: t.Dict[str, t.Any] = _AST_NAMESPACE) -> ast.AST:
+def from_raw(
+    raw: RawAstNode, *, namespace: dict[str, Any] = _AST_NAMESPACE
+) -> ast.AST:
     result = eval(raw, namespace)
     assert isinstance(result, ast.AST), result
     return result
