@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Iterable
 from functools import partial, singledispatch
 
@@ -5,14 +7,18 @@ import pytest
 from hypothesis import given
 
 from paradigm._core.models import to_parameters_by_name
-from paradigm.base import OverloadedSignature, PlainSignature
-from tests.utils import AnySignature, Args, Kwargs, implication
+from paradigm.base import (
+    OptionalParameter,
+    OverloadedSignature,
+    PlainSignature,
+)
+from tests.utils import ArgT, Args, KwArgs, Signature, implication
 
 from . import strategies
 
 
 @given(strategies.signatures)
-def test_basic(signature: AnySignature) -> None:
+def test_basic(signature: Signature) -> None:
     result = signature.bind()
 
     assert result == signature
@@ -20,7 +26,7 @@ def test_basic(signature: AnySignature) -> None:
 
 @given(strategies.signatures_with_expected_args)
 def test_expected_args(
-    signature_with_expected_args: tuple[AnySignature, Args],
+    signature_with_expected_args: tuple[Signature, Args[ArgT]],
 ) -> None:
     signature, expected_args = signature_with_expected_args
 
@@ -31,7 +37,7 @@ def test_expected_args(
 
 @given(strategies.signatures_with_expected_kwargs)
 def test_expected_kwargs(
-    signature_with_expected_kwargs: tuple[AnySignature, Kwargs],
+    signature_with_expected_kwargs: tuple[Signature, KwArgs[ArgT]],
 ) -> None:
     signature, expected_kwargs = signature_with_expected_kwargs
 
@@ -45,7 +51,7 @@ def test_expected_kwargs(
 
 @singledispatch
 def signature_parameters_has_defaults(
-    signature: AnySignature,
+    signature: Signature,
     /,
     *,
     names: Iterable[str],  # noqa: ARG001
@@ -54,13 +60,21 @@ def signature_parameters_has_defaults(
 
 
 @signature_parameters_has_defaults.register(PlainSignature)
-def _(signature: PlainSignature, /, *, names: Iterable[str]) -> bool:
+def _(signature: PlainSignature[ArgT], /, *, names: Iterable[str]) -> bool:
     parameters = to_parameters_by_name(signature.parameters)
-    return all(parameters[name].has_default for name in names)
+    return all(
+        (
+            isinstance(parameter := parameters[name], OptionalParameter)
+            and parameter.has_default
+        )
+        for name in names
+    )
 
 
 @signature_parameters_has_defaults.register(OverloadedSignature)
-def _(signature: OverloadedSignature, /, *, names: Iterable[str]) -> bool:
+def _(
+    signature: OverloadedSignature[ArgT], /, *, names: Iterable[str]
+) -> bool:
     return all(
         map(
             partial(signature_parameters_has_defaults, names=names),
@@ -71,7 +85,7 @@ def _(signature: OverloadedSignature, /, *, names: Iterable[str]) -> bool:
 
 @given(strategies.non_variadic_signatures_with_unexpected_args)
 def test_unexpected_args(
-    signature_with_unexpected_args: tuple[AnySignature, Args],
+    signature_with_unexpected_args: tuple[Signature, Args[ArgT]],
 ) -> None:
     signature, unexpected_args = signature_with_unexpected_args
 
@@ -81,7 +95,7 @@ def test_unexpected_args(
 
 @given(strategies.non_variadic_signatures_with_unexpected_args)
 def test_unexpected_kwargs(
-    signature_with_unexpected_kwargs: tuple[AnySignature, Kwargs],
+    signature_with_unexpected_kwargs: tuple[Signature, KwArgs[ArgT]],
 ) -> None:
     signature, unexpected_kwargs = signature_with_unexpected_kwargs
 

@@ -1,18 +1,19 @@
 import types
-import typing as t
+from collections.abc import MutableMapping
 from functools import reduce
+from typing import Any, TypeAlias, Union
 
 from . import catalog
 
-ModuleOrType = t.Union[types.ModuleType, type]
-Namespace = t.MutableMapping[str, t.Any]
+ModuleOrType: TypeAlias = Union[types.ModuleType, type]
+Namespace: TypeAlias = MutableMapping[str, Any]
 
 
 class ObjectNotFound(Exception):
     pass
 
 
-def search(module_or_type: ModuleOrType, object_path: catalog.Path) -> t.Any:
+def search(module_or_type: ModuleOrType, object_path: catalog.Path) -> Any:
     try:
         return reduce(getattr, object_path, module_or_type)
     except AttributeError:

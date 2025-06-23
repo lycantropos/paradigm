@@ -125,7 +125,7 @@ if _reload_cache:
         return _ast.FunctionDef(
             '__new__',
             _annotations_to_signature(annotations_ast_nodes),
-            [_ast.Expr(_ast.Ellipsis())],
+            [_ast.Expr(_ast.Constant(Ellipsis))],
             [],
             _ast.Name(ast_node.name, _ast.Load()),
         )
@@ -566,7 +566,7 @@ if _reload_cache:
                 return False
             (ast_node,) = ast_nodes
             if not (
-                isinstance(ast_node, (_ast.AnnAssign, _ast.Assign))
+                isinstance(ast_node, _ast.AnnAssign | _ast.Assign)
                 and isinstance(ast_node.value, _ast.Call)
             ):
                 return False

@@ -15,7 +15,11 @@ from paradigm._core.discovery import supported_stdlib_modules_paths
 from tests.contracts import is_supported
 
 
-def find_module_callables_recursively(module: ModuleType) -> list[Any]:
+def find_optional_module_callables_recursively(
+    module: ModuleType | None, /
+) -> list[Any]:
+    if module is None:
+        return []
     queue: deque[ModuleType | type] = deque([module])
     result = []
     visited_types = set()
@@ -39,7 +43,7 @@ def find_module_callables_recursively(module: ModuleType) -> list[Any]:
     return result
 
 
-def safe_import_module(name: str) -> types.ModuleType | None:
+def safe_import_module(name: str, /) -> types.ModuleType | None:
     try:
         return import_module(name)
     except Exception:
@@ -49,14 +53,11 @@ def safe_import_module(name: str) -> types.ModuleType | None:
         return None
 
 
-modules = (
+callables = (
     strategies.sampled_from(sorted(supported_stdlib_modules_paths))
     .map(catalog.path_to_string)
     .map(safe_import_module)
-    .filter(bool)
-)
-callables = (
-    modules.map(find_module_callables_recursively)
+    .map(find_optional_module_callables_recursively)
     .filter(bool)
     .flatmap(strategies.sampled_from)
 )

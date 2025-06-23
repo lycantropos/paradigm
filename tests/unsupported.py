@@ -5,11 +5,11 @@ import sys
 import types
 import warnings
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, Final
 
 from paradigm._core import catalog, namespacing
 
-_cache = {}
+_cache: Final[dict[Any, list[tuple[str, str]]]] = {}
 _counter = [0]
 
 
@@ -2006,7 +2006,7 @@ elif sys.platform == 'darwin':
 
             _load_and_add(wrappers_descriptors, 'xxlimited_35', 'Xxo.__del__')
 
-        if sys.version_info == (3, 11):
+        if (3, 11) <= sys.version_info < (3, 12):
             _load_and_add(
                 built_in_functions, 'threading', '_original_start_new_thread'
             )

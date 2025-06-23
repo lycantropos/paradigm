@@ -1,13 +1,13 @@
 from hypothesis import given
 
-from tests.utils import AnySignature, implication
+from tests.utils import Signature, implication
 
 from . import strategies
 
 
 @given(strategies.hashable_signatures, strategies.hashable_signatures)
 def test_relation_with_equality(
-    signature: AnySignature, other_signature: AnySignature
+    signature: Signature, other_signature: Signature
 ) -> None:
     signature_hash = hash(signature)
     other_signature_hash = hash(other_signature)

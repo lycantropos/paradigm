@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 import types
 from collections import abc
 from collections.abc import Sequence
@@ -21,22 +20,22 @@ from typing import (
 
 from typing_extensions import ParamSpec
 
-_T = TypeVar('_T')
-GenericAlias: Any = type(Generic[_T])
-del _T
+LegacyGenericAlias: Any = type(Generic[TypeVar('_T')])
 
 
 @singledispatch
-def are_equal(left: Any, right: Any) -> bool:
+def are_equal(left: Any, right: Any, /) -> bool:
     result = left == right
     assert isinstance(result, bool), result
     return result
 
 
-@are_equal.register(GenericAlias)
-@are_equal.register(type(Union[int, None]))
+@are_equal.register(LegacyGenericAlias)
+@are_equal.register(types.GenericAlias)
+@are_equal.register(types.UnionType)  # pyright: ignore[reportArgumentType, reportCallIssue]
 @are_equal.register(type)
-def _(left: GenericAlias | type[Any], right: Any) -> bool:
+@are_equal.register(type(Union[int, None]))
+def _(left: Any, right: Any, /) -> bool:
     left_args, right_args = to_arguments(left), to_arguments(right)
     left_origin, right_origin = (
         to_origin(left) or left,
@@ -69,7 +68,7 @@ def _(left: GenericAlias | type[Any], right: Any) -> bool:
 
 
 @are_equal.register(abc.Sequence)
-def _(left: Sequence[Any], right: Any) -> bool:
+def _(left: Sequence[Any], right: Any, /) -> bool:
     return (
         type(left) is type(right)
         and len(left) == len(right)
@@ -78,7 +77,7 @@ def _(left: Sequence[Any], right: Any) -> bool:
 
 
 @are_equal.register(ParamSpec)
-def _(left: ParamSpec, right: Any) -> bool:
+def _(left: ParamSpec, right: Any, /) -> bool:
     return (
         type(left) is type(right)
         and left.__name__ == right.__name__
@@ -89,50 +88,39 @@ def _(left: ParamSpec, right: Any) -> bool:
 
 
 @are_equal.register(ParamSpecArgs)
-def _(left: ParamSpecArgs, right: Any) -> bool:
+def _(left: ParamSpecArgs, right: Any, /) -> bool:
     return type(left) is type(right) and are_equal(
         left.__origin__, right.__origin__
     )
 
 
-if sys.version_info < (3, 10):
-
-    @are_equal.register(types.LambdaType)
-    def _(
-        left: types.LambdaType,
-        right: Any,
-        *,
-        _sentinel: Any = object(),  # noqa: B008
-    ) -> bool:
-        left_supertype = getattr(left, '__supertype__', _sentinel)
-        right_supertype = getattr(right, '__supertype__', _sentinel)
-        return type(left) is type(right) and are_equal(
-            left_supertype, right_supertype
+@are_equal.register(NewType)
+def _(
+    left: NewType,
+    right: Any,
+    /,
+    *,
+    _sentinel: Any = object(),  # noqa: B008
+) -> bool:
+    return (
+        type(left) is type(right)
+        and (
+            getattr(left, '__qualname__', _sentinel)
+            == getattr(right, '__qualname__', _sentinel)
         )
-else:
-    are_equal.register(types.UnionType, are_equal.dispatch(type))
-
-    @are_equal.register(NewType)
-    def _(left: NewType, right: Any, *, _sentinel: Any = object()) -> bool:  # noqa: B008
-        return (
-            type(left) is type(right)
-            and (
-                getattr(left, '__qualname__', _sentinel)
-                == getattr(right, '__qualname__', _sentinel)
-            )
-            and are_equal(left.__supertype__, right.__supertype__)
-        )
+        and are_equal(left.__supertype__, right.__supertype__)
+    )
 
 
 @are_equal.register(ParamSpecKwargs)
-def _(left: ParamSpecKwargs, right: Any) -> bool:
+def _(left: ParamSpecKwargs, right: Any, /) -> bool:
     return type(left) is type(right) and are_equal(
         left.__origin__, right.__origin__
     )
 
 
 @are_equal.register(TypeVar)
-def _(left: TypeVar, right: Any) -> bool:
+def _(left: TypeVar, right: Any, /) -> bool:
     left_constraints, right_constraints = (
         getattr(left, '__constraints__', ()),
         getattr(right, '__constraints__', ()),
@@ -150,7 +138,7 @@ def _(left: TypeVar, right: Any) -> bool:
 
 @are_equal.register(bytes)
 @are_equal.register(str)
-def _(left: bytes | str, right: Any) -> bool:
+def _(left: bytes | str, right: Any, /) -> bool:
     result = left == right
     assert isinstance(result, bool), result
     return result
@@ -161,17 +149,17 @@ to_origin = get_origin
 
 
 @singledispatch
-def to_repr(value: Any) -> str:
+def to_repr(value: Any, /) -> str:
     return repr(value)
 
 
 @to_repr.register(list)
-def _(value: list[Any]) -> str:
+def _(value: list[Any], /) -> str:
     return f'[{", ".join(to_repr(element) for element in value)}]'
 
 
 @to_repr.register(tuple)
-def _(value: tuple[Any, ...]) -> str:
+def _(value: tuple[Any, ...], /) -> str:
     return (
         f'({to_repr(value[0])},)'
         if len(value) == 1
@@ -180,7 +168,7 @@ def _(value: tuple[Any, ...]) -> str:
 
 
 @to_repr.register(type)
-def _(value: type) -> str:
+def _(value: type, /) -> str:
     if value in (type(None), type(NotImplemented), type(Ellipsis)):
         return f'{type.__qualname__}({value()!r})'
     args = to_arguments(value)
@@ -188,8 +176,8 @@ def _(value: type) -> str:
     return f'{result}[{", ".join(map(to_repr, args))}]' if args else result
 
 
-@to_repr.register(GenericAlias)
-def _(value: GenericAlias) -> str:
+@to_repr.register(LegacyGenericAlias)
+def _(value: Any, /) -> str:
     origin = to_origin(value)
     arguments = to_arguments(value)
     return (
@@ -222,7 +210,7 @@ def _(value: GenericAlias) -> str:
 
 
 @to_repr.register(TypeVar)
-def _(value: TypeVar) -> str:
+def _(value: TypeVar, /) -> str:
     arguments = [repr(value.__name__)]
     arguments.extend(map(to_repr, value.__constraints__))
     if value.__bound__ is not None:

@@ -1,19 +1,17 @@
 from hypothesis import given
 
-from tests.utils import AnySignature, implication
+from tests.utils import Signature, implication
 
 from . import strategies
 
 
 @given(strategies.signatures)
-def test_reflexivity(signature: AnySignature) -> None:
+def test_reflexivity(signature: Signature) -> None:
     assert signature == signature
 
 
 @given(strategies.signatures, strategies.signatures)
-def test_symmetry(
-    signature: AnySignature, other_signature: AnySignature
-) -> None:
+def test_symmetry(signature: Signature, other_signature: Signature) -> None:
     assert implication(
         signature == other_signature, other_signature == signature
     )
@@ -21,9 +19,9 @@ def test_symmetry(
 
 @given(strategies.signatures, strategies.signatures, strategies.signatures)
 def test_transitivity(
-    signature: AnySignature,
-    other_signature: AnySignature,
-    another_signature: AnySignature,
+    signature: Signature,
+    other_signature: Signature,
+    another_signature: Signature,
 ) -> None:
     assert implication(
         signature == other_signature and other_signature == another_signature,

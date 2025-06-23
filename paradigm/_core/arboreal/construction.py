@@ -10,7 +10,7 @@ _AST_NAMESPACE = vars(ast).copy()
 del _AST_NAMESPACE[ast.Ellipsis.__qualname__]
 
 
-def from_node(ast_node: ast.AST) -> ast.Module:
+def from_node(ast_node: ast.stmt) -> ast.Module:
     return ast.Module([ast_node], [])
 
 

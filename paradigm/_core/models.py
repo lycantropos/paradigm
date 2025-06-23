@@ -1,19 +1,29 @@
 from __future__ import annotations
 
 import enum
-import typing as t
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from collections.abc import Iterable, Sequence
 from itertools import chain, takewhile
+from typing import (
+    Any,
+    Final,
+    Generic,
+    Literal,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    overload,
+)
 
-import typing_extensions as te
+from typing_extensions import Self, final
 
 from . import annotated
 
 _MIN_SUB_SIGNATURES_COUNT = 2
 
 
-@te.final
+@final
 class _Default(enum.Enum):
     NONE = enum.auto()
 
@@ -21,7 +31,7 @@ class _Default(enum.Enum):
 _NONE = _Default.NONE
 
 
-@te.final
+@final
 class ParameterKind(enum.IntEnum):
     POSITIONAL_ONLY = 0
     POSITIONAL_OR_KEYWORD = 1
@@ -39,7 +49,7 @@ class ParameterKind(enum.IntEnum):
 class BaseParameter(ABC):
     @property
     @abstractmethod
-    def annotation(self) -> t.Any:
+    def annotation(self) -> Any:
         """Returns annotation of the parameter."""
 
     @property
@@ -53,17 +63,17 @@ class BaseParameter(ABC):
         """Returns name of the parameter."""
 
 
-_REQUIRED_PARAMETERS_KINDS: te.Final[t.Sequence[ParameterKind]] = (
+_REQUIRED_PARAMETERS_KINDS: Final[Sequence[ParameterKind]] = (
     ParameterKind.POSITIONAL_ONLY,
     ParameterKind.POSITIONAL_OR_KEYWORD,
     ParameterKind.KEYWORD_ONLY,
 )
 
 
-@te.final
+@final
 class RequiredParameter(BaseParameter):
     @property
-    def annotation(self) -> t.Any:
+    def annotation(self) -> Any:
         return self._annotation
 
     @property
@@ -76,15 +86,15 @@ class RequiredParameter(BaseParameter):
 
     __slots__ = '_annotation', '_kind', '_name'
 
-    _annotation: t.Any
+    _annotation: Any
     _kind: ParameterKind
     _name: str
 
     def __new__(
         cls,
         *,
-        annotation: t.Any,
-        kind: te.Literal[
+        annotation: Any,
+        kind: Literal[
             ParameterKind.POSITIONAL_ONLY,
             ParameterKind.POSITIONAL_OR_KEYWORD,
             ParameterKind.KEYWORD_ONLY,
@@ -102,13 +112,13 @@ class RequiredParameter(BaseParameter):
         self._annotation, self._kind, self._name = annotation, kind, name
         return self
 
-    @t.overload
+    @overload
     def __eq__(self, other: BaseParameter) -> bool: ...
 
-    @t.overload
-    def __eq__(self, other: t.Any) -> t.Any: ...
+    @overload
+    def __eq__(self, other: Any) -> Any: ...
 
-    def __eq__(self, other: t.Any) -> t.Any:
+    def __eq__(self, other: Any) -> Any:
         return (
             (
                 type(self) is type(other)
@@ -120,7 +130,7 @@ class RequiredParameter(BaseParameter):
             else NotImplemented
         )
 
-    def __getnewargs_ex__(self) -> tuple[tuple[()], dict[str, t.Any]]:
+    def __getnewargs_ex__(self) -> tuple[tuple[()], dict[str, Any]]:
         return (), {
             'annotation': self._annotation,
             'kind': self._kind,
@@ -143,14 +153,14 @@ class RequiredParameter(BaseParameter):
         return f'{self.name}: {annotated.to_repr(self.annotation)}'
 
 
-@te.final
+@final
 class OptionalParameter(BaseParameter):
     @property
-    def annotation(self) -> t.Any:
+    def annotation(self) -> Any:
         return self._annotation
 
     @property
-    def default(self) -> t.Any:
+    def default(self) -> Any:
         return self._default
 
     @property
@@ -167,8 +177,8 @@ class OptionalParameter(BaseParameter):
 
     __slots__ = '_annotation', '_default', '_has_default', '_kind', '_name'
 
-    _annotation: t.Any
-    _default: _Default | t.Any
+    _annotation: Any
+    _default: _Default | Any
     _has_default: bool
     _kind: ParameterKind
     _name: str
@@ -176,8 +186,8 @@ class OptionalParameter(BaseParameter):
     def __new__(
         cls,
         *,
-        annotation: t.Any,
-        default: _Default | t.Any = _NONE,
+        annotation: Any,
+        default: _Default | Any = _NONE,
         kind: ParameterKind,
         name: str,
     ) -> OptionalParameter:
@@ -201,13 +211,13 @@ class OptionalParameter(BaseParameter):
             self._default = default
         return self
 
-    @t.overload
+    @overload
     def __eq__(self, other: BaseParameter) -> bool: ...
 
-    @t.overload
-    def __eq__(self, other: t.Any) -> t.Any: ...
+    @overload
+    def __eq__(self, other: Any) -> Any: ...
 
-    def __eq__(self, other: t.Any) -> t.Any:
+    def __eq__(self, other: Any) -> Any:
         return (
             (
                 isinstance(other, OptionalParameter)
@@ -224,7 +234,7 @@ class OptionalParameter(BaseParameter):
             else NotImplemented
         )
 
-    def __getnewargs_ex__(self) -> tuple[tuple[()], dict[str, t.Any]]:
+    def __getnewargs_ex__(self) -> tuple[tuple[()], dict[str, Any]]:
         return (), {
             'annotation': self._annotation,
             **({'default': self._default} if self._has_default else {}),
@@ -279,12 +289,14 @@ class OptionalParameter(BaseParameter):
         )
 
 
-Parameter = t.Union[OptionalParameter, RequiredParameter]
+_ParameterT = TypeVar(
+    '_ParameterT', bound=OptionalParameter | RequiredParameter
+)
 
 
 def to_parameters_by_kind(
-    parameters: t.Iterable[Parameter],
-) -> dict[ParameterKind, list[Parameter]]:
+    parameters: Iterable[_ParameterT], /
+) -> dict[ParameterKind, list[_ParameterT]]:
     result = defaultdict(list)
     for parameter in parameters:
         result[parameter.kind].append(parameter)
@@ -292,56 +304,58 @@ def to_parameters_by_kind(
 
 
 def to_parameters_by_name(
-    parameters: t.Iterable[Parameter],
-) -> dict[str, Parameter]:
+    parameters: Iterable[_ParameterT], /
+) -> dict[str, _ParameterT]:
     return {parameter.name: parameter for parameter in parameters}
 
 
 def all_parameters_are_optional(
-    parameters: t.Iterable[Parameter],
-) -> te.TypeGuard[t.Iterable[OptionalParameter]]:
+    parameters: Iterable[_ParameterT], /
+) -> TypeGuard[Iterable[OptionalParameter]]:
     return all(
         isinstance(parameter, OptionalParameter) for parameter in parameters
     )
 
 
-_Arg = t.TypeVar('_Arg')
-_KwArg = t.TypeVar('_KwArg')
+ArgT = TypeVar('ArgT')
 
 
-class BaseSignature(ABC):
+class BaseSignature(ABC, Generic[ArgT]):
     __slots__ = ()
 
     @abstractmethod
-    def all_set(self, *args: _Arg, **kwargs: _KwArg) -> bool:
+    def all_set(self, /, *args: ArgT, **kwargs: ArgT) -> bool:
         """
         Checks if the signature has no unspecified parameters left
         with given arguments.
         """
 
     @abstractmethod
-    def expects(self, *args: _Arg, **kwargs: _KwArg) -> bool:
+    def expects(self, /, *args: ArgT, **kwargs: ArgT) -> bool:
         """Checks if the signature accepts given arguments."""
 
     @abstractmethod
-    def bind(self, *args: _Arg, **kwargs: _KwArg) -> BaseSignature:
+    def bind(self, /, *args: ArgT, **kwargs: ArgT) -> BaseSignature[ArgT]:
         """Binds given arguments to the signature."""
 
 
-@te.final
-class PlainSignature(BaseSignature):
+Parameter: TypeAlias = OptionalParameter | RequiredParameter
+
+
+@final
+class PlainSignature(BaseSignature[ArgT]):
     POSITIONAL_ONLY_SEPARATOR = '/'
     KEYWORD_ONLY_SEPARATOR = '*'
 
     @property
-    def parameters(self) -> t.Sequence[Parameter]:
+    def parameters(self, /) -> Sequence[Parameter]:
         return self._parameters
 
     @property
-    def returns(self) -> t.Any:
+    def returns(self, /) -> Any:
         return self._returns
 
-    def all_set(self, *args: _Arg, **kwargs: _KwArg) -> bool:
+    def all_set(self, /, *args: ArgT, **kwargs: ArgT) -> bool:
         parameters_by_kind = to_parameters_by_kind(self._parameters)
         positionals = (
             parameters_by_kind[ParameterKind.POSITIONAL_ONLY]
@@ -354,7 +368,7 @@ class PlainSignature(BaseSignature):
             return False
         rest_positionals = positionals[len(args) :]
         rest_positionals_by_kind = to_parameters_by_kind(rest_positionals)
-        rest_keywords: t.Iterable[Parameter] = (
+        rest_keywords: Iterable[Parameter] = (
             rest_positionals_by_kind[ParameterKind.POSITIONAL_OR_KEYWORD]
             + parameters_by_kind[ParameterKind.KEYWORD_ONLY]
         )
@@ -378,7 +392,7 @@ class PlainSignature(BaseSignature):
             rest_positionals_only
         ) and all_parameters_are_optional(rest_keywords)
 
-    def expects(self, *args: _Arg, **kwargs: _KwArg) -> bool:
+    def expects(self, /, *args: ArgT, **kwargs: ArgT) -> bool:
         parameters_by_kind = to_parameters_by_kind(self._parameters)
         positionals = (
             parameters_by_kind[ParameterKind.POSITIONAL_ONLY]
@@ -402,7 +416,7 @@ class PlainSignature(BaseSignature):
         )
         return not unexpected_keyword_arguments_found
 
-    def bind(self, *args: _Arg, **kwargs: _KwArg) -> PlainSignature:
+    def bind(self, /, *args: ArgT, **kwargs: ArgT) -> PlainSignature[ArgT]:
         parameters_by_kind = to_parameters_by_kind(self._parameters)
         return PlainSignature(
             *_bind_keywords(
@@ -423,11 +437,11 @@ class PlainSignature(BaseSignature):
         )
 
     _parameters: tuple[Parameter, ...]
-    _returns: t.Any
+    _returns: Any
 
     __slots__ = '_parameters', '_returns'
 
-    def __new__(cls, *parameters: Parameter, returns: t.Any) -> PlainSignature:
+    def __new__(cls, /, *parameters: Parameter, returns: Any) -> Self:
         try:
             prior, *rest = parameters
         except ValueError:
@@ -482,13 +496,13 @@ class PlainSignature(BaseSignature):
         self._parameters, self._returns = parameters, returns
         return self
 
-    @t.overload
-    def __eq__(self, other: BaseSignature) -> bool: ...
+    @overload
+    def __eq__(self, other: BaseSignature[Any], /) -> bool: ...
 
-    @t.overload
-    def __eq__(self, other: t.Any) -> t.Any: ...
+    @overload
+    def __eq__(self, other: Any, /) -> Any: ...
 
-    def __eq__(self, other: t.Any) -> t.Any:
+    def __eq__(self, other: Any, /) -> Any:
         return (
             (
                 isinstance(other, PlainSignature)
@@ -500,14 +514,14 @@ class PlainSignature(BaseSignature):
         )
 
     def __getnewargs_ex__(
-        self,
-    ) -> tuple[tuple[Parameter, ...], dict[str, t.Any]]:
+        self, /
+    ) -> tuple[tuple[Parameter, ...], dict[str, Any]]:
         return self._parameters, {'returns': self._returns}
 
-    def __hash__(self) -> int:
+    def __hash__(self, /) -> int:
         return hash((self._parameters, self.returns))
 
-    def __repr__(self) -> str:
+    def __repr__(self, /) -> str:
         return (
             f'{type(self).__qualname__}('
             + (
@@ -518,7 +532,7 @@ class PlainSignature(BaseSignature):
             + f'returns={annotated.to_repr(self._returns)})'
         )
 
-    def __str__(self) -> str:
+    def __str__(self, /) -> str:
         parameters_by_kind = to_parameters_by_kind(self._parameters)
         positionals_only = parameters_by_kind[ParameterKind.POSITIONAL_ONLY]
         parts = list(map(str, positionals_only))
@@ -543,25 +557,25 @@ class PlainSignature(BaseSignature):
         )
 
 
-@te.final
-class OverloadedSignature(BaseSignature):
+@final
+class OverloadedSignature(BaseSignature[ArgT]):
     @property
-    def signatures(self) -> t.Sequence[PlainSignature]:
+    def signatures(self, /) -> Sequence[PlainSignature[ArgT]]:
         return self._signatures
 
-    def all_set(self, *args: _Arg, **kwargs: _KwArg) -> bool:
+    def all_set(self, /, *args: ArgT, **kwargs: ArgT) -> bool:
         return any(
             signature.all_set(*args, **kwargs)
             for signature in self._signatures
         )
 
-    def expects(self, *args: _Arg, **kwargs: _KwArg) -> bool:
+    def expects(self, /, *args: ArgT, **kwargs: ArgT) -> bool:
         return any(
             signature.expects(*args, **kwargs)
             for signature in self._signatures
         )
 
-    def bind(self, *args: _Arg, **kwargs: _KwArg) -> Signature:
+    def bind(self, /, *args: ArgT, **kwargs: ArgT) -> Signature:
         signatures = [
             signature.bind(*args, **kwargs)
             for signature in self._signatures
@@ -573,9 +587,9 @@ class OverloadedSignature(BaseSignature):
 
     __slots__ = ('_signatures',)
 
-    _signatures: tuple[PlainSignature, ...]
+    _signatures: tuple[PlainSignature[ArgT], ...]
 
-    def __new__(cls, *signatures: PlainSignature) -> OverloadedSignature:
+    def __new__(cls, /, *signatures: PlainSignature[ArgT]) -> Self:
         try:
             invalid_signature = next(
                 signature
@@ -600,7 +614,7 @@ class OverloadedSignature(BaseSignature):
         self._signatures = signatures
         return self
 
-    def __eq__(self, other: t.Any) -> t.Any:
+    def __eq__(self, other: Any, /) -> Any:
         return (
             (
                 isinstance(other, OverloadedSignature)
@@ -610,26 +624,28 @@ class OverloadedSignature(BaseSignature):
             else NotImplemented
         )
 
-    def __getnewargs__(self) -> tuple[Signature, ...]:
+    def __getnewargs__(self, /) -> tuple[PlainSignature[ArgT], ...]:
         return self._signatures
 
-    def __hash__(self) -> int:
+    def __hash__(self, /) -> int:
         return hash(self._signatures)
 
-    def __repr__(self) -> str:
+    def __repr__(self, /) -> str:
         return (
             f'{type(self).__qualname__}'
             f'({", ".join(map(repr, self._signatures))})'
         )
 
-    def __str__(self) -> str:
+    def __str__(self, /) -> str:
         return ' | '.join(map(str, self._signatures))
 
 
-Signature = t.Union[OverloadedSignature, PlainSignature]
+Signature: TypeAlias = OverloadedSignature[Any] | PlainSignature[Any]
 
 
-def flatten_signature(signature: Signature) -> t.Iterable[PlainSignature]:
+def flatten_signature(
+    signature: OverloadedSignature[ArgT] | PlainSignature[ArgT], /
+) -> Iterable[PlainSignature[ArgT]]:
     if isinstance(signature, PlainSignature):
         yield signature
     else:
@@ -649,8 +665,9 @@ def from_signatures(*signatures: Signature) -> Signature:
 
 def _bind_positionals(
     parameters: tuple[Parameter, ...],
-    args: tuple[_Arg, ...],
-    kwargs: dict[str, _KwArg],
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+    /,
     *,
     has_variadic: bool,
 ) -> tuple[Parameter, ...]:
@@ -687,7 +704,8 @@ def _bind_positionals(
 
 def _bind_keywords(
     parameters: tuple[Parameter, ...],
-    kwargs: dict[str, t.Any],
+    kwargs: dict[str, Any],
+    /,
     *,
     has_variadic: bool,
 ) -> tuple[Parameter, ...]:
@@ -751,7 +769,7 @@ def _bind_keywords(
     )
 
 
-def _validate_kind(kind: t.Any) -> None:
+def _validate_kind(kind: Any, /) -> None:
     if not isinstance(kind, ParameterKind):
         raise TypeError(
             f'Kind should have type {ParameterKind}, but found: {type(kind)}.'

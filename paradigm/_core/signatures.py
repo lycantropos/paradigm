@@ -429,7 +429,7 @@ def _parameters_from(
         for decorator_node in ast_node.decorator_list
     ):
         result[0] = _RequiredParameter(
-            annotation=type[_Self],
+            annotation=type[_Self],  # pyright: ignore[reportGeneralTypeIssues]
             kind=_ParameterKind.POSITIONAL_ONLY,
             name=result[0].name,
         )

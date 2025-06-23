@@ -2,26 +2,18 @@ from __future__ import annotations
 
 import pickle
 import types
-from typing import Any, Callable, ParamSpec, TypeVar
+from collections.abc import Callable
+from typing import Any, ParamSpec, TypeAlias, TypeVar
 
 from hypothesis.strategies import SearchStrategy
 
-from paradigm.base import (
-    OptionalParameter,
-    OverloadedSignature,
-    PlainSignature,
-    RequiredParameter,
-)
+from paradigm.base import OverloadedSignature, PlainSignature
 
-AnySignature = TypeVar('AnySignature', OverloadedSignature, PlainSignature)
-AnyParameter = TypeVar('AnyParameter', OptionalParameter, RequiredParameter)
 Strategy = SearchStrategy
-_PredicateParamsT = ParamSpec('_PredicateParamsT')
-Predicate = Callable[_PredicateParamsT, bool]
-_T1 = TypeVar('_T1')
-_T2 = TypeVar('_T2')
-Args = tuple[_T1, ...]
-Kwargs = dict[str, _T1]
+ArgT = TypeVar('ArgT')
+Args = tuple[ArgT, ...]
+KwArgs = dict[str, ArgT]
+Signature: TypeAlias = OverloadedSignature[Any] | PlainSignature[Any]
 
 
 def equivalence(left_statement: bool, right_statement: bool, /) -> bool:  # noqa: FBT001
@@ -32,7 +24,13 @@ def implication(antecedent: bool, consequent: bool, /) -> bool:  # noqa: FBT001
     return not antecedent or consequent
 
 
-def negate(predicate: Predicate) -> Predicate:
+_PredicateParamsT = ParamSpec('_PredicateParamsT')
+Predicate = Callable[_PredicateParamsT, bool]
+
+
+def negate(
+    predicate: Predicate[_PredicateParamsT],
+) -> Predicate[_PredicateParamsT]:
     def negated(
         *args: _PredicateParamsT.args, **kwargs: _PredicateParamsT.kwargs
     ) -> bool:
@@ -41,9 +39,18 @@ def negate(predicate: Predicate) -> Predicate:
     return negated
 
 
-def pack(function: Callable[..., _T2]) -> Callable[[tuple[_T1, ...]], _T2]:
+_T1 = TypeVar('_T1')
+_T2 = TypeVar('_T2')
+
+
+def pack(
+    function: Callable[..., _T2],
+) -> (
+    Callable[[tuple[ArgT, ...]], _T2]
+    | Callable[[tuple[ArgT, ...], dict[str, ArgT]], _T2]
+):
     def packed(
-        args: tuple[_T1, ...], kwargs: dict[str, Any] | None = None
+        args: tuple[ArgT, ...], kwargs: dict[str, ArgT] | None = None
     ) -> _T2:
         return function(*args, **({} if kwargs is None else kwargs))
 

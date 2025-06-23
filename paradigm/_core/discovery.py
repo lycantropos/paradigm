@@ -136,11 +136,6 @@ else:
         'distutils.command.bdist_msi',
     )
 
-    if sys.version_info < (3, 10):
-        _recursively_update_modules_paths(
-            unsupported_stdlib_modules_paths, 'distutils.command.bdist_wininst'
-        )
-
     if sys.platform == 'win32':
         _recursively_update_modules_paths(
             unsupported_stdlib_modules_paths, 'curses', 'pty', 'tty'

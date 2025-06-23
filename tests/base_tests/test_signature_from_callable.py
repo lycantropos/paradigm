@@ -1,4 +1,5 @@
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from hypothesis import given
 
@@ -15,7 +16,7 @@ from . import strategies
 def test_basic(callable_: Callable[..., Any]) -> None:
     result = signature_from_callable(callable_)
 
-    assert isinstance(result, (OverloadedSignature, PlainSignature))
+    assert isinstance(result, OverloadedSignature | PlainSignature)
 
 
 @given(strategies.overloaded_callables)

@@ -12,10 +12,7 @@ _T = TypeVar('_T')
 
 
 def to_homogeneous_tuples(
-    elements: Strategy[_T] | None = None,
-    *,
-    min_size: int = 0,
-    max_size: int | None = None,
+    elements: Strategy[_T], *, min_size: int = 0, max_size: int | None = None
 ) -> Strategy[tuple[_T, ...]]:
     return strategies.lists(
         elements, min_size=min_size, max_size=max_size

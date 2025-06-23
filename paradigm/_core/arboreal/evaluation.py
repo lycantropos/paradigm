@@ -4,11 +4,12 @@ import ast
 import builtins
 import operator
 import types
-import typing as t
 import weakref
 from collections import ChainMap
+from collections.abc import MutableMapping
 from functools import singledispatch
 from importlib import import_module
+from typing import Any, ForwardRef, TypeVar, Union
 
 import typing_extensions as te
 
@@ -29,7 +30,7 @@ def evaluate_expression_node(
     _parent_path: catalog.Path,
     _parent_namespace: namespacing.Namespace,
     /,
-) -> t.Any:
+) -> Any:
     raise TypeError(type(ast_node))
 
 
@@ -40,22 +41,22 @@ def evaluate_statement_node(
     _parent_path: catalog.Path,
     _parent_namespace: namespacing.Namespace,
     /,
-) -> t.Any:
+) -> Any:
     raise TypeError(type(ast_node))
 
 
 @singledispatch
-def evaluate_operator_node(ast_node: ast.operator | ast.unaryop) -> t.Any:
+def evaluate_operator_node(ast_node: ast.operator | ast.unaryop) -> Any:
     raise TypeError(type(ast_node))
 
 
 @evaluate_operator_node.register(ast.USub)
-def _(_ast_node: ast.USub, /) -> t.Any:
+def _(_ast_node: ast.USub, /) -> Any:
     return operator.neg
 
 
 @evaluate_operator_node.register(ast.UAdd)
-def _(_ast_node: ast.UAdd, /) -> t.Any:
+def _(_ast_node: ast.UAdd, /) -> Any:
     return operator.pos
 
 
@@ -66,7 +67,7 @@ def _(
     parent_path: catalog.Path,
     parent_namespace: namespacing.Namespace,
     /,
-) -> t.Any:
+) -> Any:
     return evaluate_operator_node(ast_node.op)(
         evaluate_expression_node(
             ast_node.operand, module_path, parent_path, parent_namespace
@@ -74,7 +75,7 @@ def _(
     )
 
 
-_T = t.TypeVar('_T')
+_T = TypeVar('_T')
 
 
 def _all_not_none(value: list[_T | None]) -> te.TypeGuard[list[_T]]:
@@ -88,7 +89,7 @@ def _(
     parent_path: catalog.Path,
     parent_namespace: namespacing.Namespace,
     /,
-) -> t.Any:
+) -> Any:
     assert _all_not_none(ast_node.keys), ast_node.keys
     return {
         evaluate_expression_node(
@@ -101,17 +102,17 @@ def _(
 
 
 @evaluate_operator_node.register(ast.BitAnd)
-def _(_ast_node: ast.BitAnd, /) -> t.Any:
+def _(_ast_node: ast.BitAnd, /) -> Any:
     return operator.and_
 
 
 @evaluate_operator_node.register(ast.BitOr)
-def _(_ast_node: ast.BitOr, /) -> t.Any:
+def _(_ast_node: ast.BitOr, /) -> Any:
     return operator.or_
 
 
 @evaluate_operator_node.register(ast.BitXor)
-def _(_ast_node: ast.BitXor, /) -> t.Any:
+def _(_ast_node: ast.BitXor, /) -> Any:
     return operator.xor
 
 
@@ -121,7 +122,7 @@ def _(
     module_path: catalog.Path,
     parent_path: catalog.Path,
     parent_namespace: namespacing.Namespace,
-) -> t.Any:
+) -> Any:
     args = [
         evaluate_expression_node(
             arg, module_path, parent_path, parent_namespace
@@ -129,10 +130,11 @@ def _(
         for arg in ast_node.args
     ]
     kwargs = {
-        keyword.arg: evaluate_expression_node(
+        parameter_name: evaluate_expression_node(
             keyword.value, module_path, parent_path, parent_namespace
         )
         for keyword in ast_node.keywords
+        if (parameter_name := keyword.arg) is not None
     }
     return evaluate_expression_node(
         ast_node.func, module_path, parent_path, parent_namespace
@@ -144,28 +146,35 @@ class _LazyEvaluator(ast.NodeTransformer):
         self, node: ast.AsyncFunctionDef
     ) -> ast.AsyncFunctionDef:
         if node.returns is not None:
-            node.returns = ast.Str(conversion.to_str(node.returns))
+            node.returns = ast.Constant(conversion.to_str(node.returns))
         self.generic_visit(node)
         return node
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.FunctionDef:  # noqa: N802
         if node.returns is not None:
-            node.returns = ast.Str(conversion.to_str(node.returns))
+            node.returns = ast.Constant(conversion.to_str(node.returns))
         self.generic_visit(node)
         return node
 
     def visit_arg(self, node: ast.arg) -> ast.arg:
         return ast.arg(
             node.arg,
-            None
-            if node.annotation is None
-            else ast.Str(conversion.to_str(node.annotation)),
+            (
+                None
+                if node.annotation is None
+                else ast.Constant(conversion.to_str(node.annotation))
+            ),
             getattr(node, 'type_comment', None),
         )
 
 
-_AstNode = t.TypeVar('_AstNode', bound=ast.AST)
-_to_lazy_statement: t.Callable[[_AstNode], _AstNode] = _LazyEvaluator().visit
+_AstNode = TypeVar('_AstNode', bound=ast.stmt)
+
+
+def _to_lazy_statement(node: _AstNode) -> _AstNode:
+    result = _LazyEvaluator().visit(node)
+    assert isinstance(result, type(node)), (result, node)
+    return result
 
 
 @evaluate_statement_node.register(ast.AsyncFunctionDef)
@@ -176,7 +185,7 @@ def _(
     _parent_path: catalog.Path,
     parent_namespace: namespacing.Namespace,
     /,
-) -> t.Any:
+) -> Any:
     namespace = dict(parent_namespace)
     try:
         source_path = sources.from_module_path(module_path)
@@ -199,7 +208,7 @@ def _(
     _parent_path: catalog.Path,
     _parent_namespace: namespacing.Namespace,
     /,
-) -> t.Any:
+) -> Any:
     return ast_node.value
 
 
@@ -210,7 +219,7 @@ def _(
     parent_path: catalog.Path,
     parent_namespace: namespacing.Namespace,
     /,
-) -> t.Any:
+) -> Any:
     assert isinstance(ast_node.ctx, ast.Load), ast_node
     return tuple(
         evaluate_expression_node(
@@ -227,7 +236,7 @@ def _(
     parent_path: catalog.Path,
     parent_namespace: namespacing.Namespace,
     /,
-) -> t.Any:
+) -> Any:
     assert isinstance(ast_node.ctx, ast.Load), ast_node
     return [
         evaluate_expression_node(
@@ -246,8 +255,8 @@ def _(
     parent_namespace: namespacing.Namespace,
     /,
     *,
-    cache: dict[catalog.QualifiedPath, t.Any] | None = None,
-) -> t.Any:
+    cache: dict[catalog.QualifiedPath, Any] | None = None,
+) -> Any:
     if cache is None:
         cache = {}
     targets_paths = [
@@ -267,7 +276,7 @@ def _(
             result = cache[target_path]
         except KeyError:
             _, target_object_path = target_path
-            cache[target_path] = t.ForwardRef(
+            cache[target_path] = ForwardRef(
                 catalog.path_to_string(target_object_path)
             )
             continue
@@ -289,7 +298,7 @@ def _(
     parent_path: catalog.Path,
     parent_namespace: namespacing.Namespace,
     /,
-) -> t.Any:
+) -> Any:
     left = evaluate_expression_node(
         ast_node.left, module_path, parent_path, parent_namespace
     )
@@ -300,7 +309,7 @@ def _(
         return evaluate_operator_node(ast_node.op)(left, right)
     except TypeError:
         assert isinstance(ast_node.op, ast.BitOr), ast_node
-        return t.Union[left, right]
+        return Union[left, right]
 
 
 @evaluate_expression_node.register(ast.Name)
@@ -310,7 +319,7 @@ def _(
     parent_path: catalog.Path,
     parent_namespace: namespacing.Namespace,
     /,
-) -> t.Any:
+) -> Any:
     assert isinstance(ast_node.ctx, ast.Load), ast_node
     object_name = ast_node.id
     module_path, object_path = scoping.resolve_object_path(
@@ -332,7 +341,7 @@ def _(
     parent_path: catalog.Path,
     parent_namespace: namespacing.Namespace,
     /,
-) -> t.Any:
+) -> Any:
     assert isinstance(ast_node.ctx, ast.Load), ast_node
     value = evaluate_expression_node(
         ast_node.value, module_path, parent_path, parent_namespace
@@ -363,13 +372,13 @@ def evaluate_qualified_path(
     builtins_module_path: catalog.Path = catalog.module_path_from_module(  # noqa: B008
         builtins
     ),
-    modules_cache: t.MutableMapping[
+    modules_cache: MutableMapping[
         catalog.Path, types.ModuleType
     ] = weakref.WeakValueDictionary(),  # noqa: B008
-    objects_cache: t.MutableMapping[
-        catalog.QualifiedPath, t.Any
+    objects_cache: MutableMapping[
+        catalog.QualifiedPath, Any
     ] = weakref.WeakValueDictionary([((('_typeshed',), ('Self',)), te.Self)]),  # noqa: B008
-) -> t.Any:
+) -> Any:
     module_name = catalog.path_to_string(module_path)
     try:
         module = import_module(module_name)
@@ -415,7 +424,7 @@ def evaluate_qualified_path(
                         module_path,
                         object_path,
                     )
-                    value = parent_namespace[object_path[-1]] = (
+                    parent_namespace[object_path[-1]] = (
                         evaluate_statement_node(
                             ast_node,
                             module_path,
@@ -423,7 +432,7 @@ def evaluate_qualified_path(
                             parent_namespace,
                         )
                     )
-                return value
+                return parent_namespace[object_path[-1]]
         scope = stubs.definitions[module_path]
         for part in object_path:
             scope = scope[part]
@@ -476,14 +485,12 @@ def evaluate_qualified_path(
                                 module_namespace,
                             )
                         )
-                value = evaluate_statement_node(
+                class_namespace[name] = evaluate_statement_node(
                     definition_node,
                     module_path,
                     object_path,
                     ChainMap(class_namespace, module_namespace),
                 )
-            if definitions_nodes:
-                class_namespace[name] = value
         bases = tuple(
             evaluate_qualified_path(
                 superclass_module_path,
@@ -526,7 +533,7 @@ def _(
     module_path: catalog.Path,
     parent_path: catalog.Path,
     parent_namespace: namespacing.Namespace,
-) -> t.Any:
+) -> Any:
     assert isinstance(ast_node.ctx, ast.Load), ast_node
     value = evaluate_expression_node(
         ast_node.value, module_path, parent_path, parent_namespace

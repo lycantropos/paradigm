@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ast
-import sys
 import typing as t
 from functools import singledispatch
 from itertools import chain
@@ -188,22 +187,11 @@ def _(ast_node: ast.List) -> str:
     return f'[{", ".join(elements_strings)}]'
 
 
-if sys.version_info < (3, 10):
-
-    @to_str.register(ast.BinOp)
-    def _(ast_node: ast.BinOp) -> str:
-        assert isinstance(ast_node.op, ast.BitOr), ast_node
-        left_operand = to_str(ast_node.left)
-        right_operand = to_str(ast_node.right)
-        return f'{t.__name__}.Union[{left_operand}, {right_operand}]'
-
-else:
-
-    @to_str.register(ast.BinOp)
-    def _(ast_node: ast.BinOp) -> str:
-        left_operand = to_str(ast_node.left)
-        right_operand = to_str(ast_node.right)
-        return f'{left_operand} {to_str(ast_node.op)} {right_operand}'
+@to_str.register(ast.BinOp)
+def _(ast_node: ast.BinOp) -> str:
+    left_operand = to_str(ast_node.left)
+    right_operand = to_str(ast_node.right)
+    return f'{left_operand} {to_str(ast_node.op)} {right_operand}'
 
 
 @singledispatch
