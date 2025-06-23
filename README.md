@@ -119,7 +119,7 @@ we can obtain a signature of
   >>> signature_from_callable(any) == PlainSignature(
   ...     RequiredParameter(annotation=typing.Iterable[object],
   ...                       kind=ParameterKind.POSITIONAL_ONLY,
-  ...                       name='__iterable'),
+  ...                       name='iterable'),
   ...     returns=bool
   ... )
   True
@@ -130,7 +130,7 @@ we can obtain a signature of
   >>> signature_from_callable(bool) == PlainSignature(
   ...     OptionalParameter(annotation=object,
   ...                       kind=ParameterKind.POSITIONAL_ONLY,
-  ...                       name='__o'),
+  ...                       name='o'),
   ...     returns=Self
   ... )
   True
