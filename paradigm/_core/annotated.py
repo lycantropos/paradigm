@@ -34,7 +34,7 @@ def are_equal(left: Any, right: Any, /) -> bool:
 @are_equal.register(types.GenericAlias)
 @are_equal.register(types.UnionType)  # pyright: ignore[reportArgumentType, reportCallIssue]
 @are_equal.register(type)
-@are_equal.register(type(Union[int, None]))
+@are_equal.register(type(Union[int, None]))  # noqa: UP007
 def _(left: Any, right: Any, /) -> bool:
     left_args, right_args = to_arguments(left), to_arguments(right)
     left_origin, right_origin = (

@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable
 from functools import reduce, singledispatch
-from operator import getitem
+from operator import getitem, or_
 from typing import Any, Literal, Optional, TypeVar, Union
 
 from hypothesis import strategies as st
@@ -76,9 +76,13 @@ types_with_round_trippable_repr = st.from_type(type).filter(
 def nest_annotations(base: st.SearchStrategy[Any]) -> st.SearchStrategy[Any]:
     return (
         st.builds(lambda argument: argument | None, base)
-        | st.builds(lambda argument: Optional[argument], base)
         | st.builds(
-            lambda elements: Union[elements],
+            lambda elements: reduce(or_, elements),
+            (st.lists(base, min_size=1, max_size=5).map(tuple)),
+        )
+        | st.builds(lambda argument: Optional[argument], base)  # noqa: UP045
+        | st.builds(
+            lambda elements: Union[elements],  # noqa: UP007
             (st.lists(base, min_size=1, max_size=5).map(tuple)),
         )
         | st.builds(

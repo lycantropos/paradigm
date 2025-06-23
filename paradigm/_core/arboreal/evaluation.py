@@ -9,9 +9,9 @@ from collections import ChainMap
 from collections.abc import MutableMapping
 from functools import singledispatch
 from importlib import import_module
-from typing import Any, ForwardRef, TypeVar, Union
+from typing import Any, ForwardRef, TypeGuard, TypeVar
 
-import typing_extensions as te
+from typing_extensions import Self
 
 from paradigm._core import catalog, namespacing, scoping, sources, stubs
 
@@ -78,7 +78,7 @@ def _(
 _T = TypeVar('_T')
 
 
-def _all_not_none(value: list[_T | None]) -> te.TypeGuard[list[_T]]:
+def _all_not_none(value: list[_T | None], /) -> TypeGuard[list[_T]]:
     return all(element is not None for element in value)
 
 
@@ -309,7 +309,7 @@ def _(
         return evaluate_operator_node(ast_node.op)(left, right)
     except TypeError:
         assert isinstance(ast_node.op, ast.BitOr), ast_node
-        return Union[left, right]
+        return left | right
 
 
 @evaluate_expression_node.register(ast.Name)
@@ -377,7 +377,7 @@ def evaluate_qualified_path(
     ] = weakref.WeakValueDictionary(),  # noqa: B008
     objects_cache: MutableMapping[
         catalog.QualifiedPath, Any
-    ] = weakref.WeakValueDictionary([((('_typeshed',), ('Self',)), te.Self)]),  # noqa: B008
+    ] = weakref.WeakValueDictionary([((('_typeshed',), ('Self',)), Self)]),  # noqa: B008
 ) -> Any:
     module_name = catalog.path_to_string(module_path)
     try:

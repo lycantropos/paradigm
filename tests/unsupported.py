@@ -929,9 +929,26 @@ if sys.platform == 'linux':
             'channel_list_interpreters',
         )
         _load_and_add(built_in_functions, 'uuid', '_generate_time_safe')
+        _load_and_update(
+            built_in_functions, 'xxlimited_35', ['foo', 'new', 'roj']
+        )
 
         _load_and_add(classes, '_collections_abc', 'EllipsisType')
-        _load_and_update(classes, '_hashlib', ['HASH', 'HASHXOF', 'HMAC'])
+        _load_and_update(
+            classes,
+            '_hashlib',
+            ['HASH', 'HASHXOF', 'HMAC', 'UnsupportedDigestmodError'],
+        )
+        _load_and_update(
+            classes,
+            '_multibytecodec',
+            [
+                'MultibyteIncrementalDecoder',
+                'MultibyteIncrementalEncoder',
+                'MultibyteStreamReader',
+                'MultibyteStreamWriter',
+            ],
+        )
         _load_and_update(
             classes,
             '_sha3',
@@ -944,10 +961,32 @@ if sys.platform == 'linux':
                 'shake_256',
             ],
         )
+        _load_and_add(classes, 'importlib.metadata', 'FreezableDefaultDict')
+        _load_and_add(classes, 'importlib.metadata._text', 'FoldedCase')
+        _load_and_add(classes, 'unittest.mock', 'InvalidSpecError')
+        _load_and_update(classes, 'xxlimited_35', ['Null', 'Str', 'error'])
 
+        _load_and_update(
+            methods_descriptors,
+            '_csv',
+            ['Writer.writerow', 'Writer.writerows'],
+        )
+        _load_and_add(methods_descriptors, '_ssl', 'Certificate.public_bytes')
         _load_and_add(
             methods_descriptors, '_thread', 'LockType._at_fork_reinit'
         )
+        _load_and_update(
+            methods_descriptors,
+            'builtins',
+            ['property.__set_name__', 'zip.__setstate__'],
+        )
+        _load_and_add(methods_descriptors, 'collections', 'deque.__reversed__')
+        _load_and_update(
+            methods_descriptors,
+            'types',
+            ['UnionType.__instancecheck__', 'UnionType.__subclasscheck__'],
+        )
+        _load_and_add(methods_descriptors, 'xxlimited_35', 'Xxo.demo')
         _load_and_update(
             methods_descriptors,
             'typing',
@@ -958,55 +997,9 @@ if sys.platform == 'linux':
             ],
         )
         _load_and_add(methods_descriptors, 'weakref', 'ProxyType.__reversed__')
-        if sys.version_info < (3, 10):
-            _load_and_add(built_in_functions, 'faulthandler', '_fatal_error')
-        else:
-            _load_and_update(
-                built_in_functions, 'xxlimited_35', ['foo', 'new', 'roj']
-            )
 
-            _load_and_add(classes, '_hashlib', 'UnsupportedDigestmodError')
-            _load_and_update(
-                classes,
-                '_multibytecodec',
-                [
-                    'MultibyteIncrementalDecoder',
-                    'MultibyteIncrementalEncoder',
-                    'MultibyteStreamReader',
-                    'MultibyteStreamWriter',
-                ],
-            )
-            _load_and_add(
-                classes, 'importlib.metadata', 'FreezableDefaultDict'
-            )
-            _load_and_add(classes, 'importlib.metadata._text', 'FoldedCase')
-            _load_and_add(classes, 'unittest.mock', 'InvalidSpecError')
-            _load_and_update(classes, 'xxlimited_35', ['Null', 'Str', 'error'])
+        _load_and_add(wrappers_descriptors, 'xxlimited_35', 'Xxo.__del__')
 
-            _load_and_update(
-                methods_descriptors,
-                '_csv',
-                ['Writer.writerow', 'Writer.writerows'],
-            )
-            _load_and_add(
-                methods_descriptors, '_ssl', 'Certificate.public_bytes'
-            )
-            _load_and_update(
-                methods_descriptors,
-                'builtins',
-                ['property.__set_name__', 'zip.__setstate__'],
-            )
-            _load_and_add(
-                methods_descriptors, 'collections', 'deque.__reversed__'
-            )
-            _load_and_update(
-                methods_descriptors,
-                'types',
-                ['UnionType.__instancecheck__', 'UnionType.__subclasscheck__'],
-            )
-            _load_and_add(methods_descriptors, 'xxlimited_35', 'Xxo.demo')
-
-            _load_and_add(wrappers_descriptors, 'xxlimited_35', 'Xxo.__del__')
         if sys.version_info >= (3, 11):
             _load_and_add(classes, '_tokenize', 'TokenizerIter')
             _load_and_add(classes, 'ctypes', 'BigEndianUnion')
@@ -1925,9 +1918,26 @@ elif sys.platform == 'darwin':
         )
         _load_and_add(built_in_functions, 'sys', 'breakpointhook')
         _load_and_add(built_in_functions, 'uuid', '_generate_time_safe')
+        _load_and_update(
+            built_in_functions, 'xxlimited_35', ['foo', 'new', 'roj']
+        )
 
         _load_and_add(classes, '_collections_abc', 'EllipsisType')
-        _load_and_update(classes, '_hashlib', ['HASH', 'HASHXOF', 'HMAC'])
+        _load_and_update(
+            classes,
+            '_hashlib',
+            ['HASH', 'HASHXOF', 'HMAC', 'UnsupportedDigestmodError'],
+        )
+        _load_and_update(
+            classes,
+            '_multibytecodec',
+            [
+                'MultibyteIncrementalDecoder',
+                'MultibyteIncrementalEncoder',
+                'MultibyteStreamReader',
+                'MultibyteStreamWriter',
+            ],
+        )
         _load_and_update(
             classes,
             '_sha3',
@@ -1940,6 +1950,12 @@ elif sys.platform == 'darwin':
                 'shake_256',
             ],
         )
+        _load_and_add(
+            classes, 'importlib.metadata._collections', 'FreezableDefaultDict'
+        )
+        _load_and_add(classes, 'importlib.metadata._text', 'FoldedCase')
+        _load_and_add(classes, 'unittest.mock', 'InvalidSpecError')
+        _load_and_update(classes, 'xxlimited_35', ['Null', 'Str', 'error'])
 
         _load_and_add(
             methods_descriptors, '_thread', 'LockType._at_fork_reinit'
@@ -1954,57 +1970,27 @@ elif sys.platform == 'darwin':
             ],
         )
         _load_and_add(methods_descriptors, 'weakref', 'ProxyType.__reversed__')
-        if sys.version_info < (3, 10):
-            _load_and_add(built_in_functions, 'faulthandler', '_fatal_error')
-        else:
-            _load_and_update(
-                built_in_functions, 'xxlimited_35', ['foo', 'new', 'roj']
-            )
 
-            _load_and_add(classes, '_hashlib', 'UnsupportedDigestmodError')
-            _load_and_update(
-                classes,
-                '_multibytecodec',
-                [
-                    'MultibyteIncrementalDecoder',
-                    'MultibyteIncrementalEncoder',
-                    'MultibyteStreamReader',
-                    'MultibyteStreamWriter',
-                ],
-            )
-            _load_and_add(
-                classes,
-                'importlib.metadata._collections',
-                'FreezableDefaultDict',
-            )
-            _load_and_add(classes, 'importlib.metadata._text', 'FoldedCase')
-            _load_and_add(classes, 'unittest.mock', 'InvalidSpecError')
-            _load_and_update(classes, 'xxlimited_35', ['Null', 'Str', 'error'])
+        _load_and_update(
+            methods_descriptors,
+            '_csv',
+            ['Writer.writerow', 'Writer.writerows'],
+        )
+        _load_and_add(methods_descriptors, '_ssl', 'Certificate.public_bytes')
+        _load_and_update(
+            methods_descriptors,
+            'builtins',
+            ['property.__set_name__', 'zip.__setstate__'],
+        )
+        _load_and_add(methods_descriptors, 'collections', 'deque.__reversed__')
+        _load_and_update(
+            methods_descriptors,
+            'types',
+            ['UnionType.__instancecheck__', 'UnionType.__subclasscheck__'],
+        )
+        _load_and_add(methods_descriptors, 'xxlimited_35', 'Xxo.demo')
 
-            _load_and_update(
-                methods_descriptors,
-                '_csv',
-                ['Writer.writerow', 'Writer.writerows'],
-            )
-            _load_and_add(
-                methods_descriptors, '_ssl', 'Certificate.public_bytes'
-            )
-            _load_and_update(
-                methods_descriptors,
-                'builtins',
-                ['property.__set_name__', 'zip.__setstate__'],
-            )
-            _load_and_add(
-                methods_descriptors, 'collections', 'deque.__reversed__'
-            )
-            _load_and_update(
-                methods_descriptors,
-                'types',
-                ['UnionType.__instancecheck__', 'UnionType.__subclasscheck__'],
-            )
-            _load_and_add(methods_descriptors, 'xxlimited_35', 'Xxo.demo')
-
-            _load_and_add(wrappers_descriptors, 'xxlimited_35', 'Xxo.__del__')
+        _load_and_add(wrappers_descriptors, 'xxlimited_35', 'Xxo.__del__')
 
         if (3, 11) <= sys.version_info < (3, 12):
             _load_and_add(
@@ -3024,39 +3010,29 @@ elif sys.platform == 'win32':
         )
         _load_and_add(methods_descriptors, 'weakref', 'ProxyType.__reversed__')
 
-        if sys.version_info < (3, 10):
-            _load_and_add(built_in_functions, 'faulthandler', '_fatal_error')
-            _load_and_add(built_in_functions, 'parser', '_pickler')
-        else:
-            _load_and_add(classes, '_hashlib', 'UnsupportedDigestmodError')
-            _load_and_add(
-                classes, 'importlib.metadata', 'FreezableDefaultDict'
-            )
-            _load_and_add(classes, 'importlib.metadata._text', 'FoldedCase')
-            _load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
-            _load_and_add(classes, 'unittest.mock', 'InvalidSpecError')
+        _load_and_add(classes, '_hashlib', 'UnsupportedDigestmodError')
+        _load_and_add(classes, 'importlib.metadata', 'FreezableDefaultDict')
+        _load_and_add(classes, 'importlib.metadata._text', 'FoldedCase')
+        _load_and_add(classes, 'mailcap', 'UnsafeMailcapInput')
+        _load_and_add(classes, 'unittest.mock', 'InvalidSpecError')
 
-            _load_and_update(
-                methods_descriptors,
-                '_csv',
-                ['Writer.writerow', 'Writer.writerows'],
-            )
-            _load_and_add(
-                methods_descriptors, '_ssl', 'Certificate.public_bytes'
-            )
-            _load_and_update(
-                methods_descriptors,
-                'builtins',
-                ['property.__set_name__', 'zip.__setstate__'],
-            )
-            _load_and_add(
-                methods_descriptors, 'collections', 'deque.__reversed__'
-            )
-            _load_and_update(
-                methods_descriptors,
-                'types',
-                ['UnionType.__instancecheck__', 'UnionType.__subclasscheck__'],
-            )
+        _load_and_update(
+            methods_descriptors,
+            '_csv',
+            ['Writer.writerow', 'Writer.writerows'],
+        )
+        _load_and_add(methods_descriptors, '_ssl', 'Certificate.public_bytes')
+        _load_and_update(
+            methods_descriptors,
+            'builtins',
+            ['property.__set_name__', 'zip.__setstate__'],
+        )
+        _load_and_add(methods_descriptors, 'collections', 'deque.__reversed__')
+        _load_and_update(
+            methods_descriptors,
+            'types',
+            ['UnionType.__instancecheck__', 'UnionType.__subclasscheck__'],
+        )
 
         if sys.version_info >= (3, 11):
             _load_and_add(classes, '_tokenize', 'TokenizerIter')

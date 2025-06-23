@@ -6,8 +6,8 @@ paradigm
 [![](https://img.shields.io/github/license/lycantropos/paradigm.svg)](https://github.com/lycantropos/paradigm/blob/master/LICENSE "License")
 [![](https://badge.fury.io/py/paradigm.svg)](https://badge.fury.io/py/paradigm "PyPI")
 
-In what follows `python` is an alias for `python3.8` or `pypy3.8`
-or any later version (`python3.9`, `pypy3.9` and so on).
+In what follows `python` is an alias for `python3.10` or `pypy3.10`
+or any later version (`python3.11`, `pypy3.11` and so on).
 
 Installation
 ------------
@@ -57,10 +57,10 @@ With setup
 >>> class UpperOut:
 ...     def __init__(self, outfile: typing.IO[typing.AnyStr]) -> None:
 ...         self._outfile = outfile
-... 
+...
 ...     def write(self, s: typing.AnyStr) -> None:
 ...         self._outfile.write(s.upper())
-... 
+...
 ...     def __getattr__(self, name: str) -> typing.Any:
 ...         return getattr(self._outfile, name)
 >>> def func(foo: int, bar: float, *, baz: bool = False, **kwargs: str) -> None:
@@ -87,7 +87,7 @@ we can obtain a signature of
   ...     returns=None
   ... )
   True
-  
+
   ```
 - user-defined classes
   ```python
@@ -98,7 +98,7 @@ we can obtain a signature of
   ...     returns=Self
   ... )
   True
-  
+
   ```
 - user-defined classes methods
   ```python
@@ -112,7 +112,7 @@ we can obtain a signature of
   ...     returns=None
   ... )
   True
-  
+
   ```
 - built-in functions
   ```python
@@ -123,7 +123,7 @@ we can obtain a signature of
   ...     returns=bool
   ... )
   True
-  
+
   ```
 - built-in classes
   ```python
@@ -134,7 +134,7 @@ we can obtain a signature of
   ...     returns=Self
   ... )
   True
-  
+
   ```
 - built-in classes methods
   ```python
@@ -145,7 +145,7 @@ we can obtain a signature of
   ...     returns=str
   ... )
   True
-  
+
   ```
 
 Development
@@ -176,7 +176,7 @@ Bump version
 bump2version --verbose $CATEGORY
 ```
 
-This will set version to `major.minor.patch-alpha`. 
+This will set version to `major.minor.patch-alpha`.
 
 #### Release
 

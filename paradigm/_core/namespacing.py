@@ -1,11 +1,11 @@
 import types
 from collections.abc import MutableMapping
 from functools import reduce
-from typing import Any, TypeAlias, Union
+from typing import Any, TypeAlias
 
 from . import catalog
 
-ModuleOrType: TypeAlias = Union[types.ModuleType, type]
+ModuleOrType: TypeAlias = types.ModuleType | type
 Namespace: TypeAlias = MutableMapping[str, Any]
 
 
