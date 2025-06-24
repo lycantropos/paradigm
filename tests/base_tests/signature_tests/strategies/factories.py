@@ -81,7 +81,9 @@ def nest_annotations(base: st.SearchStrategy[Any]) -> st.SearchStrategy[Any]:
         )
         | st.builds(
             lambda variants: (
-                reduce(or_, variants)
+                reduce(
+                    or_, sorted(variants, key=lambda variant: variant is None)
+                )
                 if any(variant is not None for variant in variants)
                 else variants[0]
             ),
