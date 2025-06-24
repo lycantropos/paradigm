@@ -87,12 +87,11 @@ jobs:
       - name: 'Run tests'
         run: coverage run --append -m pytest
       - name: 'Collect coverage'
-        run: coverage xml -o coverage_python.xml
+        run: coverage combine && coverage xml
       - name: 'Upload coverage'
         uses: codecov/codecov-action@v5
         with:
           fail_ci_if_error: false
-          files: ./coverage_python.xml
           token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
 
