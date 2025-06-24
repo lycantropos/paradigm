@@ -80,7 +80,11 @@ def nest_annotations(base: st.SearchStrategy[Any]) -> st.SearchStrategy[Any]:
             base,
         )
         | st.builds(
-            lambda elements: reduce(or_, elements),
+            lambda variants: (
+                reduce(or_, variants)
+                if any(variant is not None for variant in variants)
+                else variants[0]
+            ),
             (st.lists(base, min_size=1, max_size=5).map(tuple)),
         )
         | st.builds(lambda argument: Optional[argument], base)  # noqa: UP045
