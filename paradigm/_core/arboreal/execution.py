@@ -7,7 +7,7 @@ from . import construction
 
 
 def execute_statement(
-    node: ast.stmt, *, source_path: Path, namespace: namespacing.Namespace
+    node: ast.stmt, /, *, source_path: Path, namespace: namespacing.Namespace
 ) -> None:
     _execute_tree(
         construction.from_node(node),
@@ -17,7 +17,7 @@ def execute_statement(
 
 
 def _execute_tree(
-    node: ast.Module, *, source_path: Path, namespace: namespacing.Namespace
+    node: ast.Module, /, *, source_path: Path, namespace: namespacing.Namespace
 ) -> None:
     code = compile(node, str(source_path), 'exec')
     namespace_dict = dict(namespace)

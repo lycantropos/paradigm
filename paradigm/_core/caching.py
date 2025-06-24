@@ -1,20 +1,18 @@
-import typing as t
 import warnings
 from compileall import compile_file
 from importlib import import_module
 from importlib.machinery import SOURCE_SUFFIXES
 from operator import attrgetter
 from pathlib import Path
-
-import typing_extensions as te
+from typing import Any, Final
 
 from . import pretty
 
-FILE_SUFFIX: te.Final[str] = SOURCE_SUFFIXES[0]
+FILE_SUFFIX: Final[str] = SOURCE_SUFFIXES[0]
 
 
-def load(*names: str, path: Path) -> tuple[t.Any, ...]:
-    return attrgetter(*names)(
+def load(name: str, /, *names: str, path: Path) -> tuple[Any, ...]:
+    return attrgetter(name, *names)(
         import_module(
             (
                 ''
@@ -26,7 +24,7 @@ def load(*names: str, path: Path) -> tuple[t.Any, ...]:
     )
 
 
-def save(*, path: Path, **values: t.Any) -> None:
+def save(*, path: Path, **values: Any) -> None:
     try:
         with path.open('w', encoding='utf-8') as file:
             for name, value in values.items():

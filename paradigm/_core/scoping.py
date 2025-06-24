@@ -60,6 +60,7 @@ def resolve_object_path(
     modules_references: Mapping[catalog.Path, ModuleReferences],
     modules_submodules: Mapping[catalog.Path, ModuleSubmodules],
     modules_superclasses: Mapping[catalog.Path, ModuleSuperclasses],
+    /,
     *visited_modules_paths: catalog.Path,
     _builtins_module_path: catalog.Path = catalog.module_path_from_module(  # noqa: B008
         builtins

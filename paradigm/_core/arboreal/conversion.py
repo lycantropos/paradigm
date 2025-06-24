@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import ast
-import typing as t
 from functools import singledispatch
+from typing import NewType
 
 from paradigm._core import catalog
 
-RawAstNode = t.NewType('RawAstNode', str)
+RawAstNode = NewType('RawAstNode', str)
 
 
 @singledispatch
@@ -53,14 +53,8 @@ def _(ast_node: ast.Subscript, /) -> str:
     )
 
 
-@to_identifier.register(ast.Ellipsis)
-def _(_ast_node: ast.Subscript, /) -> str:
-    return repr(Ellipsis)
-
-
 @to_identifier.register(ast.Constant)
-@to_identifier.register(ast.NameConstant)
-def _(ast_node: ast.NameConstant, /) -> str:
+def _(ast_node: ast.Constant, /) -> str:
     return repr(ast_node.value)
 
 
@@ -148,27 +142,27 @@ def _(_ast_node: ast.USub, /) -> str:
 
 
 @to_str.register(ast.UnaryOp)
-def _(ast_node: ast.UnaryOp) -> str:
+def _(ast_node: ast.UnaryOp, /) -> str:
     return f'{to_str(ast_node.op)}({to_str(ast_node.operand)})'
 
 
 @to_str.register(ast.Constant)
-def _(ast_node: ast.Constant) -> str:
+def _(ast_node: ast.Constant, /) -> str:
     return str(ast_node.value)
 
 
 @to_str.register(ast.Attribute)
-def _(ast_node: ast.Attribute) -> str:
+def _(ast_node: ast.Attribute, /) -> str:
     return f'{to_str(ast_node.value)}.{ast_node.attr}'
 
 
 @to_str.register(ast.Subscript)
-def _(ast_node: ast.Subscript) -> str:
+def _(ast_node: ast.Subscript, /) -> str:
     return f'{to_str(ast_node.value)}[{to_str(ast_node.slice)}]'
 
 
 @to_str.register(ast.Tuple)
-def _(ast_node: ast.Tuple) -> str:
+def _(ast_node: ast.Tuple, /) -> str:
     elements_strings = [to_str(element) for element in ast_node.elts]
     return (
         f'({elements_strings[0]},)'
@@ -178,30 +172,30 @@ def _(ast_node: ast.Tuple) -> str:
 
 
 @to_str.register(ast.List)
-def _(ast_node: ast.List) -> str:
+def _(ast_node: ast.List, /) -> str:
     elements_strings = [to_str(element) for element in ast_node.elts]
     return f'[{", ".join(elements_strings)}]'
 
 
 @to_str.register(ast.BinOp)
-def _(ast_node: ast.BinOp) -> str:
+def _(ast_node: ast.BinOp, /) -> str:
     left_operand = to_str(ast_node.left)
     right_operand = to_str(ast_node.right)
     return f'{left_operand} {to_str(ast_node.op)} {right_operand}'
 
 
 @singledispatch
-def to_path(ast_node: ast.expr) -> catalog.Path:
+def to_path(ast_node: ast.expr, /) -> catalog.Path:
     raise TypeError(type(ast_node))
 
 
 @to_path.register(ast.Name)
-def _(ast_node: ast.Name) -> catalog.Path:
+def _(ast_node: ast.Name, /) -> catalog.Path:
     return (ast_node.id,)
 
 
 @to_path.register(ast.Attribute)
-def _(ast_node: ast.Attribute) -> catalog.Path:
+def _(ast_node: ast.Attribute, /) -> catalog.Path:
     return (*to_path(ast_node.value), ast_node.attr)
 
 

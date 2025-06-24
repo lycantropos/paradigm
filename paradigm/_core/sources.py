@@ -1,31 +1,32 @@
 import inspect
 import sys
 import sysconfig
-import typing as t
+from collections.abc import Container, Iterable
 from importlib.machinery import EXTENSION_SUFFIXES, SOURCE_SUFFIXES
 from importlib.util import find_spec
 from itertools import chain
 from pathlib import Path as _Path
+from typing import Final, TypeAlias
 
 from . import catalog, file_system
 
-_STUB_EXTENSION = '.pyi'
+_STUB_EXTENSION: Final[str] = '.pyi'
 
-Path = _Path
+Path: TypeAlias = _Path
 
 
 class NotFound(Exception):
     pass
 
 
-def from_module_path(module_path: catalog.Path) -> Path:
+def from_module_path(module_path: catalog.Path, /) -> Path:
     try:
         return _stubs_cache[module_path]
     except KeyError as error:
         raise NotFound(module_path) from error
 
 
-def is_package(module_path: catalog.Path) -> bool:
+def is_package(module_path: catalog.Path, /) -> bool:
     try:
         source_path = from_module_path(module_path)
     except NotFound:
@@ -45,11 +46,11 @@ def _find_source_path(module_name: str, /) -> Path:
 
 
 def _to_stubs_cache(
-    root: Path = _find_source_path('mypy').parent / 'typeshed' / 'stdlib',  # noqa: B008
+    root: Path = (  # noqa: B008
+        _find_source_path('mypy').parent / 'typeshed' / 'stdlib'  # noqa: B008
+    ).resolve(strict=True),
     /,
 ) -> dict[catalog.Path, Path]:
-    assert root.exists(), root
-
     def to_module_path(stub_path: Path) -> catalog.Path:
         return _relative_file_path_to_module_path(
             stub_path.relative_to(root).with_suffix('.py')
@@ -62,11 +63,11 @@ def _to_stubs_cache(
     }
 
 
-def _is_stub(path: Path) -> bool:
+def _is_stub(path: Path, /) -> bool:
     return path.suffixes == [_STUB_EXTENSION]
 
 
-def _relative_file_path_to_module_path(path: Path) -> catalog.Path:
+def _relative_file_path_to_module_path(path: Path, /) -> catalog.Path:
     assert not path.is_absolute(), 'Path should be relative.'
     *parent_path_parts, module_file_name = path.parts
     parent_path = tuple(parent_path_parts)
@@ -86,13 +87,13 @@ _sources_directories = {
 }
 
 
-def _to_modules_paths(root: Path) -> t.Iterable[catalog.Path]:
+def _to_modules_paths(root: Path, /) -> Iterable[catalog.Path]:
     assert root.exists(), root
 
     def is_source_path(
         path: Path,
         *,
-        _suffixes: t.Container[str] = frozenset(
+        _suffixes: Container[str] = frozenset(
             SOURCE_SUFFIXES + EXTENSION_SUFFIXES
         ),
     ) -> bool:
@@ -110,7 +111,7 @@ def _to_modules_paths(root: Path) -> t.Iterable[catalog.Path]:
     }
 
 
-def _is_valid_module_path(module_path: catalog.Path) -> bool:
+def _is_valid_module_path(module_path: catalog.Path, /) -> bool:
     return (
         bool(module_path)
         and 'test' not in module_path

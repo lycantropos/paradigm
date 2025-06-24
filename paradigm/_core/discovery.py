@@ -1,5 +1,5 @@
 import sys
-import typing as t
+from collections.abc import Iterable
 from typing import Final
 
 from . import catalog
@@ -7,10 +7,10 @@ from .sources import stdlib_modules_paths
 
 
 def _recursively_update_modules_paths(
-    set_: set[catalog.Path], *names: str
+    target: set[catalog.Path], /, *names: str
 ) -> None:
     paths = [catalog.path_from_string(name) for name in names]
-    set_.update(
+    target.update(
         {
             *paths,
             *[
@@ -167,7 +167,7 @@ else:
                 'distutils._msvccompiler',
             )
 
-supported_stdlib_modules_paths: Final[t.Iterable[catalog.Path]] = [
+supported_stdlib_modules_paths: Final[Iterable[catalog.Path]] = [
     module_path
     for module_path in stdlib_modules_paths
     if module_path not in unsupported_stdlib_modules_paths

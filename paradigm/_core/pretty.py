@@ -1,21 +1,21 @@
 import traceback
-import typing as t
 from functools import singledispatch
+from typing import Any
 
 
-def format_exception(value: BaseException) -> str:
+def format_exception(value: BaseException, /) -> str:
     return ''.join(
         traceback.format_exception(type(value), value, value.__traceback__)
     )
 
 
 @singledispatch
-def repr_from(value: t.Any, _indent: int, _depth: int, /) -> str:
+def repr_from(value: Any, _indent: int, _depth: int, /) -> str:
     return repr(value)
 
 
 @repr_from.register(dict)
-def _(value: dict[t.Any, t.Any], indent: int, depth: int, /) -> str:
+def _(value: dict[Any, Any], indent: int, depth: int, /) -> str:
     return (
         (
             '{\n'
@@ -40,7 +40,7 @@ def _(value: dict[t.Any, t.Any], indent: int, depth: int, /) -> str:
 
 
 @repr_from.register(list)
-def _(value: list[t.Any], indent: int, depth: int, /) -> str:
+def _(value: list[Any], indent: int, depth: int, /) -> str:
     return (
         (
             '[\n'
@@ -61,7 +61,7 @@ def _(value: list[t.Any], indent: int, depth: int, /) -> str:
 
 
 @repr_from.register(tuple)
-def _(value: tuple[t.Any, ...], indent: int, depth: int, /) -> str:
+def _(value: tuple[Any, ...], indent: int, depth: int, /) -> str:
     if len(value) > 1:
         return (
             '(\n'
@@ -82,7 +82,7 @@ def _(value: tuple[t.Any, ...], indent: int, depth: int, /) -> str:
 
 
 @repr_from.register(set)
-def _(value: set[t.Any], indent: int, depth: int, /) -> str:
+def _(value: set[Any], indent: int, depth: int, /) -> str:
     return (
         (
             '{\n'

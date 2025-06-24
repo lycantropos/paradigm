@@ -1,5 +1,5 @@
-import typing as t
 import warnings
+from collections.abc import Iterable
 from importlib import import_module
 
 from paradigm._core import catalog, namespacing, pretty
@@ -9,7 +9,7 @@ QualifiedPaths = dict[
 ]
 
 
-def from_modules(modules_paths: t.Iterable[catalog.Path]) -> QualifiedPaths:
+def from_modules(modules_paths: Iterable[catalog.Path], /) -> QualifiedPaths:
     result: QualifiedPaths = {}
     for module_path in modules_paths:
         _index_module_path(module_path, paths=result)
@@ -18,6 +18,7 @@ def from_modules(modules_paths: t.Iterable[catalog.Path]) -> QualifiedPaths:
 
 def _index_module_or_type(
     namespace: namespacing.ModuleOrType,
+    /,
     *,
     paths: QualifiedPaths,
     module_path: catalog.Path,
