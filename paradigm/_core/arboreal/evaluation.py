@@ -9,7 +9,7 @@ from collections import ChainMap
 from collections.abc import MutableMapping
 from functools import singledispatch
 from importlib import import_module
-from typing import Any, ForwardRef, TypeGuard
+from typing import Any, ForwardRef, TypeGuard, Union
 
 from typing_extensions import Self, TypeVar
 
@@ -306,7 +306,7 @@ def _(
         return _evaluate_operator_node(ast_node.op)(left, right)
     except TypeError:
         assert isinstance(ast_node.op, ast.BitOr), ast_node
-        return left | right
+        return Union[left, right]  # noqa: UP007
 
 
 @_evaluate_expression_node.register(ast.Name)
