@@ -65,7 +65,7 @@ With setup
 ...         return getattr(self._outfile, name)
 ...
 >>> def func(
-...     foo: int, bar: float, *, baz: bool = False, **kwargs: str
+...     foo: int, /, bar: float, *, baz: bool = False, **kwargs: str
 ... ) -> None:
 ...     pass
 ...
@@ -77,7 +77,7 @@ we can obtain a signature of
   >>> signature_from_callable(func) == PlainSignature(
   ...     RequiredParameter(
   ...         annotation=int,
-  ...         kind=ParameterKind.POSITIONAL_OR_KEYWORD,
+  ...         kind=ParameterKind.POSITIONAL_ONLY,
   ...         name='foo',
   ...     ),
   ...     RequiredParameter(
