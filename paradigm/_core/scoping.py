@@ -1,16 +1,17 @@
 import builtins
-import typing as t
+from collections.abc import Collection, Mapping
+from typing import TypeAlias
 
 from . import catalog
-from .arboreal.kind import NodeKind
+from .arboreal.kind import StatementNodeKind
 
-ModuleAstNodesKinds = t.Mapping[catalog.Path, NodeKind]
-ModuleReferences = t.Mapping[catalog.Path, catalog.QualifiedPath]
-ModuleSubmodules = t.Collection[catalog.Path]
-ModuleSuperclasses = t.Mapping[
-    catalog.Path, t.Collection[catalog.QualifiedPath]
+ModuleStatementNodeKinds: TypeAlias = Mapping[catalog.Path, StatementNodeKind]
+ModuleReferences: TypeAlias = Mapping[catalog.Path, catalog.QualifiedPath]
+ModuleSubmodules: TypeAlias = Collection[catalog.Path]
+ModuleSuperclasses: TypeAlias = Mapping[
+    catalog.Path, Collection[catalog.QualifiedPath]
 ]
-Scope = t.Mapping[str, 'Scope']
+Scope: TypeAlias = Mapping[str, 'Scope']
 
 
 class ObjectNotFound(Exception):
@@ -30,10 +31,10 @@ def contains_object_path(
     module_path: catalog.Path,
     parent_path: catalog.Path,
     object_path: catalog.Path,
-    modules_definitions: t.Mapping[catalog.Path, Scope],
-    modules_references: t.Mapping[catalog.Path, ModuleReferences],
-    modules_submodules: t.Mapping[catalog.Path, ModuleSubmodules],
-    modules_superclasses: t.Mapping[catalog.Path, ModuleSuperclasses],
+    modules_definitions: Mapping[catalog.Path, Scope],
+    modules_references: Mapping[catalog.Path, ModuleReferences],
+    modules_submodules: Mapping[catalog.Path, ModuleSubmodules],
+    modules_superclasses: Mapping[catalog.Path, ModuleSuperclasses],
 ) -> bool:
     try:
         resolve_object_path(
@@ -55,10 +56,10 @@ def resolve_object_path(
     module_path: catalog.Path,
     parent_path: catalog.Path,
     object_path: catalog.Path,
-    modules_definitions: t.Mapping[catalog.Path, Scope],
-    modules_references: t.Mapping[catalog.Path, ModuleReferences],
-    modules_submodules: t.Mapping[catalog.Path, ModuleSubmodules],
-    modules_superclasses: t.Mapping[catalog.Path, ModuleSuperclasses],
+    modules_definitions: Mapping[catalog.Path, Scope],
+    modules_references: Mapping[catalog.Path, ModuleReferences],
+    modules_submodules: Mapping[catalog.Path, ModuleSubmodules],
+    modules_superclasses: Mapping[catalog.Path, ModuleSuperclasses],
     *visited_modules_paths: catalog.Path,
     _builtins_module_path: catalog.Path = catalog.module_path_from_module(  # noqa: B008
         builtins

@@ -3,7 +3,6 @@ from __future__ import annotations
 import ast
 import typing as t
 from functools import singledispatch
-from itertools import chain
 
 from paradigm._core import catalog
 
@@ -11,35 +10,32 @@ RawAstNode = t.NewType('RawAstNode', str)
 
 
 @singledispatch
-def to_names(ast_node: ast.AST, /) -> list[str]:
+def statement_node_to_defined_names(ast_node: ast.stmt, /) -> list[str]:
     raise TypeError(type(ast_node))
 
 
-@to_names.register(ast.AsyncFunctionDef)
-@to_names.register(ast.FunctionDef)
-@to_names.register(ast.ClassDef)
+@statement_node_to_defined_names.register(ast.AsyncFunctionDef)
+@statement_node_to_defined_names.register(ast.FunctionDef)
+@statement_node_to_defined_names.register(ast.ClassDef)
 def _(
     ast_node: ast.AsyncFunctionDef | ast.FunctionDef | ast.ClassDef, /
 ) -> list[str]:
     return [ast_node.name]
 
 
-@to_names.register(ast.AnnAssign)
+@statement_node_to_defined_names.register(ast.AnnAssign)
 def _(ast_node: ast.AnnAssign, /) -> list[str]:
-    return to_names(ast_node.target)
+    return [_expression_node_to_name(ast_node.target)]
 
 
-@to_names.register(ast.Assign)
+@statement_node_to_defined_names.register(ast.Assign)
 def _(ast_node: ast.Assign, /) -> list[str]:
-    return list(
-        chain.from_iterable(to_names(target) for target in ast_node.targets)
-    )
+    return [_expression_node_to_name(target) for target in ast_node.targets]
 
 
-@to_names.register(ast.Name)
-def _(ast_node: ast.Name, /) -> list[str]:
-    assert isinstance(ast_node.ctx, ast.Store), ast_node
-    return [ast_node.id]
+def _expression_node_to_name(value: ast.expr, /) -> str:
+    assert isinstance(value, ast.Name)
+    return value.id
 
 
 @singledispatch

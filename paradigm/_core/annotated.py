@@ -10,6 +10,7 @@ from typing import (
     Literal,
     NewType,
     Optional,
+    ParamSpec,
     ParamSpecArgs,
     ParamSpecKwargs,
     TypeVar,
@@ -18,7 +19,7 @@ from typing import (
     get_origin,
 )
 
-from typing_extensions import ParamSpec
+from paradigm._core.utils import MISSING
 
 LegacyGenericAlias: Any = type(Generic[TypeVar('_T')])
 
@@ -95,18 +96,12 @@ def _(left: ParamSpecArgs, right: Any, /) -> bool:
 
 
 @are_equal.register(NewType)
-def _(
-    left: NewType,
-    right: Any,
-    /,
-    *,
-    _sentinel: Any = object(),  # noqa: B008
-) -> bool:
+def _(left: NewType, right: Any, /) -> bool:
     return (
         type(left) is type(right)
         and (
-            getattr(left, '__qualname__', _sentinel)
-            == getattr(right, '__qualname__', _sentinel)
+            getattr(left, '__qualname__', MISSING)
+            == getattr(right, '__qualname__', MISSING)
         )
         and are_equal(left.__supertype__, right.__supertype__)
     )
@@ -128,9 +123,18 @@ def _(left: TypeVar, right: Any, /) -> bool:
     return (
         type(left) is type(right)
         and left.__name__ == right.__name__
-        and are_equal(left.__bound__, right.__bound__)
-        and left.__contravariant__ is right.__contravariant__
-        and left.__covariant__ is right.__covariant__
+        and are_equal(
+            getattr(left, '__bound__', MISSING),
+            getattr(left, '__bound__', MISSING),
+        )
+        and (
+            getattr(left, '__contravariant__', MISSING)
+            is getattr(right, '__contravariant__', MISSING)
+        )
+        and (
+            getattr(left, '__covariant__', MISSING)
+            is getattr(right, '__covariant__', MISSING)
+        )
         and len(left_constraints) == len(right_constraints)
         and all(map(are_equal, left_constraints, right_constraints))
     )
@@ -212,8 +216,8 @@ def _(value: Any, /) -> str:
 @to_repr.register(TypeVar)
 def _(value: TypeVar, /) -> str:
     arguments = [repr(value.__name__)]
-    arguments.extend(map(to_repr, value.__constraints__))
-    if value.__bound__ is not None:
+    arguments.extend(map(to_repr, getattr(value, '__constraints__', ())))
+    if getattr(value, '__bound__', MISSING) is not MISSING:
         arguments.append(f'bound={to_repr(value.__bound__)}')
     if value.__contravariant__:
         arguments.append('contravariant=True')

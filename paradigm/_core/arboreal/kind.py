@@ -1,7 +1,7 @@
 from enum import IntEnum, auto
 
 
-class NodeKind(IntEnum):
+class StatementNodeKind(IntEnum):
     ANNOTATED_ASSIGNMENT = auto()
     ASSIGNMENT = auto()
     ASYNC_FUNCTION = auto()

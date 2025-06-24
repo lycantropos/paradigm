@@ -11,7 +11,7 @@ from paradigm import __version__ as _version
 
 from . import caching as _caching, catalog as _catalog, scoping as _scoping
 from .arboreal import conversion as _serialization
-from .arboreal.kind import NodeKind as _NodeKind
+from .arboreal.kind import StatementNodeKind as _NodeKind
 
 _CACHE_PATH = _Path(__file__).with_name(
     '_'
@@ -39,7 +39,7 @@ ObjectRawAstNodes = list[_serialization.RawAstNode]
 _ModuleRawAstNodes = dict[_catalog.Path, ObjectRawAstNodes]
 
 definitions: dict[_catalog.Path, _scoping.Scope]
-nodes_kinds: dict[_catalog.Path, _scoping.ModuleAstNodesKinds]
+nodes_kinds: dict[_catalog.Path, _scoping.ModuleStatementNodeKinds]
 raw_ast_nodes: dict[_catalog.Path, _ModuleRawAstNodes]
 references: dict[_catalog.Path, _scoping.ModuleReferences]
 submodules: dict[_catalog.Path, _scoping.ModuleSubmodules]
@@ -102,7 +102,7 @@ if _reload_cache:
     )
     from .sources import stubs_stdlib_modules_paths as _stdlib_modules_paths
 
-    _ObjectAstNodes = list[_ast.AST]
+    _ObjectAstNodes = list[_ast.stmt]
     _ModuleAstNodes = dict[_catalog.Path, _ObjectAstNodes]
     _ModuleAstNodesKinds = dict[_catalog.Path, _NodeKind]
     _ModuleReferences = dict[_catalog.Path, _catalog.QualifiedPath]
@@ -247,8 +247,8 @@ if _reload_cache:
                 else _conversion.to_maybe_path(value_ast_node)
             )
             if value_path is None:
-                self._add_ast_node(target_path, node)
-                self._add_ast_node_kind(
+                self._add_statement_node(target_path, node)
+                self._add_statement_node_kind(
                     target_path, _NodeKind.ANNOTATED_ASSIGNMENT
                 )
                 self._add_path_definition(target_path)
@@ -265,8 +265,10 @@ if _reload_cache:
             if value_path is None:
                 for target in node.targets:
                     target_path = _conversion.to_path(target)
-                    self._add_ast_node(target_path, node)
-                    self._add_ast_node_kind(target_path, _NodeKind.ASSIGNMENT)
+                    self._add_statement_node(target_path, node)
+                    self._add_statement_node_kind(
+                        target_path, _NodeKind.ASSIGNMENT
+                    )
                     self._add_path_definition(target_path)
             else:
                 value_module_path, value_object_path = self._to_qualified_path(
@@ -280,8 +282,10 @@ if _reload_cache:
 
         def visit_AsyncFunctionDef(self, node: _ast.AsyncFunctionDef) -> None:  # noqa: N802
             function_name = node.name
-            self._add_ast_node((function_name,), node)
-            self._add_ast_node_kind((function_name,), _NodeKind.ASYNC_FUNCTION)
+            self._add_statement_node((function_name,), node)
+            self._add_statement_node_kind(
+                (function_name,), _NodeKind.ASYNC_FUNCTION
+            )
             self._add_name_definition(function_name)
 
         def visit_ClassDef(  # noqa: N802
@@ -301,7 +305,7 @@ if _reload_cache:
             ),
         ) -> None:
             class_name = node.name
-            self._add_ast_node_kind((class_name,), _NodeKind.CLASS)
+            self._add_statement_node_kind((class_name,), _NodeKind.CLASS)
             self._add_name_definition(class_name)
             class_path, module_path = (
                 (*self.parent_path, class_name),
@@ -359,7 +363,9 @@ if _reload_cache:
                         constructor_node = (
                             _named_tuple_to_constructor_ast_node(node)
                         )
-                        self._add_ast_node((class_name,), constructor_node)
+                        self._add_statement_node(
+                            (class_name,), constructor_node
+                        )
                         self._add_superclass(
                             class_path, base_module_path, base_object_path
                         )
@@ -402,8 +408,8 @@ if _reload_cache:
 
         def visit_FunctionDef(self, node: _ast.FunctionDef) -> None:  # noqa: N802
             function_name = node.name
-            self._add_ast_node((function_name,), node)
-            self._add_ast_node_kind((function_name,), _NodeKind.FUNCTION)
+            self._add_statement_node((function_name,), node)
+            self._add_statement_node_kind((function_name,), _NodeKind.FUNCTION)
             self._add_name_definition(function_name)
 
         def visit_If(self, node: _ast.If) -> None:  # noqa: N802
@@ -458,15 +464,15 @@ if _reload_cache:
                         actual_path,
                     )
 
-        def _add_ast_node(
-            self, path: _catalog.Path, ast_node: _ast.AST
+        def _add_statement_node(
+            self, path: _catalog.Path, node: _ast.stmt, /
         ) -> None:
             self.module_ast_nodes.setdefault(
                 self.parent_path + path, []
-            ).append(ast_node)
+            ).append(node)
 
-        def _add_ast_node_kind(
-            self, path: _catalog.Path, node_kind: _NodeKind
+        def _add_statement_node_kind(
+            self, path: _catalog.Path, node_kind: _NodeKind, /
         ) -> None:
             self.module_ast_nodes_kinds[self.parent_path + path] = node_kind
 
@@ -1128,7 +1134,7 @@ if _reload_cache:
             ]
             specialization_definitions_names = set(
                 chain.from_iterable(
-                    _conversion.to_names(ast_node)
+                    _conversion.statement_node_to_defined_names(ast_node)
                     for ast_node in specialization_ast_nodes
                 )
             )

@@ -18,7 +18,7 @@ from .arboreal import construction as _construction, conversion as _conversion
 from .arboreal.evaluation import (
     evaluate_expression_node as _evaluate_expression_node,
 )
-from .arboreal.kind import NodeKind as _NodeKind
+from .arboreal.kind import StatementNodeKind as _NodeKind
 from .arboreal.utils import subscript_to_item as _subscript_to_item
 from .models import (
     OptionalParameter as _OptionalParameter,

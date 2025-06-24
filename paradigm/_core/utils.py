@@ -2,13 +2,22 @@ from __future__ import annotations
 
 import functools
 from collections.abc import Callable
-from typing import Any, TypeVar
+from enum import IntEnum, auto
+from typing import Any, Final, TypeVar, final
 
 from typing_extensions import ParamSpec
 
 _Params = ParamSpec('_Params')
 _T1 = TypeVar('_T1')
 _T2 = TypeVar('_T2')
+
+
+@final
+class Missing(IntEnum):
+    _VALUE = auto()
+
+
+MISSING: Final[Missing] = Missing._VALUE  # noqa: SLF001
 
 
 def decorate_if(

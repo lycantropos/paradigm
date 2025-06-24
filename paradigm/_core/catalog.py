@@ -4,12 +4,13 @@ import sys as _sys
 import types as _types
 import typing as _t
 from functools import singledispatch as _singledispatch
+from typing import Final, TypeAlias
 
 from .utils import decorate_if as _decorate_if
 
-Path = tuple[str, ...]
-QualifiedPath = tuple[Path, Path]
-SEPARATOR = '.'
+Path: TypeAlias = tuple[str, ...]
+QualifiedPath: TypeAlias = tuple[Path, Path]
+SEPARATOR: Final[str] = '.'
 
 
 def path_from_string(value: str) -> Path:
