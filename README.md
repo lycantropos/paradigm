@@ -48,43 +48,55 @@ Usage
 With setup
 ```python
 >>> import typing
->>> from paradigm.base import (OptionalParameter,
-...                            ParameterKind,
-...                            PlainSignature,
-...                            RequiredParameter,
-...                            signature_from_callable)
+>>> from paradigm.base import (
+...     OptionalParameter,
+...     ParameterKind,
+...     PlainSignature,
+...     RequiredParameter,
+...     signature_from_callable,
+... )
 >>> from typing_extensions import Self
 >>> class UpperOut:
 ...     def __init__(self, outfile: typing.IO[typing.AnyStr]) -> None:
 ...         self._outfile = outfile
-...
 ...     def write(self, s: typing.AnyStr) -> None:
 ...         self._outfile.write(s.upper())
-...
 ...     def __getattr__(self, name: str) -> typing.Any:
 ...         return getattr(self._outfile, name)
->>> def func(foo: int, bar: float, *, baz: bool = False, **kwargs: str) -> None:
+...
+>>> def func(
+...     foo: int, bar: float, *, baz: bool = False, **kwargs: str
+... ) -> None:
 ...     pass
+...
 
 ```
 we can obtain a signature of
 - user-defined functions
   ```python
   >>> signature_from_callable(func) == PlainSignature(
-  ...     RequiredParameter(annotation=int,
-  ...                       kind=ParameterKind.POSITIONAL_OR_KEYWORD,
-  ...                       name='foo'),
-  ...     RequiredParameter(annotation=float,
-  ...                       kind=ParameterKind.POSITIONAL_OR_KEYWORD,
-  ...                       name='bar'),
-  ...     OptionalParameter(annotation=bool,
-  ...                       default=False,
-  ...                       kind=ParameterKind.KEYWORD_ONLY,
-  ...                       name='baz'),
-  ...     OptionalParameter(annotation=str,
-  ...                       kind=ParameterKind.VARIADIC_KEYWORD,
-  ...                       name='kwargs'),
-  ...     returns=None
+  ...     RequiredParameter(
+  ...         annotation=int,
+  ...         kind=ParameterKind.POSITIONAL_OR_KEYWORD,
+  ...         name='foo',
+  ...     ),
+  ...     RequiredParameter(
+  ...         annotation=float,
+  ...         kind=ParameterKind.POSITIONAL_OR_KEYWORD,
+  ...         name='bar',
+  ...     ),
+  ...     OptionalParameter(
+  ...         annotation=bool,
+  ...         default=False,
+  ...         kind=ParameterKind.KEYWORD_ONLY,
+  ...         name='baz',
+  ...     ),
+  ...     OptionalParameter(
+  ...         annotation=str,
+  ...         kind=ParameterKind.VARIADIC_KEYWORD,
+  ...         name='kwargs',
+  ...     ),
+  ...     returns=None,
   ... )
   True
 
@@ -92,10 +104,12 @@ we can obtain a signature of
 - user-defined classes
   ```python
   >>> signature_from_callable(UpperOut) == PlainSignature(
-  ...     RequiredParameter(annotation=typing.IO[typing.AnyStr],
-  ...                       kind=ParameterKind.POSITIONAL_OR_KEYWORD,
-  ...                       name='outfile'),
-  ...     returns=Self
+  ...     RequiredParameter(
+  ...         annotation=typing.IO[typing.AnyStr],
+  ...         kind=ParameterKind.POSITIONAL_OR_KEYWORD,
+  ...         name='outfile',
+  ...     ),
+  ...     returns=Self,
   ... )
   True
 
@@ -103,13 +117,17 @@ we can obtain a signature of
 - user-defined classes methods
   ```python
   >>> signature_from_callable(UpperOut.write) == PlainSignature(
-  ...     RequiredParameter(annotation=typing.Any,
-  ...                       kind=ParameterKind.POSITIONAL_OR_KEYWORD,
-  ...                       name='self'),
-  ...     RequiredParameter(annotation=typing.AnyStr,
-  ...                       kind=ParameterKind.POSITIONAL_OR_KEYWORD,
-  ...                       name='s'),
-  ...     returns=None
+  ...     RequiredParameter(
+  ...         annotation=typing.Any,
+  ...         kind=ParameterKind.POSITIONAL_OR_KEYWORD,
+  ...         name='self',
+  ...     ),
+  ...     RequiredParameter(
+  ...         annotation=typing.AnyStr,
+  ...         kind=ParameterKind.POSITIONAL_OR_KEYWORD,
+  ...         name='s',
+  ...     ),
+  ...     returns=None,
   ... )
   True
 
@@ -117,10 +135,12 @@ we can obtain a signature of
 - built-in functions
   ```python
   >>> signature_from_callable(any) == PlainSignature(
-  ...     RequiredParameter(annotation=typing.Iterable[object],
-  ...                       kind=ParameterKind.POSITIONAL_ONLY,
-  ...                       name='iterable'),
-  ...     returns=bool
+  ...     RequiredParameter(
+  ...         annotation=typing.Iterable[object],
+  ...         kind=ParameterKind.POSITIONAL_ONLY,
+  ...         name='iterable',
+  ...     ),
+  ...     returns=bool,
   ... )
   True
 
@@ -128,10 +148,12 @@ we can obtain a signature of
 - built-in classes
   ```python
   >>> signature_from_callable(bool) == PlainSignature(
-  ...     OptionalParameter(annotation=object,
-  ...                       kind=ParameterKind.POSITIONAL_ONLY,
-  ...                       name='o'),
-  ...     returns=Self
+  ...     OptionalParameter(
+  ...         annotation=object,
+  ...         kind=ParameterKind.POSITIONAL_ONLY,
+  ...         name='o',
+  ...     ),
+  ...     returns=Self,
   ... )
   True
 
@@ -139,10 +161,12 @@ we can obtain a signature of
 - built-in classes methods
   ```python
   >>> signature_from_callable(float.hex) == PlainSignature(
-  ...     RequiredParameter(annotation=Self,
-  ...                       kind=ParameterKind.POSITIONAL_ONLY,
-  ...                       name='self'),
-  ...     returns=str
+  ...     RequiredParameter(
+  ...         annotation=Self,
+  ...         kind=ParameterKind.POSITIONAL_ONLY,
+  ...         name='self',
+  ...     ),
+  ...     returns=str,
   ... )
   True
 
