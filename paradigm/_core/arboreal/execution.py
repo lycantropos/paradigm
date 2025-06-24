@@ -10,7 +10,7 @@ def execute_statement(
     node: ast.stmt, /, *, source_path: Path, namespace: namespacing.Namespace
 ) -> None:
     _execute_tree(
-        construction.from_node(node),
+        construction.from_statement_node(node),
         source_path=source_path,
         namespace=namespace,
     )
