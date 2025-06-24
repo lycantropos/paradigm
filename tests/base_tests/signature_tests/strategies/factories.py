@@ -75,7 +75,10 @@ types_with_round_trippable_repr = st.from_type(type).filter(
 
 def nest_annotations(base: st.SearchStrategy[Any]) -> st.SearchStrategy[Any]:
     return (
-        st.builds(lambda argument: argument | None, base)
+        st.builds(
+            lambda argument: argument if argument is None else argument | None,
+            base,
+        )
         | st.builds(
             lambda elements: reduce(or_, elements),
             (st.lists(base, min_size=1, max_size=5).map(tuple)),
