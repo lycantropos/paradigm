@@ -1,10 +1,13 @@
 import os
 from collections.abc import Iterator
+from importlib.machinery import SOURCE_SUFFIXES
 from itertools import chain, repeat, starmap
 from operator import itemgetter, truediv
 from pathlib import Path
+from typing import Final
 
-INIT_MODULE_NAME = '__init__'
+INIT_MODULE_NAME: Final[str] = '__init__'
+MODULE_FILE_SUFFIX: Final[str] = SOURCE_SUFFIXES[0]
 
 
 def find_files_paths(directory: Path) -> Iterator[Path]:

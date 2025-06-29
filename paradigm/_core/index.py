@@ -60,7 +60,7 @@ def _index_module_or_type(
 
 
 def _index_module_path(
-    module_path: catalog.Path, *, paths: QualifiedPaths
+    module_path: catalog.Path, /, *, paths: QualifiedPaths
 ) -> None:
     module_name = catalog.path_to_string(module_path)
     try:

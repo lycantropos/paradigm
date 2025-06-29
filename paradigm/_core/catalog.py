@@ -13,6 +13,14 @@ QualifiedPath: TypeAlias = tuple[Path, Path]
 SEPARATOR: Final[str] = '.'
 
 
+def join_components(base: Path, /, *components: str) -> Path:
+    return (*base, *components)
+
+
+def join_paths(left: Path, right: Path, /) -> Path:
+    return (*left, *right)
+
+
 def path_from_string(value: str) -> Path:
     assert isinstance(value, str), value
     return tuple(value.split('.'))

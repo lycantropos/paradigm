@@ -6,7 +6,7 @@ from typing import NewType
 
 from paradigm._core import catalog
 
-RawAstNode = NewType('RawAstNode', str)
+RawNode = NewType('RawNode', str)
 
 
 @singledispatch
@@ -102,8 +102,8 @@ def _(ast_node: ast.Attribute, /) -> str:
     return to_identifier(ast_node.value) + '_' + ast_node.attr
 
 
-def to_raw(ast_node: ast.AST, /) -> RawAstNode:
-    return RawAstNode(ast.dump(ast_node, annotate_fields=False))
+def to_raw(ast_node: ast.AST, /) -> RawNode:
+    return RawNode(ast.dump(ast_node, annotate_fields=False))
 
 
 @singledispatch

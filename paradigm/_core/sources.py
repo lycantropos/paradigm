@@ -10,7 +10,7 @@ from typing import Final, TypeAlias
 
 from . import catalog, file_system
 
-_STUB_EXTENSION: Final[str] = '.pyi'
+_STUB_SUFFIX: Final[str] = '.pyi'
 
 Path: TypeAlias = _Path
 
@@ -53,7 +53,9 @@ def _to_stubs_cache(
 ) -> dict[catalog.Path, Path]:
     def to_module_path(stub_path: Path) -> catalog.Path:
         return _relative_file_path_to_module_path(
-            stub_path.relative_to(root).with_suffix('.py')
+            stub_path.relative_to(root).with_suffix(
+                file_system.MODULE_FILE_SUFFIX
+            )
         )
 
     return {
@@ -64,7 +66,7 @@ def _to_stubs_cache(
 
 
 def _is_stub(path: Path, /) -> bool:
-    return path.suffixes == [_STUB_EXTENSION]
+    return path.suffixes == [_STUB_SUFFIX]
 
 
 def _relative_file_path_to_module_path(path: Path, /) -> catalog.Path:

@@ -29,77 +29,68 @@ _VERSION_FIELD_NAME = 'version'
 supported_stdlib_qualified_paths: _index.QualifiedPaths
 try:
     supported_stdlib_qualified_paths, _cached_version = _caching.load(
-        _STDLIB_QUALIFIED_PATHS_FIELD_NAME,
-        _VERSION_FIELD_NAME,
-        path=_CACHE_PATH,
+        _CACHE_PATH, _STDLIB_QUALIFIED_PATHS_FIELD_NAME, _VERSION_FIELD_NAME
     )
 except Exception:
     _reload_cache = True
 else:
     _reload_cache = _cached_version != _version
 if _reload_cache:
-    from . import execution as _execution
+    from . import catalog as _catalog, scoping as _scoping, stubs as _stubs
+    from .discovery import (
+        supported_stdlib_modules_paths as _supported_stdlib_modules_paths,
+    )
 
-    if _execution.is_main_process():
-        from . import catalog as _catalog, scoping as _scoping, stubs as _stubs
-        from .discovery import (
-            supported_stdlib_modules_paths as _supported_stdlib_modules_paths,
-        )
+    def _to_supported_qualified_paths(
+        qualified_paths: _index.QualifiedPaths,
+        definitions: Mapping[_catalog.Path, _scoping.Scope],
+        references: Mapping[_catalog.Path, _scoping.ModuleReferences],
+        submodules: Mapping[_catalog.Path, _scoping.ModuleSubmodules],
+        superclasses: Mapping[_catalog.Path, _scoping.ModuleSuperclasses],
+    ) -> _index.QualifiedPaths:
+        result = {}
+        for module_path, module_qualified_paths in qualified_paths.items():
+            supported_module_qualified_paths = {}
+            for (
+                object_path,
+                object_qualified_paths,
+            ) in module_qualified_paths.items():
+                supported_object_qualified_paths = [
+                    (located_module_path, located_object_path)
+                    for located_module_path, located_object_path in (
+                        object_qualified_paths
+                    )
+                    if _scoping.contains_object_path(
+                        located_module_path,
+                        (),
+                        located_object_path,
+                        definitions,
+                        references,
+                        submodules,
+                        superclasses,
+                    )
+                ]
+                if supported_object_qualified_paths:
+                    supported_module_qualified_paths[object_path] = (
+                        supported_object_qualified_paths
+                    )
+            if supported_module_qualified_paths:
+                result[module_path] = supported_module_qualified_paths
+        return result
 
-        def _to_supported_qualified_paths(
-            qualified_paths: _index.QualifiedPaths,
-            definitions: Mapping[_catalog.Path, _scoping.Scope],
-            references: Mapping[_catalog.Path, _scoping.ModuleReferences],
-            submodules: Mapping[_catalog.Path, _scoping.ModuleSubmodules],
-            superclasses: Mapping[_catalog.Path, _scoping.ModuleSuperclasses],
-        ) -> _index.QualifiedPaths:
-            result = {}
-            for module_path, module_qualified_paths in qualified_paths.items():
-                supported_module_qualified_paths = {}
-                for (
-                    object_path,
-                    object_qualified_paths,
-                ) in module_qualified_paths.items():
-                    supported_object_qualified_paths = [
-                        (located_module_path, located_object_path)
-                        for located_module_path, located_object_path in (
-                            object_qualified_paths
-                        )
-                        if _scoping.contains_object_path(
-                            located_module_path,
-                            (),
-                            located_object_path,
-                            definitions,
-                            references,
-                            submodules,
-                            superclasses,
-                        )
-                    ]
-                    if supported_object_qualified_paths:
-                        supported_module_qualified_paths[object_path] = (
-                            supported_object_qualified_paths
-                        )
-                if supported_module_qualified_paths:
-                    result[module_path] = supported_module_qualified_paths
-            return result
-
-        supported_stdlib_qualified_paths = _to_supported_qualified_paths(
-            _execution.call_in_process(
-                _index.from_modules, _supported_stdlib_modules_paths
+    supported_stdlib_qualified_paths = _to_supported_qualified_paths(
+        _index.from_modules(_supported_stdlib_modules_paths),
+        _stubs.definitions,
+        _stubs.references,
+        _stubs.submodules,
+        _stubs.superclasses,
+    )
+    _caching.save(
+        _CACHE_PATH,
+        **{
+            _STDLIB_QUALIFIED_PATHS_FIELD_NAME: (
+                supported_stdlib_qualified_paths
             ),
-            _stubs.definitions,
-            _stubs.references,
-            _stubs.submodules,
-            _stubs.superclasses,
-        )
-        _caching.save(
-            **{
-                _STDLIB_QUALIFIED_PATHS_FIELD_NAME: (
-                    supported_stdlib_qualified_paths
-                ),
-                _VERSION_FIELD_NAME: _version,
-            },
-            path=_CACHE_PATH,
-        )
-    else:
-        supported_stdlib_qualified_paths = {}
+            _VERSION_FIELD_NAME: _version,
+        },
+    )

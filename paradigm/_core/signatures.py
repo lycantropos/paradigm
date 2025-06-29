@@ -14,7 +14,7 @@ from typing import Any, Final, TypeVar
 from typing_extensions import Self as _Self
 
 from . import catalog as _catalog, scoping as _scoping, stubs as _stubs
-from .arboreal import construction as _construction, conversion as _conversion
+from .arboreal import conversion as _conversion
 from .arboreal.evaluation import (
     evaluate_expression_node as _evaluate_expression_node,
 )
@@ -134,7 +134,7 @@ def _(_callable: Callable[..., Any], /) -> _Signature:
         module_path, object_path = _resolve_builder_qualified_path(
             qualified_paths
         )
-        ast_nodes = _load_ast_nodes(module_path, object_path)
+        ast_nodes = _load_statements_nodes(module_path, object_path)
         class_path, _builder_name = object_path[:-1], object_path[-1]
         return _from_signatures(
             *[
@@ -190,9 +190,9 @@ def _(
         _stubs.submodules,
         _stubs.superclasses,
     )
-    node_kind = _stubs.nodes_kinds[module_path][object_path]
+    node_kind = _stubs.statements_nodes_kinds[module_path][object_path]
     if node_kind is _NodeKind.CLASS:
-        call_ast_nodes = _load_ast_nodes(
+        call_ast_nodes = _load_statements_nodes(
             module_path, (*object_path, call_name)
         )
         call_signatures = [
@@ -202,10 +202,7 @@ def _(
         return _from_signatures(
             *[signature.bind(callable_) for signature in call_signatures]
         )
-    annotation_nodes = [
-        _construction.from_raw(raw)
-        for raw in _stubs.raw_ast_nodes[module_path][object_path]
-    ]
+    annotation_nodes = _stubs.statements_nodes[module_path][object_path]
     if len(annotation_nodes) == 1:
         (annotation_node,) = annotation_nodes
         assert isinstance(annotation_node, _ast.stmt), (
@@ -433,7 +430,10 @@ def _parameters_from(
             kind=_ParameterKind.POSITIONAL_ONLY,
             name=result[0].name,
         )
-    elif _stubs.nodes_kinds[module_path].get(parent_path) is _NodeKind.CLASS:
+    elif (
+        _stubs.statements_nodes_kinds[module_path].get(parent_path)
+        is _NodeKind.CLASS
+    ):
         result[0] = _RequiredParameter(
             annotation=_Self,
             kind=_ParameterKind.POSITIONAL_ONLY,
@@ -515,12 +515,12 @@ def _try_resolve_object_path(
 
 def _from_callable(value: Callable[..., Any]) -> _Signature:
     for module_path, object_path in _to_qualified_paths(value):
-        ast_nodes = _load_ast_nodes(module_path, object_path)
+        nodes = _load_statements_nodes(module_path, object_path)
         parent_path = object_path[:-1]
         try:
             signatures = [
-                _from_statement_node(ast_node, value, module_path, parent_path)
-                for ast_node in ast_nodes
+                _from_statement_node(node, value, module_path, parent_path)
+                for node in nodes
             ]
         except _SignatureNotFound:
             continue
@@ -535,7 +535,10 @@ def _to_qualified_paths(
     qualified_paths = resolve_qualified_paths(value)
     if qualified_paths:
         module_path, object_path = qualified_paths[0]
-        if _stubs.nodes_kinds[module_path][object_path] is _NodeKind.CLASS:
+        if (
+            _stubs.statements_nodes_kinds[module_path][object_path]
+            is _NodeKind.CLASS
+        ):
             yield _resolve_builder_qualified_path(qualified_paths)
         else:
             yield from qualified_paths
@@ -569,25 +572,16 @@ def _resolve_builder_qualified_path(
     return module_path, object_path
 
 
-def _load_ast_nodes(
+def _load_statements_nodes(
     module_path: _catalog.Path, object_path: _catalog.Path
-) -> list[_ast.stmt]:
+) -> Sequence[_ast.stmt]:
     try:
-        raw_ast_nodes = _stubs.raw_ast_nodes[module_path][object_path]
+        nodes = _stubs.statements_nodes[module_path][object_path]
     except KeyError:
         raise _SignatureNotFound from None
     else:
-        assert raw_ast_nodes, (module_path, object_path)
-        return [
-            _statement_node_from_raw(raw_ast_node)
-            for raw_ast_node in raw_ast_nodes
-        ]
-
-
-def _statement_node_from_raw(raw: _conversion.RawAstNode) -> _ast.stmt:
-    result = _construction.from_raw(raw)
-    assert isinstance(result, _ast.stmt), raw
-    return result
+        assert len(nodes) > 0, (module_path, object_path)
+        return nodes
 
 
 def resolve_qualified_paths(
@@ -629,7 +623,7 @@ def _to_class_builder_qualified_path(
     for base_module_path, _base_object_path in _to_mro(
         module_path, object_path
     ):
-        base_module_annotations = _stubs.raw_ast_nodes[base_module_path]
+        base_module_annotations = _stubs.statements_nodes[base_module_path]
         constructor_path = (*object_path, constructor_name)
         initializer_path = (*object_path, initializer_name)
         if initializer_path in base_module_annotations:

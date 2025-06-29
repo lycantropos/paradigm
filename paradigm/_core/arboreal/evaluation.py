@@ -16,7 +16,7 @@ from typing_extensions import Self, TypeVar
 from paradigm._core import catalog, namespacing, scoping, sources, stubs
 from paradigm._core.utils import MISSING
 
-from . import construction, conversion
+from . import conversion
 from .execution import execute_statement
 from .kind import StatementNodeKind
 from .utils import is_dependency_name, recursively_iterate_children
@@ -423,22 +423,17 @@ def _evaluate_qualified_path(
     except KeyError:
         pass
     assert len(object_path) > 0
-    module_raw_ast_nodes = stubs.raw_ast_nodes[module_path]
-    node_kind = stubs.nodes_kinds[module_path][object_path]
+    module_nodes = stubs.statements_nodes[module_path]
+    node_kind = stubs.statements_nodes_kinds[module_path][object_path]
     try:
-        raw_ast_nodes = module_raw_ast_nodes[object_path]
+        nodes = module_nodes[object_path]
     except KeyError:
         assert node_kind is StatementNodeKind.CLASS, (module_path, object_path)
     else:
         if node_kind is not StatementNodeKind.CLASS:
-            for raw_ast_node in raw_ast_nodes:
-                ast_node = construction.from_raw(raw_ast_node)
-                assert isinstance(ast_node, ast.stmt), (
-                    module_path,
-                    object_path,
-                )
+            for node in nodes:
                 parent_namespace[object_path[-1]] = _evaluate_statement_node(
-                    ast_node, module_path, object_path[:-1], parent_namespace
+                    node, module_path, object_path[:-1], parent_namespace
                 )
             return parent_namespace[object_path[-1]]
     scope = stubs.definitions[module_path]
@@ -448,21 +443,14 @@ def _evaluate_qualified_path(
     module_namespace: namespacing.Namespace = {'__name__': __name__}
     annotations_nodes = {}
     for name in scope:
-        raw_ast_nodes = module_raw_ast_nodes[(*object_path, name)]
-        ast_nodes = [
-            construction.from_raw(raw_ast_node)
-            for raw_ast_node in raw_ast_nodes
-        ]
+        nodes = module_nodes[(*object_path, name)]
         definitions_nodes: list[ast.stmt] = []
-        for ast_node in ast_nodes:
-            if isinstance(ast_node, ast.AnnAssign) and ast_node.value is None:
-                annotations_nodes[name] = ast_node.annotation
+        for node in nodes:
+            if isinstance(node, ast.AnnAssign) and node.value is None:
+                annotations_nodes[name] = node.annotation
             else:
-                assert isinstance(ast_node, ast.stmt), (
-                    module_path,
-                    object_path,
-                )
-                definitions_nodes.append(ast_node)
+                assert isinstance(node, ast.stmt), (module_path, object_path)
+                definitions_nodes.append(node)
         for definition_node in definitions_nodes:
             for dependency_name in {
                 child.id
