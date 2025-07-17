@@ -21,12 +21,12 @@ def join_paths(left: Path, right: Path, /) -> Path:
     return (*left, *right)
 
 
-def path_from_string(value: str) -> Path:
+def path_from_string(value: str, /) -> Path:
     assert isinstance(value, str), value
     return tuple(value.split('.'))
 
 
-def path_to_string(value: Path) -> str:
+def path_to_string(value: Path, /) -> str:
     return SEPARATOR.join(value)
 
 
@@ -126,16 +126,18 @@ def _(value: type, /) -> QualifiedPath:
     )
 
 
-def is_attribute(path: Path) -> bool:
+def is_attribute(path: Path, /) -> bool:
     return len(path) > 1
 
 
-def module_path_from_module(object_: _types.ModuleType) -> Path:
+def module_path_from_module(module: _types.ModuleType, /) -> Path:
     return path_from_string(
-        object_.__name__ if object_.__spec__ is None else object_.__spec__.name
+        module.__name__
+        if (module_spec := getattr(module, '__spec__', None)) is None
+        else module_spec.name
     )
 
 
-def object_path_from_callable(value: _t.Callable[..., _t.Any]) -> Path:
+def object_path_from_callable(value: _t.Callable[..., _t.Any], /) -> Path:
     _, object_path = qualified_path_from(value)
     return object_path
