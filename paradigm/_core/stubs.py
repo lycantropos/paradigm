@@ -29,6 +29,7 @@ import typing_extensions as _typing_extensions
 from mypy.version import __version__ as _mypy_version
 from typing_extensions import override as _override
 
+import paradigm
 from paradigm import __version__ as _version
 
 from . import (
@@ -63,10 +64,13 @@ _CACHE_ROOT_DIRECTORY_NAME_PREFIX: _Final[str] = (
     + '_'
     + '_'.join(map(str, _sys.version_info))
 )
-_CACHE_ROOT_DIRECTORY_PATH: _Final[_Path] = _Path(__file__).with_name(
-    _CACHE_ROOT_DIRECTORY_NAME_PREFIX + '_' + _Path(__file__).stem
+_CACHE_ROOT_DIRECTORY_PATH: _Final[_Path] = (
+    _Path.home()
+    / '.cache'
+    / paradigm.__name__
+    / (_CACHE_ROOT_DIRECTORY_NAME_PREFIX + '_' + _Path(__file__).stem)
 )
-_CACHE_ROOT_DIRECTORY_PATH.mkdir(exist_ok=True)
+_CACHE_ROOT_DIRECTORY_PATH.mkdir(exist_ok=True, parents=True)
 
 
 class _GenericFieldName:

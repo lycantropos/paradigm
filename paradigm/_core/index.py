@@ -9,6 +9,7 @@ from typing import Final as _Final, TypeAlias as _TypeAlias
 import mypy as _mypy
 from mypy.version import __version__ as _mypy_version
 
+import paradigm
 from paradigm import __version__ as _version
 from paradigm._core import (
     caching as _caching,
@@ -30,10 +31,13 @@ _CACHE_ROOT_DIRECTORY_NAME_PREFIX: _Final[str] = (
     + '_'
     + '_'.join(map(str, _sys.version_info))
 )
-_CACHE_ROOT_DIRECTORY_PATH: _Final[_Path] = _Path(__file__).with_name(
-    _CACHE_ROOT_DIRECTORY_NAME_PREFIX + '_' + _Path(__file__).stem
+_CACHE_ROOT_DIRECTORY_PATH: _Final[_Path] = (
+    _Path.home()
+    / '.cache'
+    / paradigm.__name__
+    / (_CACHE_ROOT_DIRECTORY_NAME_PREFIX + '_' + _Path(__file__).stem)
 )
-_CACHE_ROOT_DIRECTORY_PATH.mkdir(exist_ok=True)
+_CACHE_ROOT_DIRECTORY_PATH.mkdir(exist_ok=True, parents=True)
 
 
 class _FieldName:
