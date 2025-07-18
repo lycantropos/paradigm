@@ -157,7 +157,7 @@ def _(
 
 
 class _LazyEvaluator(ast.NodeTransformer):
-    def visit_AsyncFunctionDef(  # noqa: N802
+    def visit_AsyncFunctionDef(
         self, node: ast.AsyncFunctionDef
     ) -> ast.AsyncFunctionDef:
         if node.returns is not None:
@@ -165,7 +165,7 @@ class _LazyEvaluator(ast.NodeTransformer):
         self.generic_visit(node)
         return node
 
-    def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.FunctionDef:  # noqa: N802
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.FunctionDef:
         if node.returns is not None:
             node.returns = ast.Constant(conversion.to_str(node.returns))
         self.generic_visit(node)

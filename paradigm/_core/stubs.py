@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import ast as _ast
 import builtins as _builtins
-import sys as _sys
+import sys
 import typing as _typing
 from collections.abc import (
-    Callable,
+    Callable as _Callable,
     Collection as _Collection,
     Iterator as _Iterator,
     Mapping as _Mapping,
@@ -59,11 +59,11 @@ _CACHE_ROOT_DIRECTORY_NAME_PREFIX: _Final[str] = (
     + '_'
     + _mypy_version.replace('.', '_')
     + '_'
-    + _sys.platform
+    + sys.platform
     + '_'
-    + _sys.implementation.name
+    + sys.implementation.name
     + '_'
-    + '_'.join(map(str, _sys.version_info))
+    + '_'.join(map(str, sys.version_info))
 )
 _CACHE_ROOT_DIRECTORY_PATH: _Final[_Path] = (
     _Path.home()
@@ -125,13 +125,39 @@ def _named_tuple_to_constructor_node(
     assert all(
         isinstance(node.target, _ast.Name) for node in annotations_nodes
     ), node
-    return _ast.FunctionDef(
+    return _construct_function_def(
         '__new__',
         _annotations_to_signature(annotations_nodes),
         [_ast.Expr(_ast.Constant(Ellipsis))],
         [],
         _ast.Name(node.name, _ast.Load()),
     )
+
+
+if sys.version_info >= (3, 12) and sys.version_info < (3, 13):
+
+    def _construct_function_def(
+        name: str,
+        args: _ast.arguments,
+        body: list[_ast.stmt],
+        decorator_list: list[_ast.expr],
+        returns: _ast.expr,
+        /,
+    ) -> _ast.FunctionDef:
+        return _ast.FunctionDef(
+            name, args, body, decorator_list, returns, None, []
+        )
+else:
+
+    def _construct_function_def(
+        name: str,
+        args: _ast.arguments,
+        body: list[_ast.stmt],
+        decorator_list: list[_ast.expr],
+        returns: _ast.expr,
+        /,
+    ) -> _ast.FunctionDef:
+        return _ast.FunctionDef(name, args, body, decorator_list, returns)
 
 
 def _annotations_to_signature(
@@ -204,7 +230,7 @@ class _LazyMappingWrapper(_Mapping[_catalog.Path, _T_co]):
         wrapped: _Mapping[_catalog.Path, _T_co],
         /,
         *,
-        loader: Callable[[_sources.Path, _catalog.Path, _State], _Any],
+        loader: _Callable[[_sources.Path, _catalog.Path, _State], _Any],
         state: _State,
     ) -> None:
         self._loader, self._state, self._wrapped = loader, state, wrapped
@@ -880,7 +906,7 @@ class _SpecializeGeneric(_ast.NodeTransformer):
     def __init__(self, table: dict[_catalog.Path, _ast.expr]) -> None:
         self.table = table
 
-    def visit_Name(self, node: _ast.Name) -> _ast.expr:  # noqa: N802
+    def visit_Name(self, node: _ast.Name) -> _ast.expr:
         if not isinstance(node.ctx, _ast.Load):
             return node
         candidate = self.table.get(_conversion.to_path(node))
@@ -890,7 +916,7 @@ class _SpecializeGeneric(_ast.NodeTransformer):
             else _ast.copy_location(_deepcopy(candidate), node)
         )
 
-    def visit_Attribute(self, node: _ast.Attribute) -> _ast.expr:  # noqa: N802
+    def visit_Attribute(self, node: _ast.Attribute) -> _ast.expr:
         if not isinstance(node.ctx, _ast.Load):
             return node
         candidate = self.table.get(_conversion.to_path(node))
