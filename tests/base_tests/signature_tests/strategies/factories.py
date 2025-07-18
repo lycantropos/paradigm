@@ -99,15 +99,7 @@ def nest_annotations(base: st.SearchStrategy[Any]) -> st.SearchStrategy[Any]:
         )
         | st.builds(
             tuple.__class_getitem__,
-            (
-                st.lists(
-                    base,
-                    # due to
-                    # https://github.com/python/cpython/issues/94245
-                    min_size=sys.version_info < (3, 10),
-                    max_size=5,
-                ).map(tuple)
-            ),
+            (st.lists(base, min_size=0, max_size=5).map(tuple)),
         )
         | st.builds(
             getitem,
