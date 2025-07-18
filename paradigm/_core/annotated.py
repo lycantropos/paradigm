@@ -9,6 +9,7 @@ from typing import (
     Generic,
     Literal,
     NewType,
+    Optional,
     ParamSpec,
     ParamSpecArgs,
     ParamSpecKwargs,
@@ -180,15 +181,16 @@ def _(value: type, /) -> str:
 
 
 @to_repr.register(LegacyGenericAlias)
-@to_repr.register(types.GenericAlias)
-@to_repr.register(types.UnionType)  # pyright: ignore[reportArgumentType, reportCallIssue]
 @to_repr.register(type(Union[int, None]))  # noqa: UP007
 def _(value: Any, /) -> str:
     origin = to_origin(value)
     arguments = to_arguments(value)
     return (
         (
-            f'{to_repr(arguments[arguments[0] is type(None)])} | None'
+            (
+                f'{to_repr(Optional)}'
+                f'[{to_repr(arguments[arguments[0] is type(None)])}]'
+            )
             if len(arguments) == 2 and type(None) in arguments
             else (f'{to_repr(origin)}[{", ".join(map(to_repr, arguments))}]')
         )
@@ -208,6 +210,26 @@ def _(value: Any, /) -> str:
                 if arguments
                 else f'{to_repr(origin)}[()]'
             )
+        )
+    )
+
+
+@to_repr.register(types.GenericAlias)
+@to_repr.register(types.UnionType)  # pyright: ignore[reportArgumentType, reportCallIssue]
+def _(value: Any, /) -> str:
+    origin = to_origin(value)
+    arguments = to_arguments(value)
+    return (
+        (
+            f'{to_repr(arguments[arguments[0] is type(None)])} | None'
+            if len(arguments) == 2 and type(None) in arguments
+            else ' | '.join(map(to_repr, arguments))
+        )
+        if origin is types.UnionType
+        else (
+            (f'{to_repr(origin)}[{", ".join(map(to_repr, arguments))}]')
+            if arguments
+            else f'{to_repr(origin)}[()]'
         )
     )
 
