@@ -87,12 +87,12 @@ def nest_annotations(base: st.SearchStrategy[Any]) -> st.SearchStrategy[Any]:
                 if any(variant is not None for variant in variants)
                 else variants[0]
             ),
-            (st.lists(base, min_size=1, max_size=5).map(tuple)),
+            (st.lists(base, min_size=2, max_size=5, unique=True).map(tuple)),
         )
         | st.builds(lambda argument: Optional[argument], base)  # noqa: UP045
         | st.builds(
             lambda elements: Union[elements],  # noqa: UP007
-            (st.lists(base, min_size=1, max_size=5).map(tuple)),
+            (st.lists(base, min_size=2, max_size=5, unique=True).map(tuple)),
         )
         | st.builds(
             tuple.__class_getitem__, st.tuples(base, st.just(Ellipsis))
