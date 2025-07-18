@@ -16,10 +16,6 @@ KwArgs = dict[str, ArgT]
 Signature: TypeAlias = OverloadedSignature[Any] | PlainSignature[Any]
 
 
-def equivalence(left_statement: bool, right_statement: bool, /) -> bool:  # noqa: FBT001
-    return not left_statement ^ right_statement
-
-
 def implication(antecedent: bool, consequent: bool, /) -> bool:  # noqa: FBT001
     return not antecedent or consequent
 
