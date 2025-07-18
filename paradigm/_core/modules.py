@@ -1,9 +1,11 @@
 import sys as _sys
+import sysconfig
 from collections.abc import (
     Iterator as _Iterator,
     Mapping as _Mapping,
     Sequence as _Sequence,
 )
+from pathlib import Path
 from types import ModuleType
 
 from . import (
@@ -58,6 +60,32 @@ class _State(
         self._inner: dict[
             _catalog.Path, dict[_catalog.Path, list[_catalog.QualifiedPath]]
         ] = {}
+        stdlib_base_directory_path = Path(
+            sysconfig.get_path('stdlib')
+        ).resolve(strict=True)
+        for module in _sys.modules.copy().values():
+            if (
+                (
+                    (
+                        module_file_path_string := getattr(
+                            module, '__file__', None
+                        )
+                    )
+                    is None
+                )
+                or Path(module_file_path_string).is_relative_to(
+                    stdlib_base_directory_path
+                )
+                or module.__name__ in _sys.builtin_module_names
+            ):
+                _process_module(
+                    module,
+                    self._inner,
+                    self._definitions,
+                    self._references,
+                    self._submodules,
+                    self._superclasses,
+                )
 
     def __iter__(self, /) -> _Iterator[_catalog.Path]:
         return iter(self._inner)

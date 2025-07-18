@@ -5,6 +5,7 @@ import builtins as _builtins
 import sys as _sys
 import typing as _typing
 from collections.abc import (
+    Callable,
     Collection as _Collection,
     Iterator as _Iterator,
     Mapping as _Mapping,
@@ -195,13 +196,18 @@ class _LazyMappingWrapper(_Mapping[_catalog.Path, _T_co]):
                 source_path = _sources.from_module_path(module_path)
             except _sources.NotFound:
                 raise error from None
-            _process_module(source_path, module_path, self._state)
+            self._loader(source_path, module_path, self._state)
             return self._wrapped[module_path]
 
     def __init__(
-        self, wrapped: _Mapping[_catalog.Path, _T_co], state: _State, /
+        self,
+        wrapped: _Mapping[_catalog.Path, _T_co],
+        /,
+        *,
+        loader: Callable[[_sources.Path, _catalog.Path, _State], _Any],
+        state: _State,
     ) -> None:
-        self._state, self._wrapped = state, wrapped
+        self._loader, self._state, self._wrapped = loader, state, wrapped
 
     def __iter__(self, /) -> _Iterator[_catalog.Path]:
         return iter(self._wrapped)
@@ -907,12 +913,28 @@ def _parse_modules_state(
 ]:
     state = _State(modules_paths)
     return (
-        _LazyMappingWrapper(state.modules_definitions, state),
-        _LazyMappingWrapper(state.modules_references, state),
-        _LazyMappingWrapper(state.modules_statements_nodes, state),
-        _LazyMappingWrapper(state.modules_statements_nodes_kinds, state),
-        _LazyMappingWrapper(state.modules_submodules, state),
-        _LazyMappingWrapper(state.modules_superclasses, state),
+        _LazyMappingWrapper(
+            state.modules_definitions, loader=_parse_module_scope, state=state
+        ),
+        _LazyMappingWrapper(
+            state.modules_references, loader=_parse_module_scope, state=state
+        ),
+        _LazyMappingWrapper(
+            state.modules_statements_nodes,
+            loader=_parse_module_scope,
+            state=state,
+        ),
+        _LazyMappingWrapper(
+            state.modules_statements_nodes_kinds,
+            loader=_parse_module_scope,
+            state=state,
+        ),
+        _LazyMappingWrapper(
+            state.modules_submodules, loader=_parse_module_scope, state=state
+        ),
+        _LazyMappingWrapper(
+            state.modules_superclasses, loader=_process_module, state=state
+        ),
     )
 
 
