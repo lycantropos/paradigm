@@ -1,8 +1,7 @@
-import sys
 import warnings
 from compileall import compile_file
-from importlib import import_module
 from importlib.machinery import SOURCE_SUFFIXES
+from importlib.util import module_from_spec, spec_from_file_location
 from operator import attrgetter
 from pathlib import Path
 from typing import Any, Final
@@ -13,16 +12,13 @@ FILE_SUFFIX: Final[str] = SOURCE_SUFFIXES[0]
 
 
 def load(path: Path, name: str, /, *names: str) -> tuple[Any, ...]:
-    parent_path = next(
-        candidate_path
-        for candidate_path_string in sys.path
-        if path.is_relative_to(candidate_path := Path(candidate_path_string))
-    )
-    return attrgetter(name, *names)(
-        import_module(
-            '.'.join(path.relative_to(parent_path).with_suffix('').parts)
-        )
-    )
+    spec = spec_from_file_location(path.stem, path)
+    assert spec is not None, path
+    module = module_from_spec(spec)
+    spec_loader = spec.loader
+    assert spec_loader is not None, path
+    spec_loader.exec_module(module)
+    return attrgetter(name, *names)(module)
 
 
 def save(path: Path, /, **values: Any) -> None:

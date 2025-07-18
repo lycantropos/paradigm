@@ -1,12 +1,12 @@
 import sys as _sys
-import sysconfig
+import sysconfig as _sysconfig
 from collections.abc import (
     Iterator as _Iterator,
     Mapping as _Mapping,
     Sequence as _Sequence,
 )
-from pathlib import Path
-from types import ModuleType
+from pathlib import Path as _Path
+from types import ModuleType as _ModuleType
 
 from . import (
     catalog as _catalog,
@@ -41,7 +41,10 @@ class _State(
                 self._submodules,
                 self._superclasses,
             )
-            return self._inner[module_path]
+            try:
+                return self._inner[module_path]
+            except KeyError:
+                raise error from None
 
     def __init__(
         self,
@@ -60,8 +63,8 @@ class _State(
         self._inner: dict[
             _catalog.Path, dict[_catalog.Path, list[_catalog.QualifiedPath]]
         ] = {}
-        stdlib_base_directory_path = Path(
-            sysconfig.get_path('stdlib')
+        stdlib_base_directory_path = _Path(
+            _sysconfig.get_path('stdlib')
         ).resolve(strict=True)
         for module in _sys.modules.copy().values():
             if (
@@ -73,7 +76,7 @@ class _State(
                     )
                     is None
                 )
-                or Path(module_file_path_string).is_relative_to(
+                or _Path(module_file_path_string).is_relative_to(
                     stdlib_base_directory_path
                 )
                 or module.__name__ in _sys.builtin_module_names
@@ -95,7 +98,7 @@ class _State(
 
 
 def _process_module(
-    module: ModuleType,
+    module: _ModuleType,
     state: dict[
         _catalog.Path, dict[_catalog.Path, list[_catalog.QualifiedPath]]
     ],
