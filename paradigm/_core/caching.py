@@ -1,14 +1,11 @@
 import warnings
 from compileall import compile_file
-from importlib.machinery import SOURCE_SUFFIXES
 from importlib.util import module_from_spec, spec_from_file_location
 from operator import attrgetter
 from pathlib import Path
-from typing import Any, Final
+from typing import Any
 
 from . import pretty
-
-FILE_SUFFIX: Final[str] = SOURCE_SUFFIXES[0]
 
 
 def load(path: Path, name: str, /, *names: str) -> tuple[Any, ...]:

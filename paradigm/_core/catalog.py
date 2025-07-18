@@ -126,10 +126,6 @@ def _(value: type, /) -> QualifiedPath:
     )
 
 
-def is_attribute(path: Path, /) -> bool:
-    return len(path) > 1
-
-
 def module_path_from_module(module: _types.ModuleType, /) -> Path:
     return path_from_string(
         module.__name__

@@ -3,9 +3,7 @@ from collections.abc import Collection, Mapping
 from typing import TypeAlias
 
 from . import catalog
-from .arboreal.kind import StatementNodeKind
 
-ModuleStatementNodeKinds: TypeAlias = Mapping[catalog.Path, StatementNodeKind]
 ModuleReferences: TypeAlias = Mapping[catalog.Path, catalog.QualifiedPath]
 ModuleSubmodules: TypeAlias = Collection[catalog.Path]
 ModuleSuperclasses: TypeAlias = Mapping[
