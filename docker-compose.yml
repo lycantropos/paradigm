@@ -1,13 +1,13 @@
 version: '3'
 
 services:
-  paradigm-cpython:
+  paradigm:
     build:
       context: .
       args:
-        - IMAGE_NAME=${CPYTHON_IMAGE_NAME}
-        - IMAGE_VERSION=${CPYTHON_IMAGE_VERSION}
-    image: lycantropos/paradigm-cpython:4.3.0
+        - IMAGE_NAME=${IMAGE_NAME}
+        - IMAGE_VERSION=${IMAGE_VERSION}
+    image: lycantropos/paradigm:4.3.0
     volumes:
       - ./paradigm:/opt/paradigm/paradigm
       - ./pyproject.toml:/opt/paradigm/pyproject.toml

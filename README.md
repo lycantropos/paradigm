@@ -6,13 +6,14 @@ paradigm
 [![](https://img.shields.io/github/license/lycantropos/paradigm.svg)](https://github.com/lycantropos/paradigm/blob/master/LICENSE "License")
 [![](https://badge.fury.io/py/paradigm.svg)](https://badge.fury.io/py/paradigm "PyPI")
 
-In what follows `python` is an alias for `python3.10` or `pypy3.10`
-or any later version (`python3.11`, `pypy3.11` and so on).
+In what follows `python` is an alias for `python3.10`
+or any later version (`python3.11` and so on).
 
 Installation
 ------------
 
 Install the latest `pip` & `setuptools` packages versions
+
 ```bash
 python -m pip install --upgrade pip setuptools
 ```
@@ -20,6 +21,7 @@ python -m pip install --upgrade pip setuptools
 ### User
 
 Download and install the latest stable version from `PyPI` repository
+
 ```bash
 python -m pip install --upgrade paradigm
 ```
@@ -27,17 +29,20 @@ python -m pip install --upgrade paradigm
 ### Developer
 
 Download the latest version from `GitHub` repository
+
 ```bash
 git clone https://github.com/lycantropos/paradigm.git
 cd paradigm
 ```
 
 Install dependencies
+
 ```bash
 python -m pip install -r requirements.txt
 ```
 
 Install
+
 ```bash
 python setup.py install
 ```
@@ -46,6 +51,7 @@ Usage
 -----
 
 With setup
+
 ```python
 >>> import typing
 >>> from paradigm.base import (
@@ -71,7 +77,9 @@ With setup
 ...
 
 ```
+
 we can obtain a signature of
+
 - user-defined functions
   ```python
   >>> signature_from_callable(func) == PlainSignature(
@@ -188,6 +196,7 @@ Choose which version number category to bump following [semver
 specification](http://semver.org/).
 
 Test bumping version
+
 ```bash
 bump2version --dry-run --verbose $CATEGORY
 ```
@@ -196,6 +205,7 @@ where `$CATEGORY` is the target version number category name, possible
 values are `patch`/`minor`/`major`.
 
 Bump version
+
 ```bash
 bump2version --verbose $CATEGORY
 ```
@@ -205,11 +215,13 @@ This will set version to `major.minor.patch-alpha`.
 #### Release
 
 Test bumping version
+
 ```bash
 bump2version --dry-run --verbose release
 ```
 
 Bump version
+
 ```bash
 bump2version --verbose release
 ```
@@ -219,16 +231,19 @@ This will set version to `major.minor.patch`.
 ### Running tests
 
 Install dependencies
+
 ```bash
 python -m pip install -r requirements-tests.txt
 ```
 
 PlainSignature
+
 ```bash
 pytest
 ```
 
 Inside `Docker` container:
+
 - with `CPython`
   ```bash
   docker-compose --file docker-compose.cpython.yml up
@@ -239,6 +254,7 @@ Inside `Docker` container:
   ```
 
 `Bash` script (e.g. can be used in `Git` hooks):
+
 - with `CPython`
   ```bash
   ./run-tests.sh
@@ -254,6 +270,7 @@ Inside `Docker` container:
   ```
 
 `PowerShell` script (e.g. can be used in `Git` hooks):
+
 - with `CPython`
   ```powershell
   .\run-tests.ps1

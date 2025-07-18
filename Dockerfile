@@ -11,4 +11,5 @@ COPY setup.py .
 COPY paradigm paradigm
 COPY tests tests
 
+RUN pip install -U pip
 RUN pip install -e .[tests]
