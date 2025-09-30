@@ -188,7 +188,7 @@ Development
 #### Preparation
 
 Install
-[bump2version](https://github.com/c4urself/bump2version#installation).
+[bump-my-version](https://github.com/callowayproject/bump-my-version#installation).
 
 #### Pre-release
 
@@ -198,7 +198,7 @@ specification](http://semver.org/).
 Test bumping version
 
 ```bash
-bump2version --dry-run --verbose $CATEGORY
+bump-my-version bump --dry-run --verbose $CATEGORY
 ```
 
 where `$CATEGORY` is the target version number category name, possible
@@ -207,7 +207,7 @@ values are `patch`/`minor`/`major`.
 Bump version
 
 ```bash
-bump2version --verbose $CATEGORY
+bump-my-version bump --verbose $CATEGORY
 ```
 
 This will set version to `major.minor.patch-alpha`.
@@ -217,13 +217,13 @@ This will set version to `major.minor.patch-alpha`.
 Test bumping version
 
 ```bash
-bump2version --dry-run --verbose release
+bump-my-version bump --dry-run --verbose release
 ```
 
 Bump version
 
 ```bash
-bump2version --verbose release
+bump-my-version bump --verbose release
 ```
 
 This will set version to `major.minor.patch`.
@@ -236,7 +236,7 @@ Install dependencies
 python -m pip install -r requirements-tests.txt
 ```
 
-PlainSignature
+Plain
 
 ```bash
 pytest
