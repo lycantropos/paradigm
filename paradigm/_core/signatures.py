@@ -64,7 +64,7 @@ def _(
             else _from_callable(callable_)
         )
     except _SignatureNotFound:
-        return _from_raw_signature(_inspect.signature(callable_))
+        return _from_raw_signature(_to_raw_signature(callable_))
 
 
 @from_callable.register(_types.FunctionType)
@@ -72,7 +72,7 @@ def _(callable_: _types.FunctionType, /) -> _Signature:
     try:
         return _from_callable(callable_)
     except _SignatureNotFound:
-        return _from_raw_signature(_inspect.signature(callable_))
+        return _from_raw_signature(_to_raw_signature(callable_))
 
 
 @from_callable.register(_types.MethodType)
@@ -88,7 +88,7 @@ def _(callable_: _types.MethodType, /) -> _Signature:
             )
         )
     except _SignatureNotFound:
-        return _from_raw_signature(_inspect.signature(callable_))
+        return _from_raw_signature(_to_raw_signature(callable_))
 
 
 @_decorate_if(
@@ -103,7 +103,7 @@ def _(callable_: _types.MethodWrapperType, /) -> _Signature:
             self
         )
     except _SignatureNotFound:
-        return _from_raw_signature(_inspect.signature(callable_))
+        return _from_raw_signature(_to_raw_signature(callable_))
 
 
 @_decorate_if(
@@ -122,7 +122,7 @@ def _(
     try:
         return _from_callable(callable_)
     except _SignatureNotFound:
-        return _from_raw_signature(_inspect.signature(callable_))
+        return _from_raw_signature(_to_raw_signature(callable_))
 
 
 @from_callable.register(type)
@@ -145,9 +145,8 @@ def _(_callable: Callable[..., Any], /) -> _Signature:
             ]
         )
     except _SignatureNotFound:
-        raw_signature = _inspect.signature(_callable)
         return _from_raw_signature(
-            raw_signature.replace(return_annotation=_Self)
+            _to_raw_signature(_callable).replace(return_annotation=_Self)
         )
 
 
@@ -769,6 +768,10 @@ def _to_positional_parameters(
         )
         for parameter_ast, default_ast in parameters_with_defaults_ast
     ]
+
+
+def _to_raw_signature(callable_: Callable[..., Any], /) -> _inspect.Signature:
+    return _inspect.signature(callable_, eval_str=True)
 
 
 def _to_variadic_keyword_parameter(

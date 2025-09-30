@@ -21,7 +21,7 @@ from typing import (
 
 from paradigm._core.utils import MISSING
 
-LegacyGenericAlias: Any = type(Generic[TypeVar('_T')])
+LegacyGenericAlias: Any = type(Generic[TypeVar('_T')])  # type: ignore[index]
 
 
 @singledispatch
