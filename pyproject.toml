@@ -58,7 +58,6 @@ files = [
     { "filename" = "paradigm/__init__.py" },
 ]
 
-
 [tool.coverage.run]
 concurrency = ["multiprocessing"]
 source = ["paradigm"]
