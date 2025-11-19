@@ -162,6 +162,8 @@ jobs:
     name: 'Deploy'
     environment: release
     needs: test-distributions
+    permissions:
+      id-token: write
     runs-on: ubuntu-latest
     steps:
       - name: 'Download distributions'
