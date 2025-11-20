@@ -38,7 +38,7 @@ cd paradigm
 Install
 
 ```bash
-python -m pip install -e .
+python -m pip install -e '.'
 ```
 
 Usage
