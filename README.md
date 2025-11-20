@@ -35,16 +35,10 @@ git clone https://github.com/lycantropos/paradigm.git
 cd paradigm
 ```
 
-Install dependencies
-
-```bash
-python -m pip install -r requirements.txt
-```
-
 Install
 
 ```bash
-python setup.py install
+python -m pip install -e .
 ```
 
 Usage
