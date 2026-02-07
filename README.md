@@ -152,6 +152,7 @@ we can obtain a signature of
   >>> signature_from_callable(bool) == PlainSignature(
   ...     OptionalParameter(
   ...         annotation=object,
+  ...         default=False,
   ...         kind=ParameterKind.POSITIONAL_ONLY,
   ...         name='o',
   ...     ),
