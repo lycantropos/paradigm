@@ -9,7 +9,6 @@ repos:
       - id: check-yaml
       - id: end-of-file-fixer
       - id: trailing-whitespace
-        exclude: '.bumpversion.cfg'
   - repo: https://github.com/jorisroovers/gitlint
     rev: v0.19.1
     hooks:
@@ -38,23 +37,23 @@ repos:
         args:
           - --strict
         additional_dependencies:
-          - 'mypy>=1.6.1,<2.0'
-          - 'hypothesis>=6.135.14,<7.0'
-          - 'pytest>=8.4.1'
-          - 'setuptools'
-          - 'types-setuptools'
-          - 'typing_extensions>=4.12.2,<5.0'
+          - "mypy>=1.19.1,<2.0"
+          - "hypothesis>=6.151.5,<7.0"
+          - "pytest>=9.0.2"
+          - "setuptools"
+          - "types-setuptools"
+          - "typing-extensions>=4.15.0,<5.0"
   - repo: https://github.com/RobertCraigie/pyright-python
     rev: v1.1.408
     hooks:
       - id: pyright
         additional_dependencies:
-          - 'mypy>=1.6.1,<2.0'
-          - 'hypothesis>=6.135.14,<7.0'
-          - 'pytest>=8.4.1'
-          - 'setuptools'
-          - 'types-setuptools'
-          - 'typing_extensions>=4.12.2,<5.0'
+          - "mypy>=1.19.1,<2.0"
+          - "hypothesis>=6.151.5,<7.0"
+          - "pytest>=9.0.2"
+          - "setuptools"
+          - "types-setuptools"
+          - "typing-extensions>=4.15.0,<5.0"
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.10
     hooks:
