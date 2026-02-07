@@ -20,19 +20,19 @@ repos:
           - --msg-filename
         stages: [ commit-msg ]
   - repo: https://github.com/crate-ci/typos
-    rev: v1.37.0
+    rev: v1.43.3
     hooks:
       - id: typos
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
-    rev: v0.13.2
+    rev: v0.15.0
     hooks:
       # Run the linter.
       - id: ruff
       # Run the formatter.
       - id: ruff-format
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.18.2
+    rev: v1.19.1
     hooks:
       - id: mypy
         args:
@@ -41,19 +41,21 @@ repos:
           - 'mypy>=1.6.1,<2.0'
           - 'hypothesis>=6.135.14,<7.0'
           - 'pytest>=8.4.1'
+          - 'setuptools'
           - 'types-setuptools'
           - 'typing_extensions>=4.12.2,<5.0'
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.405
+    rev: v1.1.408
     hooks:
       - id: pyright
         additional_dependencies:
           - 'mypy>=1.6.1,<2.0'
           - 'hypothesis>=6.135.14,<7.0'
           - 'pytest>=8.4.1'
+          - 'setuptools'
           - 'types-setuptools'
           - 'typing_extensions>=4.12.2,<5.0'
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.7
+    rev: v1.7.10
     hooks:
       - id: actionlint
