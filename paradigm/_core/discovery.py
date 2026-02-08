@@ -38,7 +38,7 @@ _recursively_update_modules_paths(
 
 if sys.version_info >= (3, 13):
     _recursively_update_modules_paths(
-        unsupported_stdlib_modules_paths, '_pyrepl.commands'
+        unsupported_stdlib_modules_paths, '_colorize', '_pyrepl'
     )
 if sys.implementation.name == 'pypy':
     _recursively_update_modules_paths(
