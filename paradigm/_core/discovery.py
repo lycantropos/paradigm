@@ -30,6 +30,7 @@ _recursively_update_module_paths(
     'crypt',
     'idlelib',
     'lib2to3.pgen2.conv',
+    'test',
     'this',
     'tkinter',
     'turtle',
