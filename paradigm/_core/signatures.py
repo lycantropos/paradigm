@@ -3,9 +3,9 @@ from __future__ import annotations
 import ast as _ast
 import builtins as _builtins
 import inspect as _inspect
-import sys as _sys
+import sys
 import types as _types
-import typing as _t
+import typing as _typing
 from collections.abc import Callable, Iterable, Sequence
 from functools import partial as _partial, singledispatch as _singledispatch
 from itertools import starmap, zip_longest as _zip_longest
@@ -41,7 +41,7 @@ def from_callable(callable_: Callable[..., Any], /) -> _Signature:
 @from_callable.register(_types.BuiltinFunctionType)
 @_decorate_if(
     from_callable.register(_types.BuiltinMethodType),
-    _sys.implementation.name != 'pypy',
+    sys.implementation.name != 'pypy',
 )
 def _(
     callable_: _types.BuiltinFunctionType | _types.BuiltinMethodType, /
@@ -93,7 +93,7 @@ def _(callable_: _types.MethodType, /) -> _Signature:
 
 @_decorate_if(
     from_callable.register(_types.MethodWrapperType),
-    _sys.implementation.name != 'pypy',
+    sys.implementation.name != 'pypy',
 )
 def _(callable_: _types.MethodWrapperType, /) -> _Signature:
     self = callable_.__self__
@@ -108,11 +108,11 @@ def _(callable_: _types.MethodWrapperType, /) -> _Signature:
 
 @_decorate_if(
     from_callable.register(_types.MethodDescriptorType),
-    _sys.implementation.name != 'pypy',
+    sys.implementation.name != 'pypy',
 )
 @_decorate_if(
     from_callable.register(_types.WrapperDescriptorType),
-    _sys.implementation.name != 'pypy',
+    sys.implementation.name != 'pypy',
 )
 def _(
     callable_: _types.MethodDescriptorType | _types.WrapperDescriptorType, /
@@ -225,7 +225,9 @@ def _(
     type_var_object_path: _catalog.Path = _catalog.path_from_string(  # noqa: B008
         TypeVar.__qualname__
     ),
-    typing_module_path: _catalog.Path = _catalog.module_path_from_module(_t),  # noqa: B008
+    typing_module_path: _catalog.Path = _catalog.module_path_from_module(  # noqa: B008
+        _typing
+    ),
 ) -> _Signature:
     callable_object_path = _conversion.to_path(ast_node.func)
     callable_module_path, callable_object_path = _scoping.resolve_object_path(
@@ -275,7 +277,9 @@ def _(
     /,
     *,
     callable_object_path: _catalog.Path = ('Callable',),
-    typing_module_path: _catalog.Path = _catalog.module_path_from_module(_t),  # noqa: B008
+    typing_module_path: _catalog.Path = _catalog.module_path_from_module(  # noqa: B008
+        _typing
+    ),
 ) -> _Signature:
     value_path = _conversion.to_path(ast_node.value)
     value_module_path, value_object_path = _scoping.resolve_object_path(
@@ -498,7 +502,7 @@ class _SignatureNotFound(Exception):
 
 
 def _try_resolve_object_path(
-    module_path: _catalog.Path, object_path: _catalog.Path
+    module_path: _catalog.Path, object_path: _catalog.Path, /
 ) -> _catalog.QualifiedPath:
     try:
         return _scoping.resolve_object_path(
@@ -514,7 +518,7 @@ def _try_resolve_object_path(
         return (), ()
 
 
-def _from_callable(value: Callable[..., Any]) -> _Signature:
+def _from_callable(value: Callable[..., Any], /) -> _Signature:
     for module_path, object_path in _to_qualified_paths(value):
         nodes = _load_statement_nodes(module_path, object_path)
         parent_path = object_path[:-1]
@@ -527,11 +531,11 @@ def _from_callable(value: Callable[..., Any]) -> _Signature:
             continue
         else:
             return _from_signatures(*signatures)
-    raise _SignatureNotFound
+    raise _SignatureNotFound(value)
 
 
 def _to_qualified_paths(
-    value: Callable[..., Any],
+    value: Callable[..., Any], /
 ) -> Iterable[_catalog.QualifiedPath]:
     qualified_paths = resolve_qualified_paths(value)
     if qualified_paths:
@@ -554,6 +558,7 @@ _OBJECT_BUILDER_QUALIFIED_PATH: Final[_catalog.QualifiedPath] = (
 
 def _resolve_builder_qualified_path(
     qualified_paths: Sequence[_catalog.QualifiedPath],
+    /,
     *,
     object_builder_qualified_path: _catalog.QualifiedPath = (
         _OBJECT_BUILDER_QUALIFIED_PATH
@@ -574,7 +579,7 @@ def _resolve_builder_qualified_path(
 
 
 def _load_statement_nodes(
-    module_path: _catalog.Path, object_path: _catalog.Path
+    module_path: _catalog.Path, object_path: _catalog.Path, /
 ) -> Sequence[_ast.stmt]:
     try:
         nodes = _stubs.statement_nodes[module_path][object_path]
@@ -586,7 +591,7 @@ def _load_statement_nodes(
 
 
 def resolve_qualified_paths(
-    value: Callable[..., Any],
+    value: Callable[..., Any], /
 ) -> list[_catalog.QualifiedPath]:
     module_path, object_path = _catalog.qualified_path_from(value)
     try:
@@ -614,6 +619,7 @@ def resolve_qualified_paths(
 def _to_class_builder_qualified_path(
     module_path: _catalog.Path,
     object_path: _catalog.Path,
+    /,
     *,
     object_builder_qualified_path: _catalog.QualifiedPath = (
         _OBJECT_BUILDER_QUALIFIED_PATH
@@ -652,7 +658,7 @@ def _value_has_qualified_path(
 ) -> bool:
     module_path, object_path = path
     module_name = _catalog.path_to_string(module_path)
-    candidate = _sys.modules.get(module_name)
+    candidate = sys.modules.get(module_name)
     if candidate is None:
         # undecidable, let's keep it
         return True
@@ -688,7 +694,7 @@ def _parameter_from_raw(raw: _inspect.Parameter, /) -> _Parameter:
     )
 
 
-def _from_raw_signature(value: _inspect.Signature) -> _Signature:
+def _from_raw_signature(value: _inspect.Signature, /) -> _Signature:
     return _PlainSignature(
         *[_parameter_from_raw(raw) for raw in value.parameters.values()],
         returns=(
@@ -705,6 +711,7 @@ def _parameter_from_ast_node(
     module_path: _catalog.Path,
     parent_path: _catalog.Path,
     kind: _ParameterKind,
+    /,
 ) -> _Parameter:
     annotation = (
         Any
@@ -736,6 +743,7 @@ def _to_keyword_parameters(
     signature_ast: _ast.arguments,
     module_path: _catalog.Path,
     parent_path: _catalog.Path,
+    /,
     *,
     kind: _ParameterKind = _ParameterKind.KEYWORD_ONLY,
 ) -> list[_Parameter]:
@@ -753,6 +761,7 @@ def _to_positional_parameters(
     signature_ast: _ast.arguments,
     module_path: _catalog.Path,
     parent_path: _catalog.Path,
+    /,
 ) -> list[_Parameter]:
     # double-reversing since parameters with default arguments go last
     parameter_with_default_nodes: list[tuple[_ast.arg, _ast.expr | None]] = (
@@ -772,8 +781,21 @@ def _to_positional_parameters(
     ]
 
 
-def _to_raw_signature(callable_: Callable[..., Any], /) -> _inspect.Signature:
-    return _inspect.signature(callable_, eval_str=True)
+if sys.version_info >= (3, 14):
+    import annotationlib as _annotationlib
+
+    def _to_raw_signature(
+        callable_: Callable[..., Any], /
+    ) -> _inspect.Signature:
+        return _inspect.signature(
+            callable_, annotation_format=_annotationlib.Format.FORWARDREF
+        )
+else:
+
+    def _to_raw_signature(
+        callable_: Callable[..., Any], /
+    ) -> _inspect.Signature:
+        return _inspect.signature(callable_, eval_str=True)
 
 
 def _to_variadic_keyword_parameter(
