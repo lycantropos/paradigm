@@ -9,7 +9,7 @@ from tests.utils import ArgT, Signature
 from . import strategies
 
 
-@given(strategies.signatures)
+@given(strategies.signature_strategy)
 def test_type(signature: Signature) -> None:
     result = repr(signature)
 
@@ -25,7 +25,7 @@ def test_plain(plain_signature: PlainSignature[ArgT]) -> None:
     )
 
 
-@given(strategies.overloaded_signatures)
+@given(strategies.overloaded_signature_strategy)
 def test_nesting(overloaded_signature: OverloadedSignature[ArgT]) -> None:
     result = repr(overloaded_signature)
 
@@ -35,7 +35,7 @@ def test_nesting(overloaded_signature: OverloadedSignature[ArgT]) -> None:
     )
 
 
-@given(strategies.signatures)
+@given(strategies.signature_strategy)
 def test_evaluation(signature: Signature) -> None:
     signature_repr = repr(signature)
 

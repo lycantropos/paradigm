@@ -21,7 +21,7 @@ class NotFound(Exception):
 
 def from_module_path(module_path: catalog.Path, /) -> Path:
     try:
-        return _stubs_cache[module_path]
+        return _stub_cache[module_path]
     except KeyError as error:
         raise NotFound(module_path) from error
 
@@ -45,7 +45,7 @@ def _find_source_path(module_name: str, /) -> Path:
     return Path(maybe_path_string)
 
 
-def _to_stubs_cache(
+def _to_stub_cache(
     root: Path = (  # noqa: B008
         _find_source_path('mypy').parent / 'typeshed' / 'stdlib'  # noqa: B008
     ).resolve(strict=True),
@@ -60,7 +60,7 @@ def _to_stubs_cache(
 
     return {
         to_module_path(file_path): file_path
-        for file_path in file_system.find_files_paths(root)
+        for file_path in file_system.find_file_paths(root)
         if _is_stub(file_path)
     }
 
@@ -81,15 +81,15 @@ def _relative_file_path_to_module_path(path: Path, /) -> catalog.Path:
     )
 
 
-_stubs_cache = _to_stubs_cache()
-stubs_stdlib_modules_paths = set(_stubs_cache.keys())
-_sources_directories = {
+_stub_cache = _to_stub_cache()
+stub_stdlib_module_paths = set(_stub_cache.keys())
+_source_directories = {
     Path(sysconfig.get_path('platstdlib')),
     Path(sysconfig.get_path('stdlib')),
 }
 
 
-def _to_modules_paths(root: Path, /) -> Iterable[catalog.Path]:
+def _to_module_paths(root: Path, /) -> Iterable[catalog.Path]:
     assert root.exists(), root
 
     def is_source_path(
@@ -108,7 +108,7 @@ def _to_modules_paths(root: Path, /) -> Iterable[catalog.Path]:
 
     return {
         to_module_path(file_path)
-        for file_path in file_system.find_files_paths(root)
+        for file_path in file_system.find_file_paths(root)
         if is_source_path(file_path)
     }
 
@@ -130,7 +130,7 @@ def _is_valid_module_path(module_path: catalog.Path, /) -> bool:
     )
 
 
-stdlib_modules_paths = dict.fromkeys(
+stdlib_module_paths = dict.fromkeys(
     chain(
         [
             catalog.path_from_string(module_name)
@@ -138,8 +138,8 @@ stdlib_modules_paths = dict.fromkeys(
         ],
         [
             module_path
-            for path in _sources_directories
-            for module_path in _to_modules_paths(path)
+            for path in _source_directories
+            for module_path in _to_module_paths(path)
             if _is_valid_module_path(module_path)
         ],
     )

@@ -57,8 +57,8 @@ stdlib_modules: set[types.ModuleType] = set()
 built_in_functions: set[types.BuiltinFunctionType] = set()
 classes: set[type] = set()
 functions: set[types.FunctionType] = set()
-methods_descriptors: set[types.MethodDescriptorType] = set()
-wrappers_descriptors: set[types.WrapperDescriptorType] = set()
+method_descriptors: set[types.MethodDescriptorType] = set()
+wrapper_descriptors: set[types.WrapperDescriptorType] = set()
 
 if sys.platform == 'linux':
     if sys.implementation.name == 'pypy':
@@ -667,7 +667,7 @@ if sys.platform == 'linux':
         )
 
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_collections',
             [
                 '_deque_iterator.__length_hint__',
@@ -677,7 +677,7 @@ if sys.platform == 'linux':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_collections_abc',
             [
                 'bytearray_iterator.__length_hint__',
@@ -714,7 +714,7 @@ if sys.platform == 'linux':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_io',
             [
                 '_BufferedIOBase.read',
@@ -737,12 +737,12 @@ if sys.platform == 'linux':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_hashlib',
             ['HASH.copy', 'HASH.digest', 'HASH.hexdigest', 'HASH.update'],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_lsprof',
             [
                 'Profiler.clear',
@@ -754,7 +754,7 @@ if sys.platform == 'linux':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_multiprocessing',
             [
                 'SemLock.__enter__',
@@ -768,9 +768,9 @@ if sys.platform == 'linux':
                 'SemLock.release',
             ],
         )
-        _load_and_add(methods_descriptors, '_ssl', '_SSLSocket.read')
+        _load_and_add(method_descriptors, '_ssl', '_SSLSocket.read')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_thread',
             [
                 'LockType.acquire_lock',
@@ -779,20 +779,20 @@ if sys.platform == 'linux':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'builtins',
             ['complex.__getnewargs__', 'reversed.__setstate__'],
         )
         _load_and_add(
-            methods_descriptors, 'collections', '_tuplegetter.__reduce__'
+            method_descriptors, 'collections', '_tuplegetter.__reduce__'
         )
         _load_and_add(
-            methods_descriptors,
+            method_descriptors,
             'ctypes',
             '_SimpleCData.__ctypes_from_outparam__',
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'ctypes._endian',
             [
                 '_array_type.from_address',
@@ -803,16 +803,16 @@ if sys.platform == 'linux':
             ],
         )
         _load_and_add(
-            methods_descriptors, 'datetime', 'timezone.__getinitargs__'
+            method_descriptors, 'datetime', 'timezone.__getinitargs__'
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'decimal',
             ['Context._apply', 'Decimal.__sizeof__'],
         )
-        _load_and_add(methods_descriptors, 'functools', 'partial.__setstate__')
+        _load_and_add(method_descriptors, 'functools', 'partial.__setstate__')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'io',
             [
                 'BufferedRandom._dealloc_warn',
@@ -826,7 +826,7 @@ if sys.platform == 'linux':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'itertools',
             [
                 '_grouper.__reduce__',
@@ -848,9 +848,9 @@ if sys.platform == 'linux':
                 'zip_longest.__setstate__',
             ],
         )
-        _load_and_add(methods_descriptors, 'socket', 'SocketType._accept')
+        _load_and_add(method_descriptors, 'socket', 'SocketType._accept')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'threading',
             [
                 '_CRLock.__enter__',
@@ -862,9 +862,9 @@ if sys.platform == 'linux':
                 '_CRLock.release',
             ],
         )
-        _load_and_add(methods_descriptors, 'weakref', 'ProxyType.__bytes__')
+        _load_and_add(method_descriptors, 'weakref', 'ProxyType.__bytes__')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'xxsubtype',
             [
                 'spamdict.getstate',
@@ -874,10 +874,10 @@ if sys.platform == 'linux':
             ],
         )
 
-        _load_and_add(wrappers_descriptors, '_io', '_IOBase.__del__')
-        _load_and_add(wrappers_descriptors, 'socket', 'SocketType.__del__')
+        _load_and_add(wrapper_descriptors, '_io', '_IOBase.__del__')
+        _load_and_add(wrapper_descriptors, 'socket', 'SocketType.__del__')
         _load_and_update(
-            wrappers_descriptors,
+            wrapper_descriptors,
             'types',
             [
                 'AsyncGeneratorType.__del__',
@@ -885,7 +885,7 @@ if sys.platform == 'linux':
                 'GeneratorType.__del__',
             ],
         )
-        _load_and_add(wrappers_descriptors, 'xxlimited', 'Xxo.__del__')
+        _load_and_add(wrapper_descriptors, 'xxlimited', 'Xxo.__del__')
 
         if sys.byteorder == 'little':
             _load_and_update(
@@ -967,28 +967,26 @@ if sys.platform == 'linux':
         _load_and_update(classes, 'xxlimited_35', ['Null', 'Str', 'error'])
 
         _load_and_update(
-            methods_descriptors,
-            '_csv',
-            ['Writer.writerow', 'Writer.writerows'],
+            method_descriptors, '_csv', ['Writer.writerow', 'Writer.writerows']
         )
-        _load_and_add(methods_descriptors, '_ssl', 'Certificate.public_bytes')
+        _load_and_add(method_descriptors, '_ssl', 'Certificate.public_bytes')
         _load_and_add(
-            methods_descriptors, '_thread', 'LockType._at_fork_reinit'
+            method_descriptors, '_thread', 'LockType._at_fork_reinit'
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'builtins',
             ['property.__set_name__', 'zip.__setstate__'],
         )
-        _load_and_add(methods_descriptors, 'collections', 'deque.__reversed__')
+        _load_and_add(method_descriptors, 'collections', 'deque.__reversed__')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'types',
             ['UnionType.__instancecheck__', 'UnionType.__subclasscheck__'],
         )
-        _load_and_add(methods_descriptors, 'xxlimited_35', 'Xxo.demo')
+        _load_and_add(method_descriptors, 'xxlimited_35', 'Xxo.demo')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'typing',
             [
                 'GenericAlias.__instancecheck__',
@@ -996,9 +994,9 @@ if sys.platform == 'linux':
                 'GenericAlias.__subclasscheck__',
             ],
         )
-        _load_and_add(methods_descriptors, 'weakref', 'ProxyType.__reversed__')
+        _load_and_add(method_descriptors, 'weakref', 'ProxyType.__reversed__')
 
-        _load_and_add(wrappers_descriptors, 'xxlimited_35', 'Xxo.__del__')
+        _load_and_add(wrapper_descriptors, 'xxlimited_35', 'Xxo.__del__')
 
         if sys.version_info >= (3, 11):
             _load_and_add(classes, '_tokenize', 'TokenizerIter')
@@ -1021,7 +1019,7 @@ if sys.platform == 'linux':
             _load_and_add(classes, 'importlib.resources.abc', 'TraversalError')
 
             _load_and_update(
-                methods_descriptors,
+                method_descriptors,
                 'typing',
                 [
                     'ParamSpec.__mro_entries__',
@@ -1032,9 +1030,7 @@ if sys.platform == 'linux':
                 ],
             )
 
-            _load_and_add(
-                wrappers_descriptors, 'sqlite3', 'Connection.__del__'
-            )
+            _load_and_add(wrapper_descriptors, 'sqlite3', 'Connection.__del__')
 elif sys.platform == 'darwin':
     if sys.implementation.name == 'pypy':
         _load_and_update(classes, '_cffi_backend', ['FFI', 'buffer'])
@@ -1655,7 +1651,7 @@ elif sys.platform == 'darwin':
         )
 
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_collections',
             [
                 '_deque_iterator.__length_hint__',
@@ -1665,7 +1661,7 @@ elif sys.platform == 'darwin':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_collections_abc',
             [
                 'bytearray_iterator.__length_hint__',
@@ -1702,12 +1698,12 @@ elif sys.platform == 'darwin':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_hashlib',
             ['HASH.copy', 'HASH.digest', 'HASH.hexdigest', 'HASH.update'],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_io',
             [
                 '_BufferedIOBase.read',
@@ -1730,7 +1726,7 @@ elif sys.platform == 'darwin':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_lsprof',
             [
                 'Profiler.clear',
@@ -1742,7 +1738,7 @@ elif sys.platform == 'darwin':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_multiprocessing',
             [
                 'SemLock.__enter__',
@@ -1756,9 +1752,9 @@ elif sys.platform == 'darwin':
                 'SemLock.release',
             ],
         )
-        _load_and_add(methods_descriptors, '_ssl', '_SSLSocket.read')
+        _load_and_add(method_descriptors, '_ssl', '_SSLSocket.read')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_thread',
             [
                 'LockType.acquire_lock',
@@ -1767,20 +1763,20 @@ elif sys.platform == 'darwin':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'builtins',
             ['complex.__getnewargs__', 'reversed.__setstate__'],
         )
         _load_and_add(
-            methods_descriptors, 'collections', '_tuplegetter.__reduce__'
+            method_descriptors, 'collections', '_tuplegetter.__reduce__'
         )
         _load_and_add(
-            methods_descriptors,
+            method_descriptors,
             'ctypes',
             '_SimpleCData.__ctypes_from_outparam__',
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'ctypes._endian',
             [
                 '_array_type.from_address',
@@ -1791,16 +1787,16 @@ elif sys.platform == 'darwin':
             ],
         )
         _load_and_add(
-            methods_descriptors, 'datetime', 'timezone.__getinitargs__'
+            method_descriptors, 'datetime', 'timezone.__getinitargs__'
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'decimal',
             ['Context._apply', 'Decimal.__sizeof__'],
         )
-        _load_and_add(methods_descriptors, 'functools', 'partial.__setstate__')
+        _load_and_add(method_descriptors, 'functools', 'partial.__setstate__')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'io',
             [
                 'BufferedRandom._dealloc_warn',
@@ -1814,7 +1810,7 @@ elif sys.platform == 'darwin':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'itertools',
             [
                 '_grouper.__reduce__',
@@ -1836,9 +1832,9 @@ elif sys.platform == 'darwin':
                 'zip_longest.__setstate__',
             ],
         )
-        _load_and_add(methods_descriptors, 'socket', 'SocketType._accept')
+        _load_and_add(method_descriptors, 'socket', 'SocketType._accept')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'threading',
             [
                 '_CRLock.__enter__',
@@ -1850,9 +1846,9 @@ elif sys.platform == 'darwin':
                 '_CRLock.release',
             ],
         )
-        _load_and_add(methods_descriptors, 'weakref', 'ProxyType.__bytes__')
+        _load_and_add(method_descriptors, 'weakref', 'ProxyType.__bytes__')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'xxsubtype',
             [
                 'spamdict.getstate',
@@ -1862,10 +1858,10 @@ elif sys.platform == 'darwin':
             ],
         )
 
-        _load_and_add(wrappers_descriptors, '_io', '_IOBase.__del__')
-        _load_and_add(wrappers_descriptors, 'socket', 'SocketType.__del__')
+        _load_and_add(wrapper_descriptors, '_io', '_IOBase.__del__')
+        _load_and_add(wrapper_descriptors, 'socket', 'SocketType.__del__')
         _load_and_update(
-            wrappers_descriptors,
+            wrapper_descriptors,
             'types',
             [
                 'AsyncGeneratorType.__del__',
@@ -1873,7 +1869,7 @@ elif sys.platform == 'darwin':
                 'GeneratorType.__del__',
             ],
         )
-        _load_and_add(wrappers_descriptors, 'xxlimited', 'Xxo.__del__')
+        _load_and_add(wrapper_descriptors, 'xxlimited', 'Xxo.__del__')
 
         if sys.byteorder == 'little':
             _load_and_update(
@@ -1958,10 +1954,10 @@ elif sys.platform == 'darwin':
         _load_and_update(classes, 'xxlimited_35', ['Null', 'Str', 'error'])
 
         _load_and_add(
-            methods_descriptors, '_thread', 'LockType._at_fork_reinit'
+            method_descriptors, '_thread', 'LockType._at_fork_reinit'
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'typing',
             [
                 'GenericAlias.__instancecheck__',
@@ -1969,28 +1965,26 @@ elif sys.platform == 'darwin':
                 'GenericAlias.__subclasscheck__',
             ],
         )
-        _load_and_add(methods_descriptors, 'weakref', 'ProxyType.__reversed__')
+        _load_and_add(method_descriptors, 'weakref', 'ProxyType.__reversed__')
 
         _load_and_update(
-            methods_descriptors,
-            '_csv',
-            ['Writer.writerow', 'Writer.writerows'],
+            method_descriptors, '_csv', ['Writer.writerow', 'Writer.writerows']
         )
-        _load_and_add(methods_descriptors, '_ssl', 'Certificate.public_bytes')
+        _load_and_add(method_descriptors, '_ssl', 'Certificate.public_bytes')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'builtins',
             ['property.__set_name__', 'zip.__setstate__'],
         )
-        _load_and_add(methods_descriptors, 'collections', 'deque.__reversed__')
+        _load_and_add(method_descriptors, 'collections', 'deque.__reversed__')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'types',
             ['UnionType.__instancecheck__', 'UnionType.__subclasscheck__'],
         )
-        _load_and_add(methods_descriptors, 'xxlimited_35', 'Xxo.demo')
+        _load_and_add(method_descriptors, 'xxlimited_35', 'Xxo.demo')
 
-        _load_and_add(wrappers_descriptors, 'xxlimited_35', 'Xxo.__del__')
+        _load_and_add(wrapper_descriptors, 'xxlimited_35', 'Xxo.__del__')
 
         if (3, 11) <= sys.version_info < (3, 12):
             _load_and_add(
@@ -2020,7 +2014,7 @@ elif sys.platform == 'darwin':
             _load_and_add(classes, 'importlib.resources.abc', 'TraversalError')
 
             _load_and_update(
-                methods_descriptors,
+                method_descriptors,
                 'typing',
                 [
                     'ParamSpec.__mro_entries__',
@@ -2031,9 +2025,7 @@ elif sys.platform == 'darwin':
                 ],
             )
 
-            _load_and_add(
-                wrappers_descriptors, 'sqlite3', 'Connection.__del__'
-            )
+            _load_and_add(wrapper_descriptors, 'sqlite3', 'Connection.__del__')
 elif sys.platform == 'win32':
     if sys.implementation.name == 'pypy':
         _load_and_update(classes, '_cffi_backend', ['FFI', 'buffer'])
@@ -2687,7 +2679,7 @@ elif sys.platform == 'win32':
         )
 
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_collections',
             [
                 '_deque_iterator.__length_hint__',
@@ -2697,7 +2689,7 @@ elif sys.platform == 'win32':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_collections_abc',
             [
                 'bytearray_iterator.__length_hint__',
@@ -2734,12 +2726,12 @@ elif sys.platform == 'win32':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_hashlib',
             ['HASH.copy', 'HASH.digest', 'HASH.hexdigest', 'HASH.update'],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_io',
             [
                 '_BufferedIOBase.read',
@@ -2762,7 +2754,7 @@ elif sys.platform == 'win32':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_lsprof',
             [
                 'Profiler.clear',
@@ -2774,7 +2766,7 @@ elif sys.platform == 'win32':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_multiprocessing',
             [
                 'SemLock.__enter__',
@@ -2789,7 +2781,7 @@ elif sys.platform == 'win32':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_overlapped',
             [
                 'Overlapped.AcceptEx',
@@ -2807,9 +2799,9 @@ elif sys.platform == 'win32':
                 'Overlapped.getresult',
             ],
         )
-        _load_and_add(methods_descriptors, '_ssl', '_SSLSocket.read')
+        _load_and_add(method_descriptors, '_ssl', '_SSLSocket.read')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             '_thread',
             [
                 'LockType.acquire_lock',
@@ -2818,20 +2810,20 @@ elif sys.platform == 'win32':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'builtins',
             ['complex.__getnewargs__', 'reversed.__setstate__'],
         )
         _load_and_add(
-            methods_descriptors, 'collections', '_tuplegetter.__reduce__'
+            method_descriptors, 'collections', '_tuplegetter.__reduce__'
         )
         _load_and_add(
-            methods_descriptors,
+            method_descriptors,
             'ctypes',
             '_SimpleCData.__ctypes_from_outparam__',
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'ctypes._endian',
             [
                 '_array_type.from_address',
@@ -2842,16 +2834,16 @@ elif sys.platform == 'win32':
             ],
         )
         _load_and_add(
-            methods_descriptors, 'datetime', 'timezone.__getinitargs__'
+            method_descriptors, 'datetime', 'timezone.__getinitargs__'
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'decimal',
             ['Context._apply', 'Decimal.__sizeof__'],
         )
-        _load_and_add(methods_descriptors, 'functools', 'partial.__setstate__')
+        _load_and_add(method_descriptors, 'functools', 'partial.__setstate__')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'io',
             [
                 'BufferedRandom._dealloc_warn',
@@ -2865,7 +2857,7 @@ elif sys.platform == 'win32':
             ],
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'itertools',
             [
                 '_grouper.__reduce__',
@@ -2887,9 +2879,9 @@ elif sys.platform == 'win32':
                 'zip_longest.__setstate__',
             ],
         )
-        _load_and_add(methods_descriptors, 'socket', 'SocketType._accept')
+        _load_and_add(method_descriptors, 'socket', 'SocketType._accept')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'threading',
             [
                 '_CRLock.__enter__',
@@ -2901,9 +2893,9 @@ elif sys.platform == 'win32':
                 '_CRLock.release',
             ],
         )
-        _load_and_add(methods_descriptors, 'weakref', 'ProxyType.__bytes__')
+        _load_and_add(method_descriptors, 'weakref', 'ProxyType.__bytes__')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'xxsubtype',
             [
                 'spamdict.getstate',
@@ -2913,10 +2905,10 @@ elif sys.platform == 'win32':
             ],
         )
 
-        _load_and_add(wrappers_descriptors, '_io', '_IOBase.__del__')
-        _load_and_add(wrappers_descriptors, 'socket', 'SocketType.__del__')
+        _load_and_add(wrapper_descriptors, '_io', '_IOBase.__del__')
+        _load_and_add(wrapper_descriptors, 'socket', 'SocketType.__del__')
         _load_and_update(
-            wrappers_descriptors,
+            wrapper_descriptors,
             'types',
             [
                 'AsyncGeneratorType.__del__',
@@ -2927,7 +2919,7 @@ elif sys.platform == 'win32':
 
         if sys.maxsize == 0x7FFFFFFF:
             _load_and_update(
-                methods_descriptors,
+                method_descriptors,
                 'decimal',
                 [
                     'Context._unsafe_setemax',
@@ -2997,10 +2989,10 @@ elif sys.platform == 'win32':
         )
 
         _load_and_add(
-            methods_descriptors, '_collections_abc', 'EllipsisType.__reduce__'
+            method_descriptors, '_collections_abc', 'EllipsisType.__reduce__'
         )
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'typing',
             [
                 'GenericAlias.__instancecheck__',
@@ -3008,7 +3000,7 @@ elif sys.platform == 'win32':
                 'GenericAlias.__subclasscheck__',
             ],
         )
-        _load_and_add(methods_descriptors, 'weakref', 'ProxyType.__reversed__')
+        _load_and_add(method_descriptors, 'weakref', 'ProxyType.__reversed__')
 
         _load_and_add(classes, '_hashlib', 'UnsupportedDigestmodError')
         _load_and_add(classes, 'importlib.metadata', 'FreezableDefaultDict')
@@ -3017,19 +3009,17 @@ elif sys.platform == 'win32':
         _load_and_add(classes, 'unittest.mock', 'InvalidSpecError')
 
         _load_and_update(
-            methods_descriptors,
-            '_csv',
-            ['Writer.writerow', 'Writer.writerows'],
+            method_descriptors, '_csv', ['Writer.writerow', 'Writer.writerows']
         )
-        _load_and_add(methods_descriptors, '_ssl', 'Certificate.public_bytes')
+        _load_and_add(method_descriptors, '_ssl', 'Certificate.public_bytes')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'builtins',
             ['property.__set_name__', 'zip.__setstate__'],
         )
-        _load_and_add(methods_descriptors, 'collections', 'deque.__reversed__')
+        _load_and_add(method_descriptors, 'collections', 'deque.__reversed__')
         _load_and_update(
-            methods_descriptors,
+            method_descriptors,
             'types',
             ['UnionType.__instancecheck__', 'UnionType.__subclasscheck__'],
         )
@@ -3055,7 +3045,7 @@ elif sys.platform == 'win32':
             _load_and_add(classes, 'importlib.resources.abc', 'TraversalError')
 
             _load_and_update(
-                methods_descriptors,
+                method_descriptors,
                 'typing',
                 [
                     'ParamSpec.__mro_entries__',
@@ -3066,6 +3056,4 @@ elif sys.platform == 'win32':
                 ],
             )
 
-            _load_and_add(
-                wrappers_descriptors, 'sqlite3', 'Connection.__del__'
-            )
+            _load_and_add(wrapper_descriptors, 'sqlite3', 'Connection.__del__')

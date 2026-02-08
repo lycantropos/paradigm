@@ -5,7 +5,10 @@ from tests.utils import Signature, implication
 from . import strategies
 
 
-@given(strategies.hashable_signatures, strategies.hashable_signatures)
+@given(
+    strategies.hashable_signature_strategy,
+    strategies.hashable_signature_strategy,
+)
 def test_relation_with_equality(
     signature: Signature, other_signature: Signature
 ) -> None:

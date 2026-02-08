@@ -23,7 +23,7 @@ from paradigm.base import (
 )
 from tests.utils import ArgT, Args, KwArgs, Signature, negate, pack
 
-from .utils import identifiers, to_homogeneous_tuples
+from .utils import identifier_strategy, to_homogeneous_tuple_strategy
 
 _T1 = TypeVar('_T1')
 _T2 = TypeVar('_T2')
@@ -45,7 +45,7 @@ def qualified_path_is_valid(value: type, /) -> bool:
     )
 
 
-plain_hashable_values_strategy = (
+plain_hashable_value_strategy = (
     st.none()
     | st.booleans()
     | st.integers()
@@ -54,17 +54,17 @@ plain_hashable_values_strategy = (
     | st.binary()
     | st.text()
 )
-hashable_values_strategy = st.recursive(
-    plain_hashable_values_strategy,
+hashable_value_strategy = st.recursive(
+    plain_hashable_value_strategy,
     lambda step: st.lists(step).map(tuple) | st.frozensets(step),
     max_leaves=3,
 )
-values_strategy = st.recursive(
-    hashable_values_strategy | st.sets(hashable_values_strategy),
+value_strategy = st.recursive(
+    hashable_value_strategy | st.sets(hashable_value_strategy),
     lambda step: (
         st.lists(step)
         | st.lists(step).map(tuple)
-        | st.dictionaries(hashable_values_strategy, step)
+        | st.dictionaries(hashable_value_strategy, step)
     ),
     max_leaves=3,
 )
@@ -121,42 +121,42 @@ def is_hashable(value: Any, /) -> bool:
         return True
 
 
-base_hashable_annotations_strategy = (
+base_hashable_annotation_strategy = (
     st.none()
     | (
-        st.lists(plain_hashable_values_strategy, min_size=1)
+        st.lists(plain_hashable_value_strategy, min_size=1)
         .map(tuple)
         .map(lambda variants: Literal[variants])
     )
     | types_with_round_trippable_repr.filter(is_hashable)
 )
-hashable_annotations_strategy = st.recursive(
-    base_hashable_annotations_strategy, nest_annotations, max_leaves=3
+hashable_annotation_strategy = st.recursive(
+    base_hashable_annotation_strategy, nest_annotations, max_leaves=3
 )
-base_annotations_strategy = (
+base_annotation_strategy = (
     st.none()
     | (
-        st.lists(plain_hashable_values_strategy, min_size=1)
+        st.lists(plain_hashable_value_strategy, min_size=1)
         .map(tuple)
         .map(lambda variants: Literal[variants])
     )
     | types_with_round_trippable_repr
 )
-annotations_strategy = st.recursive(
-    base_annotations_strategy, nest_annotations, max_leaves=3
+annotation_strategy = st.recursive(
+    base_annotation_strategy, nest_annotations, max_leaves=3
 )
 
 
-def to_optional_parameters(
+def to_optional_parameter_strategy(
     *,
-    annotations: st.SearchStrategy[Any] = annotations_strategy,
-    names: st.SearchStrategy[str] = identifiers,
+    annotations: st.SearchStrategy[Any] = annotation_strategy,
+    names: st.SearchStrategy[str] = identifier_strategy,
     kinds: st.SearchStrategy[ParameterKind] = st.sampled_from(  # noqa: B008
         list(ParameterKind)
     ),
-    defaults: st.SearchStrategy[Any] = values_strategy,
+    defaults: st.SearchStrategy[Any] = value_strategy,
 ) -> st.SearchStrategy[OptionalParameter]:
-    def normalize_mapping(mapping: dict[str, Any]) -> dict[str, Any]:
+    def normalize_mapping(mapping: dict[str, Any], /) -> dict[str, Any]:
         kind = mapping['kind']
         if (
             kind is ParameterKind.VARIADIC_KEYWORD
@@ -179,10 +179,10 @@ def to_optional_parameters(
     )
 
 
-def to_required_parameters(
+def to_required_parameter_strategy(
     *,
-    annotations: st.SearchStrategy[Any] = annotations_strategy,
-    names: st.SearchStrategy[str] = identifiers,
+    annotations: st.SearchStrategy[Any] = annotation_strategy,
+    names: st.SearchStrategy[str] = identifier_strategy,
     kinds: st.SearchStrategy[
         Literal[
             ParameterKind.POSITIONAL_ONLY,
@@ -202,11 +202,11 @@ def to_required_parameters(
     )
 
 
-def to_plain_signatures(
+def to_plain_signature_strategy(
     *,
-    parameters_annotations: st.SearchStrategy[Any] = annotations_strategy,
-    parameters_names: st.SearchStrategy[str] = identifiers,
-    required_parameters_kinds: st.SearchStrategy[
+    parameter_annotations: st.SearchStrategy[Any] = annotation_strategy,
+    parameter_names: st.SearchStrategy[str] = identifier_strategy,
+    required_parameter_kinds: st.SearchStrategy[
         Literal[
             ParameterKind.POSITIONAL_ONLY,
             ParameterKind.POSITIONAL_OR_KEYWORD,
@@ -219,10 +219,10 @@ def to_plain_signatures(
             ParameterKind.KEYWORD_ONLY,
         ]
     ),
-    optional_parameters_kinds: st.SearchStrategy[
+    optional_parameter_kinds: st.SearchStrategy[
         ParameterKind
     ] = st.sampled_from(list(ParameterKind)),  # noqa: B008
-    parameters_defaults: st.SearchStrategy[Any] = values_strategy,
+    parameter_defaults: st.SearchStrategy[Any] = value_strategy,
     min_size: int = 0,
     max_size: int,
 ) -> st.SearchStrategy[PlainSignature[Any]]:
@@ -237,15 +237,15 @@ def to_plain_signatures(
             'than max size, '
             f'but found {min_size} > {max_size}.'
         )
-    base_parameters = to_required_parameters(
-        annotations=parameters_annotations,
-        names=parameters_names,
-        kinds=required_parameters_kinds,
-    ) | to_optional_parameters(
-        annotations=parameters_annotations,
-        names=parameters_names,
-        kinds=optional_parameters_kinds,
-        defaults=parameters_defaults,
+    base_parameters = to_required_parameter_strategy(
+        annotations=parameter_annotations,
+        names=parameter_names,
+        kinds=required_parameter_kinds,
+    ) | to_optional_parameter_strategy(
+        annotations=parameter_annotations,
+        names=parameter_names,
+        kinds=optional_parameter_kinds,
+        defaults=parameter_defaults,
     )
 
     def normalize_parameters(
@@ -289,11 +289,11 @@ def to_plain_signatures(
                 base_parameters, min_size=min_size, max_size=max_size
             ).map(normalize_parameters)
         ),
-        st.fixed_dictionaries({'returns': parameters_annotations}),
+        st.fixed_dictionaries({'returns': parameter_annotations}),
     )
 
 
-def to_overloaded_signatures(
+def to_overloaded_signature_strategy(
     bases: st.SearchStrategy[PlainSignature[ArgT]],
     /,
     *,
@@ -308,87 +308,93 @@ def to_overloaded_signatures(
 AnySignatureT = TypeVar('AnySignatureT', bound=Signature)
 
 
-def to_signature_with_unexpected_args(
+def to_signature_with_unexpected_args_strategy(
     signature: AnySignatureT, /
 ) -> st.SearchStrategy[tuple[AnySignatureT, Args[ArgT]]]:
-    return st.tuples(st.just(signature), to_unexpected_args(signature))
+    return st.tuples(
+        st.just(signature), to_unexpected_args_strategy(signature)
+    )
 
 
-def to_signature_with_unexpected_kwargs(
+def to_signature_with_unexpected_kwargs_strategy(
     signature: AnySignatureT, /
 ) -> st.SearchStrategy[tuple[AnySignatureT, KwArgs[ArgT]]]:
-    return st.tuples(st.just(signature), to_unexpected_kwargs(signature))
+    return st.tuples(
+        st.just(signature), to_unexpected_kwargs_strategy(signature)
+    )
 
 
-def to_signature_with_expected_args(
+def to_signature_with_expected_args_strategy(
     signature: AnySignatureT, /
 ) -> st.SearchStrategy[tuple[AnySignatureT, Args[ArgT]]]:
-    return st.tuples(st.just(signature), to_expected_args(signature))
+    return st.tuples(st.just(signature), to_expected_args_strategy(signature))
 
 
-def to_signature_with_expected_kwargs(
+def to_signature_with_expected_kwargs_strategy(
     signature: AnySignatureT, /
 ) -> st.SearchStrategy[tuple[AnySignatureT, KwArgs[ArgT]]]:
-    return st.tuples(st.just(signature), to_expected_kwargs(signature))
+    return st.tuples(
+        st.just(signature), to_expected_kwargs_strategy(signature)
+    )
 
 
-def to_expected_args(
+def to_expected_args_strategy(
     signature: Signature,
     /,
     *,
     values: st.SearchStrategy[Any] = st.none(),  # noqa: B008
 ) -> st.SearchStrategy[Args[ArgT]]:
-    count = signature_to_min_positionals_count(signature)
-    return to_homogeneous_tuples(values, max_size=count)
+    count = signature_to_min_positional_count(signature)
+    return to_homogeneous_tuple_strategy(values, max_size=count)
 
 
-def to_expected_kwargs(
+def to_expected_kwargs_strategy(
     signature: Signature,
     /,
     *,
     values: st.SearchStrategy[Any] = st.none(),  # noqa: B008
 ) -> st.SearchStrategy[KwArgs[ArgT]]:
-    keywords = signature_to_keywords_intersection(signature)
+    keywords = signature_to_keyword_intersection(signature)
     if not keywords:
         return st.fixed_dictionaries({})
     return st.dictionaries(st.sampled_from(list(keywords.keys())), values)
 
 
-def to_unexpected_args(
+def to_unexpected_args_strategy(
     signature: Signature,
     /,
     *,
     values: st.SearchStrategy[Any] = st.none(),  # noqa: B008
 ) -> st.SearchStrategy[Args[ArgT]]:
-    count = signature_to_max_positionals_count(signature) + 1
-    return to_homogeneous_tuples(values, min_size=count)
+    count = signature_to_max_positional_count(signature) + 1
+    return to_homogeneous_tuple_strategy(values, min_size=count)
 
 
-def to_unexpected_kwargs(
+def to_unexpected_kwargs_strategy(
     signature: Signature,
     /,
     *,
     values: st.SearchStrategy[Any] = st.none(),  # noqa: B008
 ) -> st.SearchStrategy[KwArgs[ArgT]]:
-    keywords = signature_to_keywords_union(signature)
+    keywords = signature_to_keyword_union(signature)
     is_unexpected = negate(keywords.__contains__)
-    return st.dictionaries(identifiers.filter(is_unexpected), values).filter(
-        bool
-    )
+    return st.dictionaries(
+        identifier_strategy.filter(is_unexpected), values
+    ).filter(bool)
 
 
 @singledispatch
-def signature_to_max_positionals_count(signature: Signature, /) -> int:
+def signature_to_max_positional_count(signature: Signature, /) -> int:
     raise TypeError(f'Unsupported signature type: {type(signature)}.')
 
 
 @singledispatch
-def signature_to_min_positionals_count(signature: Signature, /) -> int:
+def signature_to_min_positional_count(signature: Signature, /) -> int:
     raise TypeError(f'Unsupported signature type: {type(signature)}.')
 
 
-@signature_to_max_positionals_count.register(PlainSignature)
-@signature_to_min_positionals_count.register(PlainSignature)
+@signature_to_max_positional_count.register(PlainSignature)
+@signature_to_min_positional_count.register(PlainSignature)
 def _(signature: PlainSignature[ArgT], /) -> int:
     parameters_by_kind = to_parameters_by_kind(signature.parameters)
     positionals = (
@@ -398,38 +404,36 @@ def _(signature: PlainSignature[ArgT], /) -> int:
     return len(positionals)
 
 
-@signature_to_max_positionals_count.register(OverloadedSignature)
+@signature_to_max_positional_count.register(OverloadedSignature)
 def _(signature: OverloadedSignature[ArgT], /) -> int:
     return max(
-        map(signature_to_max_positionals_count, signature.signatures),
-        default=0,
+        map(signature_to_max_positional_count, signature.signatures), default=0
     )
 
 
-@signature_to_min_positionals_count.register(OverloadedSignature)
+@signature_to_min_positional_count.register(OverloadedSignature)
 def _(signature: OverloadedSignature[ArgT], /) -> int:
     return min(
-        map(signature_to_min_positionals_count, signature.signatures),
-        default=0,
+        map(signature_to_min_positional_count, signature.signatures), default=0
     )
 
 
 @singledispatch
-def signature_to_keywords_intersection(
+def signature_to_keyword_intersection(
     signature: Signature, /
 ) -> dict[str, Parameter]:
     raise TypeError(f'Unsupported signature type: {type(signature)}.')
 
 
 @singledispatch
-def signature_to_keywords_union(
+def signature_to_keyword_union(
     signature: Signature, /
 ) -> dict[str, Parameter]:
     raise TypeError(f'Unsupported signature type: {type(signature)}.')
 
 
-@signature_to_keywords_union.register(PlainSignature)
-@signature_to_keywords_intersection.register(PlainSignature)
+@signature_to_keyword_union.register(PlainSignature)
+@signature_to_keyword_intersection.register(PlainSignature)
 def _(signature: PlainSignature[ArgT], /) -> dict[str, Parameter]:
     parameters_by_kind = to_parameters_by_kind(signature.parameters)
     keywords = (
@@ -439,7 +443,7 @@ def _(signature: PlainSignature[ArgT], /) -> dict[str, Parameter]:
     return to_parameters_by_name(keywords)
 
 
-@signature_to_keywords_intersection.register(OverloadedSignature)
+@signature_to_keyword_intersection.register(OverloadedSignature)
 def _(signature: OverloadedSignature[ArgT], /) -> dict[str, Parameter]:
     if not signature.signatures:
         return {}
@@ -451,12 +455,11 @@ def _(signature: OverloadedSignature[ArgT], /) -> dict[str, Parameter]:
         return {key: right_dictionary[key] for key in common_keys}
 
     return reduce(
-        intersect,
-        map(signature_to_keywords_intersection, signature.signatures),
+        intersect, map(signature_to_keyword_intersection, signature.signatures)
     )
 
 
-@signature_to_keywords_union.register(OverloadedSignature)
+@signature_to_keyword_union.register(OverloadedSignature)
 def _(signature: OverloadedSignature[ArgT]) -> dict[str, Parameter]:
     if not signature.signatures:
         return {}
@@ -466,6 +469,4 @@ def _(signature: OverloadedSignature[ArgT]) -> dict[str, Parameter]:
     ) -> dict[_T1, _T2]:
         return {**left_dictionary, **right_dictionary}
 
-    return reduce(
-        unite, map(signature_to_keywords_union, signature.signatures)
-    )
+    return reduce(unite, map(signature_to_keyword_union, signature.signatures))

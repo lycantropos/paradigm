@@ -709,8 +709,8 @@ def _bind_keywords(
     *,
     has_variadic: bool,
 ) -> tuple[Parameter, ...]:
-    kwargs_names = set(kwargs)
-    extra_kwargs_names = kwargs_names - {
+    kwarg_names = set(kwargs)
+    extra_kwarg_names = kwarg_names - {
         parameter.name
         for parameter in parameters
         if (
@@ -718,17 +718,17 @@ def _bind_keywords(
             or parameter.kind is ParameterKind.KEYWORD_ONLY
         )
     }
-    if extra_kwargs_names and not has_variadic:
-        value = 'argument' + 's' * (len(extra_kwargs_names) != 1)
-        names = '", "'.join(extra_kwargs_names)
+    if extra_kwarg_names and not has_variadic:
+        value = 'argument' + 's' * (len(extra_kwarg_names) != 1)
+        names = '", "'.join(extra_kwarg_names)
         raise TypeError(f'Got unexpected keyword {value}: "{names}".')
-    kwargs_names -= extra_kwargs_names
-    if not kwargs_names:
+    kwarg_names -= extra_kwarg_names
+    if not kwarg_names:
         return parameters
     first_kwarg_index = next(
         index
         for index, parameter in enumerate(parameters)
-        if parameter.name in kwargs_names
+        if parameter.name in kwarg_names
     )
     return parameters[:first_kwarg_index] + tuple(
         (
@@ -744,14 +744,14 @@ def _bind_keywords(
                     )
                     else (
                         {'default': kwargs[parameter.name]}
-                        if parameter.name in kwargs_names
+                        if parameter.name in kwarg_names
                         else {}
                     )
                 ),
             )
             if (
                 isinstance(parameter, OptionalParameter)
-                or parameter.name in kwargs_names
+                or parameter.name in kwarg_names
             )
             else RequiredParameter(
                 annotation=parameter.annotation,

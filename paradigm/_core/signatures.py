@@ -134,7 +134,7 @@ def _(_callable: Callable[..., Any], /) -> _Signature:
         module_path, object_path = _resolve_builder_qualified_path(
             qualified_paths
         )
-        ast_nodes = _load_statements_nodes(module_path, object_path)
+        ast_nodes = _load_statement_nodes(module_path, object_path)
         class_path, _builder_name = object_path[:-1], object_path[-1]
         return _from_signatures(
             *[
@@ -189,9 +189,9 @@ def _(
         _stubs.submodules,
         _stubs.superclasses,
     )
-    node_kind = _stubs.statements_nodes_kinds[module_path][object_path]
+    node_kind = _stubs.statement_node_kinds[module_path][object_path]
     if node_kind is _NodeKind.CLASS:
-        call_ast_nodes = _load_statements_nodes(
+        call_ast_nodes = _load_statement_nodes(
             module_path, (*object_path, call_name)
         )
         call_signatures = [
@@ -201,7 +201,7 @@ def _(
         return _from_signatures(
             *[signature.bind(callable_) for signature in call_signatures]
         )
-    annotation_nodes = _stubs.statements_nodes[module_path][object_path]
+    annotation_nodes = _stubs.statement_nodes[module_path][object_path]
     if len(annotation_nodes) == 1:
         (annotation_node,) = annotation_nodes
         assert isinstance(annotation_node, _ast.stmt), (
@@ -293,7 +293,9 @@ def _(
     ):
         callable_arguments = _subscript_to_item(ast_node)
         assert isinstance(callable_arguments, _ast.Tuple)
-        arguments_annotations, returns_annotation = callable_arguments.elts
+        argument_annotation_nodes, return_annotation_node = (
+            callable_arguments.elts
+        )
         return (
             _PlainSignature(
                 *[
@@ -305,14 +307,14 @@ def _(
                         name='_' + str(index),
                     )
                     for index, annotation in enumerate(
-                        arguments_annotations.elts
+                        argument_annotation_nodes.elts
                     )
                 ],
                 returns=_evaluate_expression_node(
-                    returns_annotation, module_path, parent_path, {}
+                    return_annotation_node, module_path, parent_path, {}
                 ),
             )
-            if isinstance(arguments_annotations, _ast.List)
+            if isinstance(argument_annotation_nodes, _ast.List)
             # unspecified parameters case
             else _PlainSignature(
                 _OptionalParameter(
@@ -326,7 +328,7 @@ def _(
                     name='kwargs',
                 ),
                 returns=_evaluate_expression_node(
-                    returns_annotation, module_path, parent_path, {}
+                    return_annotation_node, module_path, parent_path, {}
                 ),
             )
         )
@@ -385,7 +387,7 @@ def _(
     parameters = _parameters_from(
         ast_node, callable_, module_path, parent_path
     )
-    returns = _returns_annotation_from(
+    returns = _return_annotation_from(
         ast_node, callable_, module_path, parent_path
     )
     return _PlainSignature(*parameters, returns=returns)
@@ -430,7 +432,7 @@ def _parameters_from(
             name=result[0].name,
         )
     elif (
-        _stubs.statements_nodes_kinds[module_path].get(parent_path)
+        _stubs.statement_node_kinds[module_path].get(parent_path)
         is _NodeKind.CLASS
     ):
         result[0] = _RequiredParameter(
@@ -441,7 +443,7 @@ def _parameters_from(
     return result
 
 
-def _returns_annotation_from(
+def _return_annotation_from(
     ast_node: _ast.AsyncFunctionDef | _ast.FunctionDef,
     callable_: Callable[..., Any],
     module_path: _catalog.Path,
@@ -450,15 +452,15 @@ def _returns_annotation_from(
     *,
     initializer_name: str = object.__init__.__name__,
 ) -> Any:
-    returns_node = ast_node.returns
+    return_node = ast_node.returns
     return (
         _Self
         if (isinstance(callable_, type) and ast_node.name == initializer_name)
         else (
             Any
-            if returns_node is None
+            if return_node is None
             else _evaluate_expression_node(
-                returns_node, module_path, parent_path, {}
+                return_node, module_path, parent_path, {}
             )
         )
     )
@@ -514,7 +516,7 @@ def _try_resolve_object_path(
 
 def _from_callable(value: Callable[..., Any]) -> _Signature:
     for module_path, object_path in _to_qualified_paths(value):
-        nodes = _load_statements_nodes(module_path, object_path)
+        nodes = _load_statement_nodes(module_path, object_path)
         parent_path = object_path[:-1]
         try:
             signatures = [
@@ -535,7 +537,7 @@ def _to_qualified_paths(
     if qualified_paths:
         module_path, object_path = qualified_paths[0]
         if (
-            _stubs.statements_nodes_kinds[module_path][object_path]
+            _stubs.statement_node_kinds[module_path][object_path]
             is _NodeKind.CLASS
         ):
             yield _resolve_builder_qualified_path(qualified_paths)
@@ -571,11 +573,11 @@ def _resolve_builder_qualified_path(
     return module_path, object_path
 
 
-def _load_statements_nodes(
+def _load_statement_nodes(
     module_path: _catalog.Path, object_path: _catalog.Path
 ) -> Sequence[_ast.stmt]:
     try:
-        nodes = _stubs.statements_nodes[module_path][object_path]
+        nodes = _stubs.statement_nodes[module_path][object_path]
     except KeyError:
         raise _SignatureNotFound from None
     else:
@@ -588,14 +590,14 @@ def resolve_qualified_paths(
 ) -> list[_catalog.QualifiedPath]:
     module_path, object_path = _catalog.qualified_path_from(value)
     try:
-        candidates_paths = _qualified_paths[module_path][object_path]
+        candidate_paths = _qualified_paths[module_path][object_path]
     except KeyError:
         assert not module_path or object_path, value
         qualified_paths = [(module_path, object_path)] if module_path else []
     else:
         qualified_paths = [
             path
-            for path in candidates_paths
+            for path in candidate_paths
             if _value_has_qualified_path(value, path)
         ]
     return sorted(
@@ -622,7 +624,7 @@ def _to_class_builder_qualified_path(
     for base_module_path, _base_object_path in _to_mro(
         module_path, object_path
     ):
-        base_module_annotations = _stubs.statements_nodes[base_module_path]
+        base_module_annotations = _stubs.statement_nodes[base_module_path]
         constructor_path = (*object_path, constructor_name)
         initializer_path = (*object_path, initializer_name)
         if initializer_path in base_module_annotations:
@@ -753,7 +755,7 @@ def _to_positional_parameters(
     parent_path: _catalog.Path,
 ) -> list[_Parameter]:
     # double-reversing since parameters with default arguments go last
-    parameters_with_defaults_ast: list[tuple[_ast.arg, _ast.expr | None]] = (
+    parameter_with_default_nodes: list[tuple[_ast.arg, _ast.expr | None]] = (
         list(
             _zip_longest(
                 reversed(signature_ast.posonlyargs + signature_ast.args),
@@ -764,9 +766,9 @@ def _to_positional_parameters(
     kind = _ParameterKind.POSITIONAL_ONLY
     return [
         _parameter_from_ast_node(
-            parameter_ast, default_ast, module_path, parent_path, kind
+            parameter_node, default_node, module_path, parent_path, kind
         )
-        for parameter_ast, default_ast in parameters_with_defaults_ast
+        for parameter_node, default_node in parameter_with_default_nodes
     ]
 
 

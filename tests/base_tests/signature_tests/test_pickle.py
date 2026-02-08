@@ -4,14 +4,14 @@ from paradigm._core.models import Parameter
 from paradigm.base import OverloadedSignature, PlainSignature
 from tests.utils import ArgT, round_trip_pickle
 
-from . import strategies
-
-
-@given(
-    strategies.parameters,
-    strategies.plain_signatures,
-    strategies.overloaded_signatures,
+from .strategies import (
+    overloaded_signature_strategy,
+    parameter_strategy,
+    plain_signatures,
 )
+
+
+@given(parameter_strategy, plain_signatures, overloaded_signature_strategy)
 def test_models(
     parameter: Parameter,
     plain_signature: PlainSignature[ArgT],

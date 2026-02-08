@@ -5,19 +5,23 @@ from tests.utils import Signature, implication
 from . import strategies
 
 
-@given(strategies.signatures)
+@given(strategies.signature_strategy)
 def test_reflexivity(signature: Signature) -> None:
     assert signature == signature
 
 
-@given(strategies.signatures, strategies.signatures)
+@given(strategies.signature_strategy, strategies.signature_strategy)
 def test_symmetry(signature: Signature, other_signature: Signature) -> None:
     assert implication(
         signature == other_signature, other_signature == signature
     )
 
 
-@given(strategies.signatures, strategies.signatures, strategies.signatures)
+@given(
+    strategies.signature_strategy,
+    strategies.signature_strategy,
+    strategies.signature_strategy,
+)
 def test_transitivity(
     signature: Signature,
     other_signature: Signature,

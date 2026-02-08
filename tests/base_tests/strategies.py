@@ -11,7 +11,7 @@ from typing import Any
 from hypothesis import strategies
 
 from paradigm._core import catalog
-from paradigm._core.discovery import supported_stdlib_modules_paths
+from paradigm._core.discovery import supported_stdlib_module_paths
 from tests.contracts import is_supported
 
 
@@ -54,7 +54,7 @@ def safe_import_module(name: str, /) -> types.ModuleType | None:
 
 
 callables = (
-    strategies.sampled_from(sorted(supported_stdlib_modules_paths))
+    strategies.sampled_from(sorted(supported_stdlib_module_paths))
     .map(catalog.path_to_string)
     .map(safe_import_module)
     .map(find_optional_module_callables_recursively)

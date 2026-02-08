@@ -369,13 +369,13 @@ def _evaluate_qualified_path(
     builtins_module_path: catalog.Path = catalog.module_path_from_module(  # noqa: B008
         builtins
     ),
-    modules_cache: MutableMapping[
+    module_cache: MutableMapping[
         catalog.Path, types.ModuleType
     ] = weakref.WeakValueDictionary(),  # noqa: B008
     object_overrides: MutableMapping[catalog.QualifiedPath, Any] = {  # noqa: B006
         (('typing',), ('TypeVar',)): TypeVar
     },
-    objects_cache: MutableMapping[
+    object_cache: MutableMapping[
         catalog.QualifiedPath, Any
     ] = weakref.WeakValueDictionary(  # noqa: B008
         [((('_typeshed',), ('Self',)), Self)]
@@ -396,9 +396,9 @@ def _evaluate_qualified_path(
     except ImportError:
         if len(object_path) == 0:
             try:
-                return modules_cache[module_path]
+                return module_cache[module_path]
             except KeyError:
-                modules_cache[module_path] = module = types.ModuleType(
+                module_cache[module_path] = module = types.ModuleType(
                     module_name
                 )
                 namespace = module.__dict__
@@ -419,12 +419,12 @@ def _evaluate_qualified_path(
         except namespacing.ObjectNotFound:
             pass
     try:
-        return objects_cache[module_path, object_path]
+        return object_cache[module_path, object_path]
     except KeyError:
         pass
     assert len(object_path) > 0
-    module_nodes = stubs.statements_nodes[module_path]
-    node_kind = stubs.statements_nodes_kinds[module_path][object_path]
+    module_nodes = stubs.statement_nodes[module_path]
+    node_kind = stubs.statement_node_kinds[module_path][object_path]
     try:
         nodes = module_nodes[object_path]
     except KeyError:
@@ -441,17 +441,17 @@ def _evaluate_qualified_path(
         scope = scope[part]
     class_namespace: namespacing.Namespace = {'__module__': __name__}
     module_namespace: namespacing.Namespace = {'__name__': __name__}
-    annotations_nodes = {}
+    annotation_nodes = {}
     for name in scope:
         nodes = module_nodes[(*object_path, name)]
-        definitions_nodes: list[ast.stmt] = []
+        definition_nodes: list[ast.stmt] = []
         for node in nodes:
             if isinstance(node, ast.AnnAssign) and node.value is None:
-                annotations_nodes[name] = node.annotation
+                annotation_nodes[name] = node.annotation
             else:
                 assert isinstance(node, ast.stmt), (module_path, object_path)
-                definitions_nodes.append(node)
-        for definition_node in definitions_nodes:
+                definition_nodes.append(node)
+        for definition_node in definition_nodes:
             for dependency_name in {
                 child.id
                 for child in recursively_iterate_children(
@@ -493,22 +493,22 @@ def _evaluate_qualified_path(
             superclass_object_path,
         ) in stubs.superclasses.get(module_path, {}).get(object_path, [])
     )
-    if annotations_nodes:
+    if annotation_nodes:
         class_namespace['__annotations__'] = {}
-    result = parent_namespace[object_path[-1]] = objects_cache[
+    result = parent_namespace[object_path[-1]] = object_cache[
         module_path, object_path
     ] = types.new_class(
         catalog.path_to_string(object_path),
         bases,
         exec_body=lambda namespace: namespace.update(class_namespace),
     )
-    if annotations_nodes:
+    if annotation_nodes:
         result.__annotations__.update(
             {
                 name: _evaluate_expression_node(
                     annotation_node, module_path, object_path, parent_namespace
                 )
-                for name, annotation_node in annotations_nodes.items()
+                for name, annotation_node in annotation_nodes.items()
             }
         )
     globals()[catalog.path_to_string(object_path)] = result

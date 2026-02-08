@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from paradigm._core import catalog
-from paradigm._core.discovery import unsupported_stdlib_modules_paths
-from paradigm._core.sources import stdlib_modules_paths
+from paradigm._core.discovery import unsupported_stdlib_module_paths
+from paradigm._core.sources import stdlib_module_paths
 from tests import unsupported
 
 
@@ -27,8 +27,8 @@ def is_supported(_object: Any, /) -> bool:
 def _(object_: types.ModuleType, /) -> bool:
     module_path = catalog.module_path_from_module(object_)
     return (
-        module_path in stdlib_modules_paths
-        and module_path not in unsupported_stdlib_modules_paths
+        module_path in stdlib_module_paths
+        and module_path not in unsupported_stdlib_module_paths
         and object_ not in unsupported.stdlib_modules
     ) or has_supported_python_source_file(object_)
 
@@ -48,8 +48,8 @@ def is_source_path_supported(source_path: Path) -> bool:
 
 def is_module_path_supported(module_path: catalog.Path) -> bool:
     module_name = catalog.path_to_string(module_path)
-    if module_path in stdlib_modules_paths:
-        if module_path in unsupported_stdlib_modules_paths:
+    if module_path in stdlib_module_paths:
+        if module_path in unsupported_stdlib_module_paths:
             return False
         module = import_module(module_name)
         return is_supported(module)
@@ -72,7 +72,7 @@ def _(object_: types.BuiltinFunctionType | types.BuiltinMethodType, /) -> bool:
         (
             (
                 catalog.module_path_from_module(object_.__self__)
-                not in unsupported_stdlib_modules_paths
+                not in unsupported_stdlib_module_paths
             )
             and object_.__self__ not in unsupported.stdlib_modules
             and object_ not in unsupported.built_in_functions
@@ -123,14 +123,14 @@ if platform.python_implementation() != 'PyPy':
     def _(object_: types.MethodDescriptorType, /) -> bool:
         return (
             object_.__objclass__ not in unsupported.classes
-            and object_ not in unsupported.methods_descriptors
+            and object_ not in unsupported.method_descriptors
         )
 
     @is_supported.register(types.WrapperDescriptorType)
     def _(object_: types.WrapperDescriptorType, /) -> bool:
         return (
             object_.__objclass__ not in unsupported.classes
-            and object_ not in unsupported.wrappers_descriptors
+            and object_ not in unsupported.wrapper_descriptors
         )
 
 
@@ -146,4 +146,4 @@ def has_supported_python_source_file(module: types.ModuleType) -> bool:
 
 def is_stdlib_object(object_: Any) -> bool:
     module_path, _ = catalog.qualified_path_from(object_)
-    return module_path in stdlib_modules_paths
+    return module_path in stdlib_module_paths

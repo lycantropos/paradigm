@@ -3,10 +3,10 @@ from collections.abc import Iterable
 from typing import Final
 
 from . import catalog
-from .sources import stdlib_modules_paths
+from .sources import stdlib_module_paths
 
 
-def _recursively_update_modules_paths(
+def _recursively_update_module_paths(
     target: set[catalog.Path], /, *names: str
 ) -> None:
     paths = [catalog.path_from_string(name) for name in names]
@@ -15,7 +15,7 @@ def _recursively_update_modules_paths(
             *paths,
             *[
                 candidate
-                for candidate in stdlib_modules_paths
+                for candidate in stdlib_module_paths
                 if any(candidate[: len(path)] == path for path in paths)
             ],
         }
@@ -23,9 +23,9 @@ def _recursively_update_modules_paths(
 
 
 # importing will cause unwanted side effects such as raising error
-unsupported_stdlib_modules_paths: set[catalog.Path] = set()
-_recursively_update_modules_paths(
-    unsupported_stdlib_modules_paths,
+unsupported_stdlib_module_paths: set[catalog.Path] = set()
+_recursively_update_module_paths(
+    unsupported_stdlib_module_paths,
     'antigravity',
     'crypt',
     'idlelib',
@@ -37,12 +37,12 @@ _recursively_update_modules_paths(
 )
 
 if sys.version_info >= (3, 13):
-    _recursively_update_modules_paths(
-        unsupported_stdlib_modules_paths, '_colorize', '_pyrepl'
+    _recursively_update_module_paths(
+        unsupported_stdlib_module_paths, '_colorize', '_pyrepl'
     )
 if sys.implementation.name == 'pypy':
-    _recursively_update_modules_paths(
-        unsupported_stdlib_modules_paths,
+    _recursively_update_module_paths(
+        unsupported_stdlib_module_paths,
         '__decimal',
         '_crypt',
         '_curses_build',
@@ -53,10 +53,10 @@ if sys.implementation.name == 'pypy':
         'symtable',
         'tracemalloc',
     )
-    unsupported_stdlib_modules_paths.update(
+    unsupported_stdlib_module_paths.update(
         [
             path
-            for path in stdlib_modules_paths
+            for path in stdlib_module_paths
             if (
                 path[0].startswith(('__pypy', '_hpy', '_pypy', 'hpy'))
                 or '__pycache__' in path
@@ -64,8 +64,8 @@ if sys.implementation.name == 'pypy':
         ]
     )
     if sys.platform == 'win32':
-        _recursively_update_modules_paths(
-            unsupported_stdlib_modules_paths,
+        _recursively_update_module_paths(
+            unsupported_stdlib_module_paths,
             '_curses',
             '_curses_panel',
             '_dbm',
@@ -106,8 +106,8 @@ if sys.implementation.name == 'pypy':
             'tty',
         )
     else:
-        _recursively_update_modules_paths(
-            unsupported_stdlib_modules_paths,
+        _recursively_update_module_paths(
+            unsupported_stdlib_module_paths,
             '_overlapped',
             '_tkinter',
             '_winapi',
@@ -128,24 +128,24 @@ if sys.implementation.name == 'pypy':
             'pyrepl.pygame_console',
             'pyrepl.pygame_keymap',
         )
-    _recursively_update_modules_paths(
-        unsupported_stdlib_modules_paths,
+    _recursively_update_module_paths(
+        unsupported_stdlib_module_paths,
         '_cffi_ssl._cffi_src.build_openssl',
         '_ssl_build',
     )
 else:
-    _recursively_update_modules_paths(
-        unsupported_stdlib_modules_paths,
+    _recursively_update_module_paths(
+        unsupported_stdlib_module_paths,
         'distutils._msvccompiler',
         'distutils.command.bdist_msi',
     )
 
     if sys.platform == 'win32':
-        _recursively_update_modules_paths(
-            unsupported_stdlib_modules_paths, 'curses', 'pty', 'tty'
+        _recursively_update_module_paths(
+            unsupported_stdlib_module_paths, 'curses', 'pty', 'tty'
         )
-        _recursively_update_modules_paths(
-            unsupported_stdlib_modules_paths,
+        _recursively_update_module_paths(
+            unsupported_stdlib_module_paths,
             'asyncio.unix_events',
             'dbm.gnu',
             'dbm.ndbm',
@@ -154,8 +154,8 @@ else:
             'multiprocessing.popen_spawn_posix',
         )
     else:
-        _recursively_update_modules_paths(
-            unsupported_stdlib_modules_paths,
+        _recursively_update_module_paths(
+            unsupported_stdlib_module_paths,
             'asyncio.windows_events',
             'asyncio.windows_utils',
             'ctypes.wintypes',
@@ -165,14 +165,14 @@ else:
             'multiprocessing.popen_spawn_win32',
         )
         if sys.platform == 'darwin':
-            _recursively_update_modules_paths(
-                unsupported_stdlib_modules_paths,
+            _recursively_update_module_paths(
+                unsupported_stdlib_module_paths,
                 'dbm.gnu',
                 'distutils._msvccompiler',
             )
 
-supported_stdlib_modules_paths: Final[Iterable[catalog.Path]] = [
+supported_stdlib_module_paths: Final[Iterable[catalog.Path]] = [
     module_path
-    for module_path in stdlib_modules_paths
-    if module_path not in unsupported_stdlib_modules_paths
+    for module_path in stdlib_module_paths
+    if module_path not in unsupported_stdlib_module_paths
 ]

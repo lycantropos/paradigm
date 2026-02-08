@@ -163,18 +163,18 @@ def _(ast_node: ast.Subscript, /) -> str:
 
 @to_str.register(ast.Tuple)
 def _(ast_node: ast.Tuple, /) -> str:
-    elements_strings = [to_str(element) for element in ast_node.elts]
+    element_strings = [to_str(element) for element in ast_node.elts]
     return (
-        f'({elements_strings[0]},)'
-        if len(elements_strings) == 1
-        else f'({", ".join(elements_strings)})'
+        f'({element_strings[0]},)'
+        if len(element_strings) == 1
+        else f'({", ".join(element_strings)})'
     )
 
 
 @to_str.register(ast.List)
 def _(ast_node: ast.List, /) -> str:
-    elements_strings = [to_str(element) for element in ast_node.elts]
-    return f'[{", ".join(elements_strings)}]'
+    element_strings = [to_str(element) for element in ast_node.elts]
+    return f'[{", ".join(element_strings)}]'
 
 
 @to_str.register(ast.BinOp)

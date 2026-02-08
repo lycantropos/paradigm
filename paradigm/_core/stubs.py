@@ -50,7 +50,7 @@ from .arboreal.utils import (
     subscript_to_item as _subscript_to_item,
     to_parent_module_path as _to_parent_module_path,
 )
-from .sources import stubs_stdlib_modules_paths as _stdlib_modules_paths
+from .sources import stub_stdlib_module_paths as _stdlib_module_paths
 from .utils import MISSING as _MISSING, Missing as _Missing
 
 _CACHE_ROOT_DIRECTORY_NAME_PREFIX: _Final[str] = (
@@ -75,11 +75,11 @@ _CACHE_ROOT_DIRECTORY_PATH.mkdir(exist_ok=True, parents=True)
 
 
 class _GenericFieldName:
-    CLASSES_BASES_RAW_NODES = 'classes_bases_raw_nodes'
+    CLASS_BASE_RAW_NODES = 'class_base_raw_nodes'
     DEFINITIONS = 'definitions'
-    GENERICS_PARAMETERS_PATHS = 'generics_parameters_paths'
-    RAW_STATEMENTS_NODES = 'raw_statements_nodes'
-    RAW_STATEMENTS_NODES_KINDS = 'raw_statements_nodes_kinds'
+    GENERICS_PARAMETER_PATHS = 'generic_parameter_paths'
+    RAW_STATEMENT_NODES = 'raw_statement_nodes'
+    RAW_STATEMENT_NODE_KINDS = 'raw_statement_node_kinds'
     REFERENCES = 'references'
     SUBMODULES = 'submodules'
     VERSION = 'version'
@@ -88,25 +88,19 @@ class _GenericFieldName:
 class _SpecializedFieldName:
     DEFINITIONS = 'definitions'
     REFERENCES = 'references'
-    SPECIALIZATIONS_RAW_STATEMENTS_NODES = (
-        'specializations_raw_statements_nodes'
-    )
-    SPECIALIZATIONS_RAW_STATEMENTS_NODES_KINDS = (
-        'specializations_raw_statements_nodes_kinds'
+    SPECIALIZATION_RAW_STATEMENT_NODES = 'specialization_raw_statement_nodes'
+    SPECIALIZATION_RAW_STATEMENT_NODE_KINDS = (
+        'specialization_raw_statement_node_kinds'
     )
     SUPERCLASSES = 'superclasses'
     VERSION = 'version'
 
 
-_ObjectStatementsNodes: _TypeAlias = list[_ast.stmt]
+_ObjectStatementNodes: _TypeAlias = list[_ast.stmt]
 _ModuleRawNodes: _TypeAlias = dict[_catalog.Path, list[_conversion.RawNode]]
 _ModuleReferences: _TypeAlias = dict[_catalog.Path, _catalog.QualifiedPath]
-_ModuleStatementsNodes: _TypeAlias = dict[
-    _catalog.Path, _ObjectStatementsNodes
-]
-_ModuleStatementsNodesKinds: _TypeAlias = dict[
-    _catalog.Path, _StatementNodeKind
-]
+_ModuleStatementNodes: _TypeAlias = dict[_catalog.Path, _ObjectStatementNodes]
+_ModuleStatementNodeKinds: _TypeAlias = dict[_catalog.Path, _StatementNodeKind]
 _ModuleSubmodules: _TypeAlias = list[_catalog.Path]
 _ModuleSuperclasses: _TypeAlias = dict[
     _catalog.Path, list[_catalog.QualifiedPath]
@@ -117,17 +111,17 @@ _ScopeDefinitions: _TypeAlias = dict[str, '_ScopeDefinitions']
 def _named_tuple_to_constructor_node(
     node: _ast.ClassDef, /
 ) -> _ast.FunctionDef:
-    annotations_nodes: list[_ast.AnnAssign] = [
+    annotation_nodes: list[_ast.AnnAssign] = [
         child_node
         for child_node in node.body
         if isinstance(child_node, _ast.AnnAssign)
     ]
     assert all(
-        isinstance(node.target, _ast.Name) for node in annotations_nodes
+        isinstance(node.target, _ast.Name) for node in annotation_nodes
     ), node
     return _construct_function_def(
         '__new__',
-        _annotations_to_signature(annotations_nodes),
+        _annotations_to_signature(annotation_nodes),
         [_ast.Expr(_ast.Constant(Ellipsis))],
         [],
         _ast.Name(node.name, _ast.Load()),
@@ -242,41 +236,39 @@ class _LazyMappingWrapper(_Mapping[_catalog.Path, _T_co]):
         return len(self._wrapped)
 
 
-def _to_specializations_module_path(
+def _to_specialization_module_path(
     parent_module_path: _catalog.Path, /
 ) -> _catalog.Path:
     return _catalog.join_components(parent_module_path, '__specializations')
 
 
 class _State:
-    all_modules_paths: _Collection[_catalog.Path]
-    generics_parameters_paths: dict[
+    all_module_paths: _Collection[_catalog.Path]
+    generic_parameter_paths: dict[
         _catalog.Path, dict[_catalog.Path, tuple[_catalog.Path, ...]]
     ]
-    modules_classes_bases_nodes: dict[
+    module_class_base_nodes: dict[
         _catalog.Path, dict[_catalog.Path, list[_ast.expr]]
     ]
-    modules_definitions: dict[_catalog.Path, _ScopeDefinitions]
-    modules_references: dict[_catalog.Path, _ModuleReferences]
-    modules_statements_nodes: dict[_catalog.Path, _ModuleStatementsNodes]
-    modules_statements_nodes_kinds: dict[
-        _catalog.Path, _ModuleStatementsNodesKinds
-    ]
-    modules_submodules: dict[_catalog.Path, _ModuleSubmodules]
-    modules_superclasses: dict[_catalog.Path, _ModuleSuperclasses]
+    module_definitions: dict[_catalog.Path, _ScopeDefinitions]
+    module_references: dict[_catalog.Path, _ModuleReferences]
+    module_statement_nodes: dict[_catalog.Path, _ModuleStatementNodes]
+    module_statement_node_kinds: dict[_catalog.Path, _ModuleStatementNodeKinds]
+    module_submodules: dict[_catalog.Path, _ModuleSubmodules]
+    module_superclasses: dict[_catalog.Path, _ModuleSuperclasses]
 
     def __init__(
         self, all_modules_paths: _Collection[_catalog.Path], /
     ) -> None:
-        self.all_modules_paths = all_modules_paths
-        self.generics_parameters_paths = {}
-        self.modules_classes_bases_nodes = {}
-        self.modules_definitions = {}
-        self.modules_references = {}
-        self.modules_statements_nodes = {}
-        self.modules_statements_nodes_kinds = {}
-        self.modules_submodules = {}
-        self.modules_superclasses = {}
+        self.all_module_paths = all_modules_paths
+        self.generic_parameter_paths = {}
+        self.module_class_base_nodes = {}
+        self.module_definitions = {}
+        self.module_references = {}
+        self.module_statement_nodes = {}
+        self.module_statement_node_kinds = {}
+        self.module_submodules = {}
+        self.module_superclasses = {}
         builtins_module_path = _catalog.module_path_from_module(_builtins)
         _process_module(
             _sources.from_module_path(builtins_module_path),
@@ -292,15 +284,15 @@ class _StateParser(_ast.NodeVisitor):
         parent_path: _catalog.Path,
         source_path: _Path,
         scope: _ScopeDefinitions,
-        module_nodes: _ModuleStatementsNodes,
-        module_nodes_kinds: _ModuleStatementsNodesKinds,
+        module_nodes: _ModuleStatementNodes,
+        module_node_kinds: _ModuleStatementNodeKinds,
         module_references: _ModuleReferences,
         state: _State,
         /,
     ) -> None:
         (
             self.module_nodes,
-            self.module_nodes_kinds,
+            self.module_node_kinds,
             self.module_path,
             self.module_references,
             self.parent_path,
@@ -309,7 +301,7 @@ class _StateParser(_ast.NodeVisitor):
             self.state,
         ) = (
             module_nodes,
-            module_nodes_kinds,
+            module_node_kinds,
             module_path,
             module_references,
             parent_path,
@@ -395,24 +387,27 @@ class _StateParser(_ast.NodeVisitor):
             _catalog.join_components(self.parent_path, class_name),
             self.module_path,
         )
-        class_bases_nodes = _set_absent_key(
-            self.state.modules_classes_bases_nodes.setdefault(module_path, {}),
+        class_base_nodes = _set_absent_key(
+            self.state.module_class_base_nodes.setdefault(module_path, {}),
             class_object_path,
             [],
         )
-        type_vars_local_paths = []
+        type_var_local_paths = []
         for base_node in node.bases:
             if _is_generic_specialization(base_node):
-                type_args_maybe_objects_paths = [
-                    _conversion.to_maybe_path(argument)
+                type_var_local_paths += [
+                    object_path
                     for argument in _collect_type_args(base_node)
-                ]
-                type_vars_local_paths += [
-                    maybe_object_path
-                    for maybe_object_path in type_args_maybe_objects_paths
                     if (
-                        maybe_object_path is not None
-                        and self._is_type_var_object_path(maybe_object_path)
+                        (
+                            (
+                                object_path := _conversion.to_maybe_path(
+                                    argument
+                                )
+                            )
+                            is not None
+                        )
+                        and self._is_type_var_object_path(object_path)
                     )
                 ]
                 base_origin_maybe_object_path = _conversion.to_maybe_path(
@@ -451,13 +446,11 @@ class _StateParser(_ast.NodeVisitor):
                     base_module_path == typing_module_path
                     and base_object_path == generic_object_path
                 ), (module_path, class_object_path)
-            class_bases_nodes.append(base_node)
-        generic_parameters = tuple(dict.fromkeys(type_vars_local_paths))
+            class_base_nodes.append(base_node)
+        generic_parameters = tuple(dict.fromkeys(type_var_local_paths))
         if generic_parameters:
             _set_absent_key(
-                self.state.generics_parameters_paths.setdefault(
-                    module_path, {}
-                ),
+                self.state.generic_parameter_paths.setdefault(module_path, {}),
                 class_object_path,
                 generic_parameters,
             )
@@ -467,7 +460,7 @@ class _StateParser(_ast.NodeVisitor):
             self.source_path,
             self.scope[class_name],
             self.module_nodes,
-            self.module_nodes_kinds,
+            self.module_node_kinds,
             self.module_references,
             self.state,
         ).visit
@@ -546,9 +539,9 @@ class _StateParser(_ast.NodeVisitor):
     def _add_statement_node_kind(
         self, path: _catalog.Path, node_kind: _StatementNodeKind, /
     ) -> None:
-        self.module_nodes_kinds[
-            _catalog.join_paths(self.parent_path, path)
-        ] = node_kind
+        self.module_node_kinds[_catalog.join_paths(self.parent_path, path)] = (
+            node_kind
+        )
 
     def _add_name_definition(self, name: str) -> None:
         assert isinstance(name, str), name
@@ -571,7 +564,7 @@ class _StateParser(_ast.NodeVisitor):
         )
 
     def _add_submodule(self, module_path: _catalog.Path) -> None:
-        self.state.modules_submodules.setdefault(self.module_path, []).append(
+        self.state.module_submodules.setdefault(self.module_path, []).append(
             module_path
         )
 
@@ -612,7 +605,7 @@ class _StateParser(_ast.NodeVisitor):
         module_path, object_path = self._to_qualified_path(object_path)
         source_path = _sources.from_module_path(module_path)
         _parse_module_scope(source_path, module_path, self.state)
-        module_nodes = self.state.modules_statements_nodes[module_path]
+        module_nodes = self.state.module_statement_nodes[module_path]
         nodes = module_nodes.get(object_path, [])
         if len(nodes) != 1:
             return False
@@ -664,7 +657,7 @@ def _resolve_object_path(
         return module_path, _catalog.join_paths(parent_path, object_path)
     if first_name in module_definitions:
         return module_path, object_path
-    for sub_module_path in state.modules_submodules.get(module_path, []):
+    for sub_module_path in state.module_submodules.get(module_path, []):
         try:
             return _resolve_object_path(
                 _sources.from_module_path(sub_module_path),
@@ -675,7 +668,7 @@ def _resolve_object_path(
             )
         except _ObjectNotFound:
             continue
-    module_references = state.modules_references[module_path]
+    module_references = state.module_references[module_path]
     for offset in range(len(object_path)):
         sub_object_path = object_path[: len(object_path) - offset]
         try:
@@ -693,7 +686,7 @@ def _resolve_object_path(
                 ),
             )
     if _scoping.scope_contains_path(
-        state.modules_definitions[_builtins_module_path], object_path
+        state.module_definitions[_builtins_module_path], object_path
     ):
         return _builtins_module_path, object_path
     raise _ObjectNotFound(object_path)
@@ -708,7 +701,7 @@ def _parse_module_scope(
     cache_directory_path: _Path = _CACHE_ROOT_DIRECTORY_PATH / 'generic',
 ) -> _ScopeDefinitions:
     if (
-        module_definitions := state.modules_definitions.get(
+        module_definitions := state.module_definitions.get(
             module_path, _MISSING
         )
     ) is not _MISSING:
@@ -729,25 +722,25 @@ def _parse_module_scope(
             package_directory_path
             / f'{module_path[-1]}{_file_system.MODULE_FILE_SUFFIX}'
         )
-    module_classes_bases_raw_nodes: _ModuleRawNodes
-    module_raw_statements_nodes: _ModuleRawNodes
+    module_class_base_raw_nodes: _ModuleRawNodes
+    module_raw_statement_nodes: _ModuleRawNodes
     try:
         (
-            module_classes_bases_raw_nodes,
+            module_class_base_raw_nodes,
             module_definitions,
-            module_generics_parameters_paths,
-            module_raw_statements_nodes,
-            module_raw_statements_nodes_kinds,
+            module_generic_parameter_paths,
+            module_raw_statement_nodes,
+            module_raw_statement_node_kinds,
             module_references,
             module_submodules,
             cached_version,
         ) = _caching.load(
             cache_file_path,
-            _GenericFieldName.CLASSES_BASES_RAW_NODES,
+            _GenericFieldName.CLASS_BASE_RAW_NODES,
             _GenericFieldName.DEFINITIONS,
-            _GenericFieldName.GENERICS_PARAMETERS_PATHS,
-            _GenericFieldName.RAW_STATEMENTS_NODES,
-            _GenericFieldName.RAW_STATEMENTS_NODES_KINDS,
+            _GenericFieldName.GENERICS_PARAMETER_PATHS,
+            _GenericFieldName.RAW_STATEMENT_NODES,
+            _GenericFieldName.RAW_STATEMENT_NODE_KINDS,
             _GenericFieldName.REFERENCES,
             _GenericFieldName.SUBMODULES,
             _GenericFieldName.VERSION,
@@ -757,31 +750,31 @@ def _parse_module_scope(
     else:
         if cached_version == _version:
             _set_absent_key(
-                state.modules_classes_bases_nodes,
+                state.module_class_base_nodes,
                 module_path,
                 {
                     class_object_path: [
                         _construction.from_raw(raw_node, cls=_ast.expr)
-                        for raw_node in class_bases_raw_nodes
+                        for raw_node in class_base_raw_nodes
                     ]
-                    for class_object_path, class_bases_raw_nodes in (
-                        module_classes_bases_raw_nodes.items()
+                    for class_object_path, class_base_raw_nodes in (
+                        module_class_base_raw_nodes.items()
                     )
                 },
             )
             _set_absent_key(
-                state.modules_definitions, module_path, module_definitions
+                state.module_definitions, module_path, module_definitions
             )
             _set_absent_key(
-                state.generics_parameters_paths,
+                state.generic_parameter_paths,
                 module_path,
-                module_generics_parameters_paths,
+                module_generic_parameter_paths,
             )
             _set_absent_key(
-                state.modules_references, module_path, module_references
+                state.module_references, module_path, module_references
             )
             _set_absent_key(
-                state.modules_statements_nodes,
+                state.module_statement_nodes,
                 module_path,
                 {
                     object_path: [
@@ -789,30 +782,30 @@ def _parse_module_scope(
                         for raw_node in raw_nodes
                     ]
                     for object_path, raw_nodes in (
-                        module_raw_statements_nodes.items()
+                        module_raw_statement_nodes.items()
                     )
                 },
             )
             _set_absent_key(
-                state.modules_statements_nodes_kinds,
+                state.module_statement_node_kinds,
                 module_path,
                 {
                     object_path: _StatementNodeKind(raw_node_kind)
                     for object_path, raw_node_kind in (
-                        module_raw_statements_nodes_kinds.items()
+                        module_raw_statement_node_kinds.items()
                     )
                 },
             )
             _set_absent_key(
-                state.modules_submodules, module_path, module_submodules
+                state.module_submodules, module_path, module_submodules
             )
             assert isinstance(module_definitions, dict), module_definitions
             return module_definitions
     (
         module_definitions,
         module_references,
-        module_statements_nodes,
-        module_statements_nodes_kinds,
+        module_statement_nodes,
+        module_statement_node_kinds,
     ) = _init_module_state(state, module_path)
     root_node = _construction.from_source_path(source_path)
     _StateParser(
@@ -820,37 +813,35 @@ def _parse_module_scope(
         (),
         source_path,
         module_definitions,
-        module_statements_nodes,
-        module_statements_nodes_kinds,
+        module_statement_nodes,
+        module_statement_node_kinds,
         module_references,
         state,
     ).visit(root_node)
     _caching.save(
         cache_file_path,
         **{
-            _GenericFieldName.CLASSES_BASES_RAW_NODES: {
+            _GenericFieldName.CLASS_BASE_RAW_NODES: {
                 class_object_path: [
-                    _conversion.to_raw(node) for node in bases_nodes
+                    _conversion.to_raw(node) for node in base_nodes
                 ]
-                for class_object_path, bases_nodes in (
-                    state.modules_classes_bases_nodes.get(
-                        module_path, {}
-                    ).items()
+                for class_object_path, base_nodes in (
+                    state.module_class_base_nodes.get(module_path, {}).items()
                 )
             },
             _GenericFieldName.DEFINITIONS: module_definitions,
-            _GenericFieldName.GENERICS_PARAMETERS_PATHS: (
-                state.generics_parameters_paths.get(module_path, {})
+            _GenericFieldName.GENERICS_PARAMETER_PATHS: (
+                state.generic_parameter_paths.get(module_path, {})
             ),
-            _GenericFieldName.RAW_STATEMENTS_NODES: {
+            _GenericFieldName.RAW_STATEMENT_NODES: {
                 object_path: [_conversion.to_raw(node) for node in nodes]
-                for object_path, nodes in module_statements_nodes.items()
+                for object_path, nodes in module_statement_nodes.items()
             },
-            _GenericFieldName.RAW_STATEMENTS_NODES_KINDS: (
-                module_statements_nodes_kinds
+            _GenericFieldName.RAW_STATEMENT_NODE_KINDS: (
+                module_statement_node_kinds
             ),
             _GenericFieldName.REFERENCES: module_references,
-            _GenericFieldName.SUBMODULES: state.modules_submodules.get(
+            _GenericFieldName.SUBMODULES: state.module_submodules.get(
                 module_path, []
             ),
             _GenericFieldName.VERSION: _version,
@@ -864,14 +855,14 @@ def _init_module_state(
 ) -> tuple[
     _ScopeDefinitions,
     _ModuleReferences,
-    _ModuleStatementsNodes,
-    _ModuleStatementsNodesKinds,
+    _ModuleStatementNodes,
+    _ModuleStatementNodeKinds,
 ]:
     return (
-        _set_absent_key(state.modules_definitions, module_path, {}),
-        _set_absent_key(state.modules_references, module_path, {}),
-        _set_absent_key(state.modules_statements_nodes, module_path, {}),
-        _set_absent_key(state.modules_statements_nodes_kinds, module_path, {}),
+        _set_absent_key(state.module_definitions, module_path, {}),
+        _set_absent_key(state.module_references, module_path, {}),
+        _set_absent_key(state.module_statement_nodes, module_path, {}),
+        _set_absent_key(state.module_statement_node_kinds, module_path, {}),
     )
 
 
@@ -903,7 +894,7 @@ def _collect_type_args(node: _ast.expr, /) -> list[_ast.expr]:
 
 
 class _SpecializeGeneric(_ast.NodeTransformer):
-    def __init__(self, table: dict[_catalog.Path, _ast.expr]) -> None:
+    def __init__(self, table: dict[_catalog.Path, _ast.expr], /) -> None:
         self.table = table
 
     def visit_Name(self, node: _ast.Name) -> _ast.expr:
@@ -927,39 +918,39 @@ class _SpecializeGeneric(_ast.NodeTransformer):
         )
 
 
-def _parse_modules_state(
-    modules_paths: _Collection[_catalog.Path], /
+def _parse_module_states(
+    module_paths: _Collection[_catalog.Path], /
 ) -> tuple[
     _Mapping[_catalog.Path, _ScopeDefinitions],
     _Mapping[_catalog.Path, _ModuleReferences],
-    _Mapping[_catalog.Path, _ModuleStatementsNodes],
-    _Mapping[_catalog.Path, _ModuleStatementsNodesKinds],
+    _Mapping[_catalog.Path, _ModuleStatementNodes],
+    _Mapping[_catalog.Path, _ModuleStatementNodeKinds],
     _Mapping[_catalog.Path, _ModuleSubmodules],
     _Mapping[_catalog.Path, _ModuleSuperclasses],
 ]:
-    state = _State(modules_paths)
+    state = _State(module_paths)
     return (
         _LazyMappingWrapper(
-            state.modules_definitions, loader=_parse_module_scope, state=state
+            state.module_definitions, loader=_parse_module_scope, state=state
         ),
         _LazyMappingWrapper(
-            state.modules_references, loader=_parse_module_scope, state=state
+            state.module_references, loader=_parse_module_scope, state=state
         ),
         _LazyMappingWrapper(
-            state.modules_statements_nodes,
+            state.module_statement_nodes,
             loader=_parse_module_scope,
             state=state,
         ),
         _LazyMappingWrapper(
-            state.modules_statements_nodes_kinds,
+            state.module_statement_node_kinds,
             loader=_parse_module_scope,
             state=state,
         ),
         _LazyMappingWrapper(
-            state.modules_submodules, loader=_parse_module_scope, state=state
+            state.module_submodules, loader=_parse_module_scope, state=state
         ),
         _LazyMappingWrapper(
-            state.modules_superclasses, loader=_process_module, state=state
+            state.module_superclasses, loader=_process_module, state=state
         ),
     )
 
@@ -1004,13 +995,13 @@ def _process_module(
                                     )
                                 )
                             )
-                            in state.all_modules_paths
+                            in state.all_module_paths
                         )
                         else ()
                     ),
                 )
                 for referent_module_path, referent_object_path in (
-                    state.modules_references[dependency_module_path].values()
+                    state.module_references[dependency_module_path].values()
                 )
             )
         )
@@ -1019,14 +1010,14 @@ def _process_module(
                 referent_module_path,
                 _sources.from_module_path(referent_module_path),
             )
-            for referent_module_path in state.modules_submodules.get(
+            for referent_module_path in state.module_submodules.get(
                 dependency_module_path, []
             )
         )
     _process_module_superclasses(
         source_path,
         module_path,
-        state.modules_classes_bases_nodes.get(module_path, {}),
+        state.module_class_base_nodes.get(module_path, {}),
         state,
     )
 
@@ -1034,13 +1025,13 @@ def _process_module(
 def _process_module_superclasses(
     source_path: _sources.Path,
     module_path: _catalog.Path,
-    module_classes_bases_nodes: dict[_catalog.Path, list[_ast.expr]],
+    module_class_base_nodes: dict[_catalog.Path, list[_ast.expr]],
     state: _State,
     /,
     *,
     cache_directory_path: _Path = _CACHE_ROOT_DIRECTORY_PATH / 'specialized',
 ) -> None:
-    if state.modules_superclasses.get(module_path, _MISSING) is not _MISSING:
+    if state.module_superclasses.get(module_path, _MISSING) is not _MISSING:
         return
     if source_path.stem == _file_system.INIT_MODULE_NAME:
         package_directory_path = cache_directory_path.joinpath(*module_path)
@@ -1057,23 +1048,23 @@ def _process_module_superclasses(
             package_directory_path
             / f'{module_path[-1]}{_file_system.MODULE_FILE_SUFFIX}'
         )
-    specializations_scope_name = '@specializations'
-    specializations_raw_statements_nodes: dict[
+    specialization_scope_name = '@specializations'
+    specialization_raw_statement_nodes: dict[
         _catalog.Path, list[_conversion.RawNode]
     ]
     try:
         (
-            specializations_definitions,
-            specializations_raw_statements_nodes,
-            specializations_raw_statements_nodes_kinds,
+            specialization_definitions,
+            specialization_raw_statement_nodes,
+            specialization_raw_statement_node_kinds,
             module_references,
             module_superclasses,
             cached_version,
         ) = _caching.load(
             cache_file_path,
             _SpecializedFieldName.DEFINITIONS,
-            _SpecializedFieldName.SPECIALIZATIONS_RAW_STATEMENTS_NODES,
-            _SpecializedFieldName.SPECIALIZATIONS_RAW_STATEMENTS_NODES_KINDS,
+            _SpecializedFieldName.SPECIALIZATION_RAW_STATEMENT_NODES,
+            _SpecializedFieldName.SPECIALIZATION_RAW_STATEMENT_NODE_KINDS,
             _SpecializedFieldName.REFERENCES,
             _SpecializedFieldName.SUPERCLASSES,
             _SpecializedFieldName.VERSION,
@@ -1083,56 +1074,53 @@ def _process_module_superclasses(
     else:
         if cached_version == _version:
             _set_absent_key(
-                state.modules_definitions[module_path],
-                specializations_scope_name,
-                specializations_definitions,
+                state.module_definitions[module_path],
+                specialization_scope_name,
+                specialization_definitions,
             )
-            state.modules_statements_nodes[module_path].update(
+            state.module_statement_nodes[module_path].update(
                 {
                     object_path: [
                         _construction.from_raw(raw_node, cls=_ast.stmt)
                         for raw_node in raw_nodes
                     ]
                     for object_path, raw_nodes in (
-                        specializations_raw_statements_nodes.items()
+                        specialization_raw_statement_nodes.items()
                     )
                 }
             )
-            state.modules_statements_nodes_kinds[module_path].update(
+            state.module_statement_node_kinds[module_path].update(
                 {
                     object_path: _StatementNodeKind(raw_node_kind)
                     for object_path, raw_node_kind in (
-                        specializations_raw_statements_nodes_kinds.items()
+                        specialization_raw_statement_node_kinds.items()
                     )
                 }
             )
-            state.modules_references[module_path] = module_references
+            state.module_references[module_path] = module_references
             _set_absent_key(
-                state.modules_superclasses, module_path, module_superclasses
+                state.module_superclasses, module_path, module_superclasses
             )
             return
     module_superclasses = _set_absent_key(
-        state.modules_superclasses, module_path, {}
+        state.module_superclasses, module_path, {}
     )
-    specializations_definitions = _set_absent_key(
-        state.modules_definitions[module_path], specializations_scope_name, {}
+    specialization_definitions = _set_absent_key(
+        state.module_definitions[module_path], specialization_scope_name, {}
     )
     _set_absent_key(
-        state.modules_statements_nodes_kinds[module_path],
-        (specializations_scope_name,),
+        state.module_statement_node_kinds[module_path],
+        (specialization_scope_name,),
         _StatementNodeKind.CLASS,
     )
-    for (
-        class_object_path,
-        class_bases_nodes,
-    ) in module_classes_bases_nodes.items():
-        for base_node in class_bases_nodes:
+    for class_object_path, class_base_nodes in module_class_base_nodes.items():
+        for base_node in class_base_nodes:
             base_module_path, base_object_path = _register_base_node(
                 base_node,
                 module_path,
                 class_object_path,
-                specializations_scope_name,
-                specializations_definitions,
+                specialization_scope_name,
+                specialization_definitions,
                 state,
             )
             module_superclasses.setdefault(class_object_path, []).append(
@@ -1141,28 +1129,26 @@ def _process_module_superclasses(
     _caching.save(
         cache_file_path,
         **{
-            _SpecializedFieldName.DEFINITIONS: specializations_definitions,
-            _SpecializedFieldName.SPECIALIZATIONS_RAW_STATEMENTS_NODES: (
+            _SpecializedFieldName.DEFINITIONS: specialization_definitions,
+            _SpecializedFieldName.SPECIALIZATION_RAW_STATEMENT_NODES: (
                 {
                     object_path: [_conversion.to_raw(node) for node in nodes]
                     for object_path, nodes in (
-                        state.modules_statements_nodes[module_path].items()
+                        state.module_statement_nodes[module_path].items()
                     )
-                    if object_path[0] == specializations_scope_name
+                    if object_path[0] == specialization_scope_name
                 }
             ),
-            _SpecializedFieldName.SPECIALIZATIONS_RAW_STATEMENTS_NODES_KINDS: (
+            _SpecializedFieldName.SPECIALIZATION_RAW_STATEMENT_NODE_KINDS: (
                 {
                     object_path: node_kind
                     for object_path, node_kind in (
-                        state.modules_statements_nodes_kinds[
-                            module_path
-                        ].items()
+                        state.module_statement_node_kinds[module_path].items()
                     )
-                    if object_path[0] == specializations_scope_name
+                    if object_path[0] == specialization_scope_name
                 }
             ),
-            _SpecializedFieldName.REFERENCES: state.modules_references[
+            _SpecializedFieldName.REFERENCES: state.module_references[
                 module_path
             ],
             _SpecializedFieldName.SUPERCLASSES: module_superclasses,
@@ -1175,14 +1161,14 @@ def _register_base_node(
     base_node: _ast.expr,
     child_module_path: _catalog.Path,
     child_object_path: _catalog.Path,
-    specializations_scope_name: str,
-    specializations_definitions: _ScopeDefinitions,
+    specialization_scope_name: str,
+    specialization_definitions: _ScopeDefinitions,
     state: _State,
 ) -> _catalog.QualifiedPath:
     if _is_generic_specialization(base_node):
         base_name = _conversion.to_identifier(base_node)
-        base_object_path = (specializations_scope_name, base_name)
-        if base_name not in specializations_definitions:
+        base_object_path = (specialization_scope_name, base_name)
+        if base_name not in specialization_definitions:
             specialization_args = _unpack_node(_subscript_to_item(base_node))
             generic_object_path = _conversion.to_path(base_node.value)
             generic_module_path, generic_object_path = (
@@ -1190,13 +1176,13 @@ def _register_base_node(
                     child_module_path,
                     child_object_path[:-1],
                     generic_object_path,
-                    state.modules_definitions,
-                    state.modules_references,
-                    state.modules_submodules,
-                    state.modules_superclasses,
+                    state.module_definitions,
+                    state.module_references,
+                    state.module_submodules,
+                    state.module_superclasses,
                 )
             )
-            generic_parameters_paths = state.generics_parameters_paths[
+            generic_parameter_paths = state.generic_parameter_paths[
                 generic_module_path
             ][generic_object_path]
             _register_generic_specialization(
@@ -1204,19 +1190,17 @@ def _register_base_node(
                 generic_object_path,
                 child_module_path,
                 base_object_path,
-                generic_parameters_paths,
+                generic_parameter_paths,
                 specialization_args,
                 state,
             )
             specialization_table = dict(
-                zip(
-                    generic_parameters_paths, specialization_args, strict=False
-                )
+                zip(generic_parameter_paths, specialization_args, strict=False)
             )
             specialize = _SpecializeGeneric(specialization_table).visit
-            generic_bases = state.modules_classes_bases_nodes[
-                generic_module_path
-            ][generic_object_path]
+            generic_bases = state.module_class_base_nodes[generic_module_path][
+                generic_object_path
+            ]
             for generic_base in generic_bases:
                 base_base_module_path: _catalog.Path
                 base_base_object_path: _catalog.Path
@@ -1225,9 +1209,9 @@ def _register_base_node(
                     base_base_name = _conversion.to_identifier(base_base_node)
                     base_base_module_path, base_base_object_path = (
                         child_module_path,
-                        (specializations_scope_name, base_base_name),
+                        (specialization_scope_name, base_base_name),
                     )
-                    if base_base_name not in specializations_definitions:
+                    if base_base_name not in specialization_definitions:
                         generic_base_base_object_path = _conversion.to_path(
                             generic_base.value
                         )
@@ -1238,13 +1222,13 @@ def _register_base_node(
                             generic_module_path,
                             generic_object_path[:-1],
                             generic_base_base_object_path,
-                            state.modules_definitions,
-                            state.modules_references,
-                            state.modules_submodules,
-                            state.modules_superclasses,
+                            state.module_definitions,
+                            state.module_references,
+                            state.module_submodules,
+                            state.module_superclasses,
                         )
-                        generic_base_base_parameters_paths = (
-                            state.generics_parameters_paths[
+                        generic_base_base_parameter_paths = (
+                            state.generic_parameter_paths[
                                 generic_base_base_module_path
                             ][generic_base_base_object_path]
                         )
@@ -1256,7 +1240,7 @@ def _register_base_node(
                             generic_base_base_object_path,
                             base_base_module_path,
                             base_base_object_path,
-                            generic_base_base_parameters_paths,
+                            generic_base_base_parameter_paths,
                             base_base_specialization_args,
                             state,
                         )
@@ -1267,13 +1251,13 @@ def _register_base_node(
                             generic_module_path,
                             (),
                             base_base_object_path,
-                            state.modules_definitions,
-                            state.modules_references,
-                            state.modules_submodules,
-                            state.modules_superclasses,
+                            state.module_definitions,
+                            state.module_references,
+                            state.module_submodules,
+                            state.module_superclasses,
                         )
                     )
-                state.modules_superclasses.setdefault(
+                state.module_superclasses.setdefault(
                     child_module_path, {}
                 ).setdefault(base_object_path, []).append(
                     (base_base_module_path, base_base_object_path)
@@ -1284,10 +1268,10 @@ def _register_base_node(
         child_module_path,
         child_object_path[:-1],
         base_reference_path,
-        state.modules_definitions,
-        state.modules_references,
-        state.modules_submodules,
-        state.modules_superclasses,
+        state.module_definitions,
+        state.module_references,
+        state.module_submodules,
+        state.module_superclasses,
     )
 
 
@@ -1296,32 +1280,32 @@ def _register_generic_specialization(
     generic_object_path: _catalog.Path,
     specialization_module_path: _catalog.Path,
     specialization_object_path: _catalog.Path,
-    generic_parameters_paths: _Sequence[_catalog.Path],
+    generic_parameter_paths: _Sequence[_catalog.Path],
     specialization_args: _Sequence[_ast.expr],
     state: _State,
     builtins_module_path: _catalog.Path = _catalog.module_path_from_module(  # noqa: B008
         _builtins
     ),
 ) -> None:
-    base_scope_definitions = state.modules_definitions[
+    base_scope_definitions = state.module_definitions[
         specialization_module_path
     ]
     for part in specialization_object_path:
         base_scope_definitions = base_scope_definitions.setdefault(part, {})
-    generic_scope = state.modules_definitions[generic_module_path]
+    generic_scope = state.module_definitions[generic_module_path]
     for part in generic_object_path:
         generic_scope = generic_scope[part]
     base_scope_definitions.update(generic_scope)
-    generic_module_nodes = state.modules_statements_nodes[generic_module_path]
+    generic_module_nodes = state.module_statement_nodes[generic_module_path]
     _set_absent_key(
-        state.modules_statements_nodes_kinds[specialization_module_path],
+        state.module_statement_node_kinds[specialization_module_path],
         specialization_object_path,
         _StatementNodeKind.CLASS,
     )
     specialize = _SpecializeGeneric(
-        dict(zip(generic_parameters_paths, specialization_args, strict=False))
+        dict(zip(generic_parameter_paths, specialization_args, strict=False))
     ).visit
-    args_names = {
+    arg_names = {
         arg.id for arg in specialization_args if _is_dependency_name(arg)
     } | {
         child.id
@@ -1338,11 +1322,11 @@ def _register_generic_specialization(
             specialization_object_path, name
         )
         specialization_nodes = _set_absent_key(
-            state.modules_statements_nodes[specialization_module_path],
+            state.module_statement_nodes[specialization_module_path],
             specialization_field_path,
             [specialize(_deepcopy(node)) for node in generic_nodes],
         )
-        specialization_definitions_names = set(
+        specialization_definition_names = set(
             _chain.from_iterable(
                 _conversion.statement_node_to_defined_names(node)
                 for node in specialization_nodes
@@ -1353,31 +1337,31 @@ def _register_generic_specialization(
             for node in specialization_nodes
             for child in _recursively_iterate_children(node)
             if _is_dependency_name(child)
-        } - specialization_definitions_names:
+        } - specialization_definition_names:
             dependency_path = (dependency_name,)
             dependency_module_path, dependency_object_path = (
                 _scoping.resolve_object_path(
                     (
                         specialization_module_path
-                        if dependency_name in args_names
+                        if dependency_name in arg_names
                         else generic_module_path
                     ),
                     (),
                     dependency_path,
-                    state.modules_definitions,
-                    state.modules_references,
-                    state.modules_submodules,
-                    state.modules_superclasses,
+                    state.module_definitions,
+                    state.module_references,
+                    state.module_submodules,
+                    state.module_superclasses,
                 )
             )
             if dependency_module_path != builtins_module_path:
-                state.modules_references[specialization_module_path][
+                state.module_references[specialization_module_path][
                     dependency_path
                 ] = (dependency_module_path, dependency_object_path)
         _set_absent_key(
-            state.modules_statements_nodes_kinds[specialization_module_path],
+            state.module_statement_node_kinds[specialization_module_path],
             specialization_field_path,
-            state.modules_statements_nodes_kinds[generic_module_path][
+            state.module_statement_node_kinds[generic_module_path][
                 generic_field_path
             ],
         )
@@ -1398,8 +1382,8 @@ def _set_absent_key(
 (
     definitions,
     references,
-    statements_nodes,
-    statements_nodes_kinds,
+    statement_nodes,
+    statement_node_kinds,
     submodules,
     superclasses,
-) = _parse_modules_state(_stdlib_modules_paths)
+) = _parse_module_states(_stdlib_module_paths)

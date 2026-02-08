@@ -14,17 +14,22 @@ from paradigm.base import (
 )
 from tests.utils import ArgT, Args, KwArgs, Signature, implication
 
-from . import strategies
+from .strategies import (
+    non_variadic_signature_with_unexpected_args_strategy,
+    signature_strategy,
+    signature_with_expected_args_strategy,
+    signature_with_expected_kwargs_strategy,
+)
 
 
-@given(strategies.signatures)
+@given(signature_strategy)
 def test_basic(signature: Signature) -> None:
     result = signature.bind()
 
     assert result == signature
 
 
-@given(strategies.signatures_with_expected_args)
+@given(signature_with_expected_args_strategy)
 def test_expected_args(
     signature_with_expected_args: tuple[Signature, Args[ArgT]],
 ) -> None:
@@ -35,7 +40,7 @@ def test_expected_args(
     assert implication(bool(expected_args), result != signature)
 
 
-@given(strategies.signatures_with_expected_kwargs)
+@given(signature_with_expected_kwargs_strategy)
 def test_expected_kwargs(
     signature_with_expected_kwargs: tuple[Signature, KwArgs[ArgT]],
 ) -> None:
@@ -83,7 +88,7 @@ def _(
     )
 
 
-@given(strategies.non_variadic_signatures_with_unexpected_args)
+@given(non_variadic_signature_with_unexpected_args_strategy)
 def test_unexpected_args(
     signature_with_unexpected_args: tuple[Signature, Args[ArgT]],
 ) -> None:
@@ -93,7 +98,7 @@ def test_unexpected_args(
         signature.bind(*unexpected_args)
 
 
-@given(strategies.non_variadic_signatures_with_unexpected_args)
+@given(non_variadic_signature_with_unexpected_args_strategy)
 def test_unexpected_kwargs(
     signature_with_unexpected_kwargs: tuple[Signature, KwArgs[ArgT]],
 ) -> None:

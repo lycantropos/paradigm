@@ -6,7 +6,7 @@ from tests.utils import ArgT, Signature
 from . import strategies
 
 
-@given(strategies.signatures)
+@given(strategies.signature_strategy)
 def test_type(signature: Signature) -> None:
     result = str(signature)
 
@@ -20,7 +20,7 @@ def test_plain(signature: PlainSignature[ArgT]) -> None:
     assert all(str(parameter) in result for parameter in signature.parameters)
 
 
-@given(strategies.overloaded_signatures)
+@given(strategies.overloaded_signature_strategy)
 def test_nesting(signature: OverloadedSignature[ArgT]) -> None:
     result = str(signature)
 
