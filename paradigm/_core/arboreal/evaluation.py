@@ -9,7 +9,7 @@ from collections import ChainMap
 from collections.abc import MutableMapping
 from functools import singledispatch
 from importlib import import_module
-from typing import Any, ForwardRef, TypeGuard, Union
+from typing import Any, ForwardRef, TypeAlias, TypeGuard, Union
 
 from typing_extensions import Self, TypeVar
 
@@ -21,7 +21,7 @@ from .execution import execute_statement
 from .kind import StatementNodeKind
 from .utils import is_dependency_name, recursively_iterate_children
 
-AstExpression = ast.expr
+AstExpression: TypeAlias = ast.expr
 
 
 def evaluate_expression_node(
@@ -262,6 +262,34 @@ def _(
 
 
 @_evaluate_statement_node.register(ast.AnnAssign)
+def _(
+    ast_node: ast.AnnAssign,
+    module_path: catalog.Path,
+    parent_path: catalog.Path,
+    parent_namespace: namespacing.Namespace,
+    /,
+) -> Any:
+    value_node = ast_node.value
+    if value_node is None:
+        return None
+    if (
+        len(
+            target_names := conversion.statement_node_to_defined_names(
+                ast_node
+            )
+        )
+        == 1
+    ):
+        # potential cyclic definition
+        (target_name,) = target_names
+        parent_namespace = ChainMap(
+            {target_name: ForwardRef(target_name)}, parent_namespace
+        )
+    return _evaluate_expression_node(
+        value_node, module_path, parent_path, parent_namespace
+    )
+
+
 @_evaluate_statement_node.register(ast.Assign)
 def _(
     ast_node: ast.Assign,
