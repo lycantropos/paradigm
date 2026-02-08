@@ -36,6 +36,10 @@ _recursively_update_module_paths(
     'turtledemo',
 )
 
+if sys.version_info < (3, 12):
+    _recursively_update_module_paths(
+        unsupported_stdlib_module_paths, 'distutils'
+    )
 if sys.version_info >= (3, 13):
     _recursively_update_module_paths(
         unsupported_stdlib_module_paths, '_colorize', '_pyrepl'
@@ -81,10 +85,6 @@ if sys.implementation.name == 'pypy':
             'curses',
             'dbm.gnu',
             'dbm.ndbm',
-            'distutils.command.bdist_msi',
-            'distutils.command.bdist_wininst',
-            'distutils.sysconfig_cpython',
-            'distutils.sysconfig_pypy',
             'grp',
             'multiprocessing.popen_fork',
             'multiprocessing.popen_forkserver',
@@ -114,12 +114,6 @@ if sys.implementation.name == 'pypy':
             'asyncio.windows_events',
             'asyncio.windows_utils',
             'cffi._pycparser._build_tables',
-            'distutils._msvccompiler',
-            'distutils.command.bdist_wininst',
-            'distutils.command.bdist_msi',
-            'distutils.msvc9compiler',
-            'distutils.sysconfig_cpython',
-            'distutils.sysconfig_pypy',
             'encodings.mbcs',
             'encodings.oem',
             'msvcrt',
@@ -134,12 +128,6 @@ if sys.implementation.name == 'pypy':
         '_ssl_build',
     )
 else:
-    _recursively_update_module_paths(
-        unsupported_stdlib_module_paths,
-        'distutils._msvccompiler',
-        'distutils.command.bdist_msi',
-    )
-
     if sys.platform == 'win32':
         _recursively_update_module_paths(
             unsupported_stdlib_module_paths, 'curses', 'pty', 'tty'
@@ -159,16 +147,13 @@ else:
             'asyncio.windows_events',
             'asyncio.windows_utils',
             'ctypes.wintypes',
-            'distutils.msvc9compiler',
             'encodings.mbcs',
             'encodings.oem',
             'multiprocessing.popen_spawn_win32',
         )
         if sys.platform == 'darwin':
             _recursively_update_module_paths(
-                unsupported_stdlib_module_paths,
-                'dbm.gnu',
-                'distutils._msvccompiler',
+                unsupported_stdlib_module_paths, 'dbm.gnu'
             )
 
 supported_stdlib_module_paths: Final[Iterable[catalog.Path]] = [

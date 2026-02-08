@@ -10,7 +10,6 @@ from typing import Any, Final
 from paradigm._core import catalog, namespacing
 
 _cache: Final[dict[Any, list[tuple[str, str]]]] = {}
-_counter = [0]
 
 
 def _load_and_add(set_: set[Any], module_name: str, object_name: str) -> None:
@@ -26,8 +25,6 @@ def _load_and_add(set_: set[Any], module_name: str, object_name: str) -> None:
             stacklevel=2,
         )
     else:
-        if object_ in set_:
-            _counter[0] += 1
         _cache.setdefault(object_, []).append((module_name, object_name))
         set_.add(object_)
 
@@ -131,9 +128,6 @@ if sys.platform == 'linux':
         _load_and_update(
             classes, 'datetime', ['dateinterop', 'deltainterop', 'timeinterop']
         )
-        _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
-        _load_and_add(classes, 'distutils.cygwinccompiler', 'RangeMap.Item')
-        _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
         _load_and_add(classes, 'doctest', '_SpoofOut')
         _load_and_add(classes, 'email._encoded_words', '_QByteMap')
         _load_and_update(
@@ -372,9 +366,6 @@ if sys.platform == 'linux':
             classes, 'ctypes._endian', ['_array_type', '_swapped_meta']
         )
         _load_and_add(classes, 'curses.panel', 'error')
-        _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
-        _load_and_add(classes, 'distutils.cygwinccompiler', 'RangeMap.Item')
-        _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
         _load_and_add(classes, 'email._encoded_words', '_QByteMap')
         _load_and_update(
             classes,
@@ -1102,9 +1093,6 @@ elif sys.platform == 'darwin':
         _load_and_update(
             classes, 'datetime', ['dateinterop', 'deltainterop', 'timeinterop']
         )
-        _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
-        _load_and_add(classes, 'distutils.cygwinccompiler', 'RangeMap.Item')
-        _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
         _load_and_add(classes, 'doctest', '_SpoofOut')
         _load_and_add(classes, 'email._encoded_words', '_QByteMap')
         _load_and_update(
@@ -1352,9 +1340,6 @@ elif sys.platform == 'darwin':
             classes, 'ctypes._endian', ['_array_type', '_swapped_meta']
         )
         _load_and_add(classes, 'curses.panel', 'error')
-        _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
-        _load_and_add(classes, 'distutils.cygwinccompiler', 'RangeMap.Item')
-        _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
         _load_and_add(classes, 'email._encoded_words', '_QByteMap')
         _load_and_update(
             classes,
@@ -2094,9 +2079,6 @@ elif sys.platform == 'win32':
         _load_and_update(
             classes, 'datetime', ['dateinterop', 'deltainterop', 'timeinterop']
         )
-        _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
-        _load_and_add(classes, 'distutils.cygwinccompiler', 'RangeMap.Item')
-        _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
         _load_and_add(classes, 'doctest', '_SpoofOut')
         _load_and_add(classes, 'email._encoded_words', '_QByteMap')
         _load_and_update(
@@ -2389,9 +2371,6 @@ elif sys.platform == 'win32':
                 'PWORD',
             ],
         )
-        _load_and_add(classes, 'distutils.command.bdist', 'ListCompat')
-        _load_and_add(classes, 'distutils.cygwinccompiler', 'RangeMap.Item')
-        _load_and_add(classes, 'distutils.filelist', '_UniqueDirs')
         _load_and_add(classes, 'email._encoded_words', '_QByteMap')
         _load_and_update(
             classes,
