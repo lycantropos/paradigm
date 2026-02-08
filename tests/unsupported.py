@@ -365,6 +365,7 @@ if sys.platform == 'linux':
         _load_and_update(
             classes, 'ctypes._endian', ['_array_type', '_swapped_meta']
         )
+        _load_and_add(classes, 'ctypes.utils', '_dl_phdr_info')
         _load_and_add(classes, 'curses.panel', 'error')
         _load_and_add(classes, 'email._encoded_words', '_QByteMap')
         _load_and_update(
