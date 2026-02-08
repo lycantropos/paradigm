@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 import builtins
 from collections.abc import Collection, Mapping
-from typing import TypeAlias
+from typing import Final, TypeAlias
 
 from . import catalog
+
+SPECIALIZATION_SCOPE_NAME: Final[str] = '@specializations'
 
 ModuleReferences: TypeAlias = Mapping[catalog.Path, catalog.QualifiedPath]
 ModuleSubmodules: TypeAlias = Collection[catalog.Path]

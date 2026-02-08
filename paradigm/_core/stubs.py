@@ -236,12 +236,6 @@ class _LazyMappingWrapper(_Mapping[_catalog.Path, _T_co]):
         return len(self._wrapped)
 
 
-def _to_specialization_module_path(
-    parent_module_path: _catalog.Path, /
-) -> _catalog.Path:
-    return _catalog.join_components(parent_module_path, '__specializations')
-
-
 class _State:
     all_module_paths: _Collection[_catalog.Path]
     generic_parameter_paths: dict[
@@ -1048,7 +1042,7 @@ def _process_module_superclasses(
             package_directory_path
             / f'{module_path[-1]}{_file_system.MODULE_FILE_SUFFIX}'
         )
-    specialization_scope_name = '@specializations'
+    specialization_scope_name = _scoping.SPECIALIZATION_SCOPE_NAME
     specialization_raw_statement_nodes: dict[
         _catalog.Path, list[_conversion.RawNode]
     ]
