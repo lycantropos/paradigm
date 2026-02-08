@@ -432,14 +432,29 @@ def _evaluate_qualified_path(
                 namespace = module.__dict__
                 scope = stubs.definitions[module_path].copy()
                 specialization_scope_name = scoping.SPECIALIZATION_SCOPE_NAME
-                for name in scope.pop(specialization_scope_name, {}):
-                    namespace[name] = parent_namespace[name] = (
-                        _evaluate_qualified_path(
-                            module_path,
-                            (specialization_scope_name, name),
-                            parent_namespace,
+                if (
+                    len(
+                        specialization_scope := scope.pop(
+                            specialization_scope_name, {}
                         )
                     )
+                    > 0
+                ):
+                    specialization_module = types.ModuleType(
+                        specialization_scope_name
+                    )
+                    specialization_namespace = specialization_module.__dict__
+                    for name in specialization_scope:
+                        specialization_namespace[name] = (
+                            _evaluate_qualified_path(
+                                module_path,
+                                (specialization_scope_name, name),
+                                parent_namespace,
+                            )
+                        )
+                    namespace[specialization_scope_name] = parent_namespace[
+                        specialization_scope_name
+                    ] = specialization_module
                 for name in scope:
                     namespace[name] = parent_namespace[name] = (
                         _evaluate_qualified_path(
