@@ -402,7 +402,7 @@ def _evaluate_qualified_path(
                     module_name
                 )
                 namespace = module.__dict__
-                for name in stubs.definitions[module_path]:
+                for name in stubs.definitions[module_path].copy():
                     namespace[name] = parent_namespace[name] = (
                         _evaluate_qualified_path(
                             module_path, (name,), parent_namespace
